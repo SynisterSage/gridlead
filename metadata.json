@@ -1,0 +1,7 @@
+{
+  "name": "GridLead",
+  "description": "A mass lead finder and outreach hub for solo web creators featuring AI-driven discovery, local business scoring, and automated follow-ups.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

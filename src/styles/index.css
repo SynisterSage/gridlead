@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #ffffff;
+  color: #0f172a;
+  margin: 0;
+  transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.dark body {
+  background-color: #020617;
+  color: #f8fafc;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Global Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Specialized Horizontal Scrollbar for Kanban */
+.kanban-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.kanban-scroll::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 10px;
+  margin: 0 40px;
+}
+
+.dark .kanban-scroll::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background: #0f172a;
+  border: 2px solid #f8fafc;
+}
+
+.dark .kanban-scroll::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-color: #020617;
+}
+
+/* High-fidelity horizontal fade mask */
+.kanban-mask {
+  mask-image: linear-gradient(to right, transparent, black 80px, black calc(100% - 80px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 80px, black calc(100% - 80px), transparent);
+}
+
+@keyframes scrollHint {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(5px); }
+}
+
+.scroll-hint {
+  animation: scrollHint 2s infinite ease-in-out;
+}
+
+input[type="range"] {
+  accent-color: #0f172a;
+}
+
+.dark input[type="range"] {
+  accent-color: #38bdf8;
+}
+
+/* Hide default scrollbar for specific utility classes */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
