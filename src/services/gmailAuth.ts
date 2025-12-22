@@ -1,5 +1,5 @@
-const clientId = import.meta.env.VITE_GMAIL_OAUTH_CLIENT_ID;
-const redirectUri = import.meta.env.VITE_GMAIL_OAUTH_REDIRECT_URI;
+const clientId = (import.meta as any).env?.VITE_GMAIL_OAUTH_CLIENT_ID;
+const redirectUri = (import.meta as any).env?.VITE_GMAIL_OAUTH_REDIRECT_URI;
 
 const scopes = [
   // Gmail actions
