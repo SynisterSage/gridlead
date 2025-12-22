@@ -113,6 +113,14 @@ const AppContent: React.FC = () => {
             trust: row.score_trust ?? 50,
           },
           notes: row.notes || '',
+          checklist: {
+            mobileOptimization: row.checklist_mobile_optimization ?? undefined,
+            sslCertificate: row.checklist_ssl_certificate ?? undefined,
+            seoPresence: row.checklist_seo_presence ?? undefined,
+            conversionFlow: row.checklist_conversion_flow ?? undefined,
+            hasGoogleReviews: row.checklist_google_reviews ?? undefined,
+            hasRender: row.checklist_render ?? undefined,
+          }
         })) as Lead[];
         setLeads(mapped);
       }
@@ -348,6 +356,14 @@ const AppContent: React.FC = () => {
       payload.score_performance = updates.score.performance;
       payload.score_reviews = updates.score.reviews;
       payload.score_trust = updates.score.trust;
+    }
+    if (updates.checklist) {
+      payload.checklist_mobile_optimization = updates.checklist.mobileOptimization ?? null;
+      payload.checklist_ssl_certificate = updates.checklist.sslCertificate ?? null;
+      payload.checklist_seo_presence = updates.checklist.seoPresence ?? null;
+      payload.checklist_conversion_flow = updates.checklist.conversionFlow ?? null;
+      payload.checklist_google_reviews = updates.checklist.hasGoogleReviews ?? null;
+      payload.checklist_render = updates.checklist.hasRender ?? null;
     }
     await supabase.from('leads').update(payload).eq('id', id).eq('user_id', session.user.id);
   };
