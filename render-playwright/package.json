@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "build": "echo \"no build step\""
+    "build": "echo \"no build step\"",
+    "postinstall": "npx playwright-chromium install --with-deps chromium"
   },
   "dependencies": {
     "express": "^4.19.2",
