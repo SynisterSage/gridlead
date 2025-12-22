@@ -32,6 +32,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [auditStep, setAuditStep] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+  const [lastAuditAt, setLastAuditAt] = useState<string | null>(null);
 
   const activeLeads = leads.filter(l => l.status === 'pending');
 
@@ -58,13 +59,28 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
     }, 600);
   };
 
+  const handleDelete = (id: string) => {
+    const remaining = activeLeads.filter(l => l.id !== id);
+    onDeleteLead(id);
+    if (selectedLead?.id === id) {
+      setSelectedLead(remaining[0] ?? null);
+      setMobileView('list');
+    }
+  };
+
   const handleDeepAnalysis = async () => {
-    if (!selectedLead || !selectedLead.website) return;
+    if (!selectedLead || !selectedLead.website || selectedLead.website.toLowerCase().includes('no website')) return;
     setIsAnalyzing(true);
-    setAuditStep('Fetching site & PageSpeed...');
+    const timers: number[] = [];
+    const scheduleStep = (label: string, delay: number) => {
+      const id = window.setTimeout(() => setAuditStep(label), delay);
+      timers.push(id);
+    };
+    setAuditStep('Step 1/4: Fetching site & PageSpeed…');
+    scheduleStep('Step 2/4: Scoring design & speed…', 1200);
+    scheduleStep('Step 3/4: Updating record…', 2200);
     try {
-      const audit = await runAudit(`https://${selectedLead.website.replace(/^https?:\/\//, '')}`, selectedLead.id);
-      setAuditStep('Applying scores...');
+      const audit = await runAudit(`https://${selectedLead.website.replace(/^https?:\/\//, '')}`, selectedLead.id, selectedLead.placeId);
       const updates: Partial<Lead> = {
         score: {
           design: audit.scores.design,
@@ -72,20 +88,24 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
           reviews: audit.scores.reviews,
           trust: audit.scores.trust,
         },
-        notes: selectedLead.notes || audit.summary,
+        notes: audit.summary,
         checklist: {
           mobileOptimization: audit.checklist.mobileOptimization,
           sslCertificate: audit.checklist.sslCertificate,
           seoPresence: audit.checklist.seoPresence,
           conversionFlow: audit.checklist.conversionFlow,
+          hasGoogleReviews: audit.checklist.hasGoogleReviews,
         }
       };
       onUpdateLead(selectedLead.id, updates);
-      setAuditStep('Audit updated');
+      setSelectedLead(prev => prev && prev.id === selectedLead.id ? { ...prev, ...updates } as Lead : prev);
+      setLastAuditAt(new Date().toLocaleString());
+      setAuditStep('Step 4/4: Done ✓');
     } catch (err) {
       console.error('Audit failed', err);
       setAuditStep('Audit failed');
     } finally {
+      timers.forEach(id => clearTimeout(id));
       setTimeout(() => setAuditStep(null), 1500);
       setIsAnalyzing(false);
     }
@@ -113,6 +133,11 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
   }
 
   const current = selectedLead || activeLeads[0];
+  const isAudited = Boolean(
+    (current.checklist && Object.values(current.checklist).some(v => v !== undefined)) ||
+    (current.notes && current.notes.toLowerCase().includes('performance:'))
+  );
+  const displayScore = (val: number | undefined) => (isAudited ? (val ?? 0) : 0);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-12 md:pt-20 pb-32 animate-in fade-in duration-700">
@@ -187,7 +212,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                 </div>
                 <div className="flex gap-2 md:gap-3 w-full lg:w-auto">
                   <button 
-                    onClick={() => onDeleteLead(current.id)}
+                    onClick={() => handleDelete(current.id)}
                     className="flex-1 lg:flex-none px-4 md:px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all"
                   >
                     Discard
@@ -205,14 +230,26 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
               {/* Score Breakdown */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 {[
-                  { label: 'Design', val: current.score.design },
-                  { label: 'Speed', val: current.score.performance },
-                  { label: 'Market', val: current.score.reviews },
-                  { label: 'Trust', val: current.score.trust },
+                  { label: 'Design', val: displayScore(current.score.design), hint: 'Structure, meta tags, OG/Twitter, headings' },
+                  { label: 'Speed', val: displayScore(current.score.performance), hint: 'PageSpeed mobile + probe latency/size' },
+                  { label: 'Market', val: displayScore(current.score.reviews), hint: 'Google rating + review volume' },
+                  { label: 'Trust', val: displayScore(current.score.trust), hint: 'SSL, contact/social signals, reviews' },
                 ].map((stat) => (
                   <div key={stat.label} className="p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[8px] md:text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{stat.label}</span>
+                      <div className="flex flex-col relative">
+                        <span className="text-[8px] md:text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          {stat.label}
+                          <span className="relative group/icon">
+                            <HelpCircle size={11} className="text-slate-300 dark:text-slate-700" />
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 max-w-[260px] p-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl shadow-2xl opacity-0 invisible group-hover/icon:opacity-100 group-hover/icon:visible transition-all duration-200 text-[10px] font-medium leading-relaxed z-20 whitespace-normal">
+                              {!isAudited ? 'Heuristic only — run Deep Audit to populate real scores.' : stat.hint}
+                            </div>
+                          </span>
+                        </span>
+                        {!isAudited && <span className="text-[8px] text-amber-500 font-bold uppercase tracking-widest">Heuristic</span>}
+                        {isAudited && <span className="text-[8px] text-emerald-500 font-bold uppercase tracking-widest">Audited ✓</span>}
+                      </div>
                       <span className="text-[9px] md:text-[10px] font-mono font-bold text-slate-900 dark:text-slate-100">{stat.val}%</span>
                     </div>
                     <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -224,16 +261,16 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10">
                 {/* Audit Checklist */}
-                <div className="space-y-6">
+                <div className="space-y-6 flex flex-col h-full">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                     <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Site Audit</h3>
                     <div className="relative group">
                       <button 
                         onClick={handleDeepAnalysis} 
-                        className="text-[8px] md:text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight hover:text-blue-800 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
+                        className={`text-[8px] md:text-[9px] font-bold uppercase tracking-tight transition-colors disabled:opacity-60 ${isAudited ? 'text-emerald-500' : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'}`}
                         disabled={isAnalyzing}
                       >
-                        {isAnalyzing ? (auditStep || "Analyzing...") : "Deep Audit"}
+                        {isAudited ? 'Audited ✓' : isAnalyzing ? (auditStep || "Analyzing...") : "Deep Audit"}
                       </button>
                       <div className="absolute bottom-full right-0 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10 dark:ring-white/5">
                         <div className="flex items-center gap-2 mb-2 text-blue-400">
@@ -241,7 +278,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                           <span className="text-[9px] font-black uppercase tracking-widest">Tech Intelligence</span>
                         </div>
                         <p className="text-[10px] font-medium leading-relaxed opacity-80">
-                          Our AI scans performance data and tech stack fingerprints to find high-intent conversion leaks.
+                          Runs PageSpeed, HTML probe, and Google reviews to populate scores.
                         </p>
                         <div className="absolute top-full right-4 -mt-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
                       </div>
@@ -249,23 +286,32 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                   </div>
                   <div className="space-y-3">
                     {[
-                      { label: 'Mobile Optimization', score: current.checklist?.mobileOptimization === true },
-                      { label: 'SSL Certificate', score: current.checklist?.sslCertificate === true },
-                      { label: 'SEO Presence', score: current.checklist?.seoPresence === true },
-                      { label: 'Conversion Flow', score: current.checklist?.conversionFlow === true }
-                    ].map((item, i) => (
-                      <div key={i} className="flex items-center gap-3">
+                      { label: 'Mobile Optimization', score: isAudited ? current.checklist?.mobileOptimization === true : false, hint: 'Viewport/mobile friendly markup' },
+                      { label: 'SSL Certificate', score: isAudited ? current.checklist?.sslCertificate === true : false, hint: 'HTTPS detected' },
+                      { label: 'SEO Presence', score: isAudited ? current.checklist?.seoPresence === true : false, hint: 'Title/description/canonical/structured data' },
+                      { label: 'Conversion Flow', score: isAudited ? current.checklist?.conversionFlow === true : false, hint: 'Contact info or CTA present' },
+                      current.checklist?.hasGoogleReviews !== undefined ? { label: 'Google Reviews', score: isAudited ? current.checklist?.hasGoogleReviews === true : false, hint: 'Places rating/count detected' } : null
+                    ].filter((item): item is { label: string; score: boolean; hint: string } => Boolean(item)).map((item, i) => (
+                      <div key={i} className="flex items-center gap-3 relative overflow-visible">
                         <div className={`w-4 h-4 rounded-full flex items-center justify-center ${item.score ? 'bg-blue-600 dark:bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700'}`}>
                           <CheckCircle size={10} />
                         </div>
-                        <p className={`text-[10px] md:text-[11px] font-bold ${item.score ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-600'}`}>{item.label}</p>
+                        <p className={`text-[10px] md:text-[11px] font-bold ${item.score ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-600'} flex items-center gap-1`}>
+                          {item.label}
+                          <span className="relative group/icon">
+                            <HelpCircle size={11} className="text-slate-300 dark:text-slate-700" />
+                            <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 opacity-0 invisible group-hover/icon:opacity-100 group-hover/icon:visible transition-all duration-200 bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-medium rounded-lg px-3 py-2 shadow-2xl w-56 z-30 whitespace-normal">
+                              {item.hint}
+                            </div>
+                          </span>
+                        </p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Intelligence Note */}
-                <div className="space-y-4">
+                <div className="space-y-4 flex flex-col h-full">
                   <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
                     <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Intelligence Brief</h3>
                     <div className="relative group cursor-help">
@@ -286,7 +332,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                   <textarea 
                     value={current.notes}
                     onChange={(e) => onUpdateLead(current.id, { notes: e.target.value })}
-                    className="w-full h-32 md:h-40 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-5 text-[11px] md:text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-100 transition-all resize-none font-medium leading-relaxed"
+                    className="w-full min-h-[160px] bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-5 text-[11px] md:text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-100 transition-all resize-none font-medium leading-relaxed flex-1"
                   />
                 </div>
               </div>

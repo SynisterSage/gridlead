@@ -46,7 +46,7 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
           query,
           location: location ? { zip: location, city: location } : undefined,
           radiusKm: relaxedRadius,
-          minRating: 0,
+          minRating,
         });
         setNotice('Expanded search to show more results.');
         setResults(relaxed.results || []);
@@ -72,11 +72,10 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
   };
 
   const filteredResults = useMemo(() => {
-    const threshold = notice ? 0 : minRating;
     return results
-      .filter(item => (item.rating || 0) >= threshold)
+      .filter(item => (item.rating || 0) >= minRating)
       .sort((a, b) => (b.potentialScore || 0) - (a.potentialScore || 0));
-  }, [results, minRating, notice]);
+  }, [results, minRating]);
 
   // Auto-fill ZIP via browser geolocation + public reverse geocode (no key) for convenience.
   useEffect(() => {
@@ -120,8 +119,12 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-12 md:pt-20 pb-32 animate-in fade-in duration-700">
       <div className="mb-8 md:mb-12">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">Discovery</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm md:text-lg font-medium">Mine local businesses and identify high-value opportunities.</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">Discovery</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm md:text-lg font-medium">Mine local businesses and identify high-value opportunities.</p>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -177,22 +180,26 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
             ))
           ) : (
             filteredResults.map((item, i) => (
-              <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col justify-between hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all group relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
-                {!item.website && (
-                  <div className="absolute top-4 right-4 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 text-[7px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest shadow-sm">High Value</div>
+              <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
+                {item.potentialScore >= 80 && item.website && (
+                  <div className="absolute top-4 right-4 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 text-[7px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest shadow-sm">
+                    High Value
+                  </div>
                 )}
                 
-                <div className="space-y-4">
+                <div className="space-y-2.5">
                   <div>
                     <h4 className="font-extrabold text-slate-900 dark:text-white truncate tracking-tight text-sm md:text-base">{item.name}</h4>
                     <p className="text-[8px] md:text-[9px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest mt-1">{item.category}</p>
                   </div>
 
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50/30 dark:bg-blue-900/10 rounded-xl border border-blue-50 dark:border-blue-900/30">
-                       <Lightbulb size={12} className="text-blue-500 dark:text-blue-400" />
-                       <span className="text-[9px] font-black uppercase tracking-tight text-blue-600 dark:text-blue-400">Target Opportunity</span>
-                    </div>
+                    {( !item.website || (item.potentialScore >= 65)) && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50/30 dark:bg-blue-900/10 rounded-xl border border-blue-50 dark:border-blue-900/30">
+                        <Lightbulb size={12} className="text-blue-500 dark:text-blue-400" />
+                        <span className="text-[9px] font-black uppercase tracking-tight text-blue-600 dark:text-blue-400">Target Opportunity</span>
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-2 text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-100/50 dark:border-slate-800">
                       <Globe size={12} className="shrink-0 text-slate-400 dark:text-slate-600" />
@@ -205,7 +212,13 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
                     
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center text-[8px] md:text-[9px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest px-1">
-                        <span>Need Score</span>
+                        <span className="flex items-center gap-1 relative group/needscore">
+                          Need Score
+                          <span className="text-slate-300 dark:text-slate-600 cursor-help">?</span>
+                          <div className="absolute top-full left-0 mt-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl shadow-2xl opacity-0 invisible group-hover/needscore:opacity-100 group-hover/needscore:visible transition-all duration-200 text-[9px] font-medium leading-relaxed z-10 pointer-events-none">
+                            Heuristic only: +25 no website, rating &lt;3 (+18), rating 3-3.9 (+10), rating ≥4 (-15), local service niches (+5), missing address (-5). Deep Audit refines scores in Review.
+                          </div>
+                        </span>
                         <span className="text-slate-900 dark:text-white font-mono">{item.potentialScore}%</span>
                       </div>
                       <div className="h-1.5 w-full bg-slate-50 dark:bg-slate-950 rounded-full overflow-hidden border border-slate-100/50 dark:border-slate-800 shadow-inner">
@@ -214,18 +227,19 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
                     </div>
                   </div>
                 </div>
-
-                <button 
-                  onClick={() => handlePushToQueue(item)}
-                  disabled={addedIds.has(item.id)}
-                  className={`mt-6 w-full py-3 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
-                    addedIds.has(item.id) 
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50' 
-                    : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-[#0f172a] dark:hover:bg-white dark:hover:text-slate-900'
-                  }`}
-                >
-                  {addedIds.has(item.id) ? "In Queue" : "Stage for Review"}
-                </button>
+                <div className="mt-6 w-full">
+                  <button 
+                    onClick={() => handlePushToQueue(item)}
+                    disabled={addedIds.has(item.id)}
+                    className={`w-full py-3 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
+                      addedIds.has(item.id) 
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/50' 
+                      : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-[#0f172a] dark:hover:bg-white dark:hover:text-slate-900'
+                    }`}
+                  >
+                    {addedIds.has(item.id) ? "In Queue" : "Stage for Review"}
+                  </button>
+                </div>
               </div>
             ))
           )}

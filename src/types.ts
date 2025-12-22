@@ -34,6 +34,7 @@ export interface Lead {
     sslCertificate?: boolean;
     seoPresence?: boolean;
     conversionFlow?: boolean;
+    hasGoogleReviews?: boolean;
   };
 }
 

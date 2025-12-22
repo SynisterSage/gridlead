@@ -12,13 +12,14 @@ export interface AuditResult {
     sslCertificate: boolean;
     seoPresence: boolean;
     conversionFlow: boolean;
+    hasGoogleReviews?: boolean;
   };
   summary: string;
 }
 
-export const runAudit = async (url: string, leadId?: string): Promise<AuditResult> => {
+export const runAudit = async (url: string, leadId?: string, placeId?: string): Promise<AuditResult> => {
   const { data, error } = await supabase.functions.invoke<AuditResult>('review-audit', {
-    body: { url, leadId },
+    body: { url, leadId, placeId },
   });
   if (error) {
     throw new Error(error.message || 'Audit failed');
