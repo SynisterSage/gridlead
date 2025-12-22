@@ -23,7 +23,12 @@ app.post('/render', async (req, res) => {
       await page.goto(url, { waitUntil: 'networkidle', timeout: 15000 });
       const html = await page.content();
       const title = await page.title();
-      const screenshot = await page.screenshot({ fullPage: true, type: 'jpeg', quality: 60 });
+      const screenshot = await page.screenshot({
+        fullPage: false,
+        type: 'jpeg',
+        quality: 45,
+        clip: { x: 0, y: 0, width: 1200, height: 1800 }, // focus above-the-fold
+      });
 
       res.json({
         title,
