@@ -15,6 +15,8 @@ export interface Lead {
   rating: number;
   lastScan: string;
   website: string;
+  email?: string;
+  user_id?: string;
   address?: string;
   lat?: number;
   lng?: number;

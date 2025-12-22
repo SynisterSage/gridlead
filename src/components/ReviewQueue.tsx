@@ -291,7 +291,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                       { label: 'SSL Certificate', score: isAudited ? current.checklist?.sslCertificate === true : false, hint: 'HTTPS detected' },
                       { label: 'SEO Presence', score: isAudited ? current.checklist?.seoPresence === true : false, hint: 'Title/description/canonical/structured data' },
                       { label: 'Conversion Flow', score: isAudited ? current.checklist?.conversionFlow === true : false, hint: 'Contact info or CTA present' },
-                      { label: 'Page Render (mobile)', score: isAudited ? current.checklist?.hasRender === true : false, hint: 'Rendered HTML captured via Playwright' },
+                      { label: 'Page Render (mobile)', score: isAudited ? current.checklist?.hasRender === true : false, hint: 'Rendered HTML captured via Playwright (development/experimental)' },
                       { label: 'Google Reviews', score: isAudited ? current.checklist?.hasGoogleReviews === true : false, hint: 'Places rating/count detected' }
                     ].map((item, i) => (
                       <div key={i} className="flex items-center gap-3 relative overflow-visible">
