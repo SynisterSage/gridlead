@@ -77,8 +77,9 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
       timers.push(id);
     };
     setAuditStep('Step 1/4: Fetching site & PageSpeed…');
-    scheduleStep('Step 2/4: Scoring design & speed…', 1200);
-    scheduleStep('Step 3/4: Updating record…', 2200);
+    scheduleStep('Step 2/4: Rendering page…', 900);
+    scheduleStep('Step 3/4: Scoring design & speed…', 1800);
+    scheduleStep('Step 4/4: Updating record…', 2600);
     try {
       const audit = await runAudit(`https://${selectedLead.website.replace(/^https?:\/\//, '')}`, selectedLead.id, selectedLead.placeId);
       const updates: Partial<Lead> = {
@@ -100,7 +101,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
       onUpdateLead(selectedLead.id, updates);
       setSelectedLead(prev => prev && prev.id === selectedLead.id ? { ...prev, ...updates } as Lead : prev);
       setLastAuditAt(new Date().toLocaleString());
-      setAuditStep('Step 4/4: Done ✓');
+      setAuditStep('Done ✓');
     } catch (err) {
       console.error('Audit failed', err);
       setAuditStep('Audit failed');
@@ -290,6 +291,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                       { label: 'SSL Certificate', score: isAudited ? current.checklist?.sslCertificate === true : false, hint: 'HTTPS detected' },
                       { label: 'SEO Presence', score: isAudited ? current.checklist?.seoPresence === true : false, hint: 'Title/description/canonical/structured data' },
                       { label: 'Conversion Flow', score: isAudited ? current.checklist?.conversionFlow === true : false, hint: 'Contact info or CTA present' },
+                      { label: 'Page Render (mobile)', score: isAudited ? current.checklist?.hasRender === true : false, hint: 'Rendered HTML captured via Playwright' },
                       current.checklist?.hasGoogleReviews !== undefined ? { label: 'Google Reviews', score: isAudited ? current.checklist?.hasGoogleReviews === true : false, hint: 'Places rating/count detected' } : null
                     ].filter((item): item is { label: string; score: boolean; hint: string } => Boolean(item)).map((item, i) => (
                       <div key={i} className="flex items-center gap-3 relative overflow-visible">

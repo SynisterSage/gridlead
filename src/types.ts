@@ -35,6 +35,7 @@ export interface Lead {
     seoPresence?: boolean;
     conversionFlow?: boolean;
     hasGoogleReviews?: boolean;
+    hasRender?: boolean;
   };
 }
 

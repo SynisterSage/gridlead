@@ -19,18 +19,20 @@ app.post('/render', async (req, res) => {
     const browser = await chromium.launch({ args: ['--no-sandbox'], headless: true });
     const context = await browser.newContext(mobile ? devices['iPhone 12'] : {});
     const page = await context.newPage();
+    try {
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 15000 });
+      const html = await page.content();
+      const title = await page.title();
+      const screenshot = await page.screenshot({ fullPage: true, type: 'jpeg', quality: 60 });
 
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 15000 });
-    const html = await page.content();
-    const title = await page.title();
-    const screenshot = await page.screenshot({ fullPage: true, type: 'jpeg', quality: 60 });
-    await browser.close();
-
-    res.json({
-      title,
-      html,
-      screenshotBase64: Buffer.from(screenshot).toString('base64'),
-    });
+      res.json({
+        title,
+        html,
+        screenshotBase64: Buffer.from(screenshot).toString('base64'),
+      });
+    } finally {
+      await browser.close();
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'render_failed' });

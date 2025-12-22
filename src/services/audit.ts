@@ -13,6 +13,7 @@ export interface AuditResult {
     seoPresence: boolean;
     conversionFlow: boolean;
     hasGoogleReviews?: boolean;
+    hasRender?: boolean;
   };
   summary: string;
 }
