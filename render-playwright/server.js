@@ -14,6 +14,8 @@ app.post('/render', async (req, res) => {
     const { url, mobile = true } = req.body || {};
     if (!url) return res.status(400).json({ error: 'missing url' });
 
+    console.log('[render] request', { url, mobile });
+
     const browser = await chromium.launch({ args: ['--no-sandbox'], headless: true });
     const context = await browser.newContext(mobile ? devices['iPhone 12'] : {});
     const page = await context.newPage();
