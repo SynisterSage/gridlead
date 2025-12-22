@@ -64,3 +64,9 @@ Deploy the function from Supabase: `supabase functions deploy gmail-oauth`
 - `npm run dev` — start Vite dev server
 - `npm run build` — production build
 - `npm run preview` — preview build
+
+## Discovery (Google Places)
+- Edge Function: `backend/supabase/functions/discover/index.ts`
+- Secrets needed (Supabase): `PLACES_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- Table: `public.leads` (migration `2025-01-24_leads.sql`) stores staged leads with RLS (owner-only).
+- Deployment: `supabase secrets set PLACES_API_KEY=your-key` then `supabase functions deploy discover`

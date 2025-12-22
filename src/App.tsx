@@ -48,11 +48,12 @@ const AppContent: React.FC = () => {
     localStorage.setItem('gridlead_leads', JSON.stringify(leads));
   }, [leads]);
 
-  // Fetch profile when session changes
+  // Fetch profile and leads when session changes
   useEffect(() => {
     const fetchProfile = async () => {
       if (!session) {
         setProfile(null);
+        setLeads(MOCK_LEADS);
         return;
       }
       setProfileLoading(true);
@@ -79,6 +80,44 @@ const AppContent: React.FC = () => {
     };
 
     void fetchProfile();
+  }, [session]);
+
+  useEffect(() => {
+    const fetchLeads = async () => {
+      if (!session) return;
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        const mapped = data.map((row: any) => ({
+          id: row.id,
+          placeId: row.place_id || undefined,
+          name: row.name,
+          category: row.category || 'Business',
+          rating: Number(row.rating) || 0,
+          lastScan: row.updated_at ? new Date(row.updated_at).toLocaleDateString() : 'Recently',
+          website: row.website || 'No website',
+          address: row.address || undefined,
+          lat: row.lat ?? undefined,
+          lng: row.lng ?? undefined,
+          status: row.status || 'pending',
+          sentAt: row.sent_at ? new Date(row.sent_at).getTime() : undefined,
+          draftSubject: row.draft_subject || undefined,
+          draftBody: row.draft_body || undefined,
+          score: {
+            design: row.score_design ?? 50,
+            performance: row.score_performance ?? 50,
+            reviews: row.score_reviews ?? 50,
+            trust: row.score_trust ?? 50,
+          },
+          notes: row.notes || '',
+        })) as Lead[];
+        setLeads(mapped);
+      }
+    };
+    void fetchLeads();
   }, [session]);
 
   // If user is logged in but profile is incomplete, keep onboarding visible
@@ -255,16 +294,68 @@ const AppContent: React.FC = () => {
     }, 800);
   };
 
-  const addLead = (newLead: Lead) => {
-    setLeads(prev => [newLead, ...prev]);
+  const addLead = async (newLead: Lead) => {
+    if (!session) {
+      setLeads(prev => [newLead, ...prev]);
+      return;
+    }
+    const isUuid = /^[0-9a-fA-F-]{36}$/.test(newLead.id);
+    const payload: any = {
+      user_id: session.user.id,
+      place_id: newLead.placeId,
+      name: newLead.name,
+      category: newLead.category,
+      rating: newLead.rating,
+      website: newLead.website,
+      address: newLead.address,
+      lat: newLead.lat,
+      lng: newLead.lng,
+      status: newLead.status,
+      draft_subject: newLead.draftSubject,
+      draft_body: newLead.draftBody,
+      sent_at: newLead.sentAt ? new Date(newLead.sentAt).toISOString() : null,
+      notes: newLead.notes,
+      score_design: newLead.score?.design,
+      score_performance: newLead.score?.performance,
+      score_reviews: newLead.score?.reviews,
+      score_trust: newLead.score?.trust,
+    };
+    if (isUuid) {
+      payload.id = newLead.id;
+    }
+    const { data, error } = await supabase.from('leads').upsert(payload, { onConflict: 'id' }).select('*').single();
+    if (!error && data) {
+      setLeads(prev => [{
+        ...newLead,
+        id: data.id,
+      }, ...prev.filter(l => l.id !== data.id)]);
+    } else {
+      setLeads(prev => [newLead, ...prev]);
+    }
   };
 
-  const updateLead = (id: string, updates: Partial<Lead>) => {
+  const updateLead = async (id: string, updates: Partial<Lead>) => {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+    if (!session) return;
+    const payload: any = {};
+    if (updates.status) payload.status = updates.status;
+    if (updates.notes !== undefined) payload.notes = updates.notes;
+    if (updates.draftSubject !== undefined) payload.draft_subject = updates.draftSubject;
+    if (updates.draftBody !== undefined) payload.draft_body = updates.draftBody;
+    if (updates.sentAt !== undefined) payload.sent_at = updates.sentAt ? new Date(updates.sentAt).toISOString() : null;
+    if (updates.score) {
+      payload.score_design = updates.score.design;
+      payload.score_performance = updates.score.performance;
+      payload.score_reviews = updates.score.reviews;
+      payload.score_trust = updates.score.trust;
+    }
+    await supabase.from('leads').update(payload).eq('id', id).eq('user_id', session.user.id);
   };
 
-  const deleteLead = (id: string) => {
+  const deleteLead = async (id: string) => {
     setLeads(prev => prev.filter(l => l.id !== id));
+    if (!session) return;
+    await supabase.from('leads').delete().eq('id', id).eq('user_id', session.user.id);
   };
 
   const renderView = () => {

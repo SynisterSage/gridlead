@@ -17,6 +17,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { Lead } from '../types';
+import { runAudit } from '../services/audit';
 
 interface ReviewQueueProps {
   leads: Lead[];
@@ -29,6 +30,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
   const [isApproving, setIsApproving] = useState(false);
   const [approvedSuccess, setApprovedSuccess] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [auditStep, setAuditStep] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
   const activeLeads = leads.filter(l => l.status === 'pending');
@@ -56,9 +58,37 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
     }, 600);
   };
 
-  const handleDeepAnalysis = () => {
+  const handleDeepAnalysis = async () => {
+    if (!selectedLead || !selectedLead.website) return;
     setIsAnalyzing(true);
-    setTimeout(() => setIsAnalyzing(false), 1500);
+    setAuditStep('Fetching site & PageSpeed...');
+    try {
+      const audit = await runAudit(`https://${selectedLead.website.replace(/^https?:\/\//, '')}`, selectedLead.id);
+      setAuditStep('Applying scores...');
+      const updates: Partial<Lead> = {
+        score: {
+          design: audit.scores.design,
+          performance: audit.scores.performance,
+          reviews: audit.scores.reviews,
+          trust: audit.scores.trust,
+        },
+        notes: selectedLead.notes || audit.summary,
+        checklist: {
+          mobileOptimization: audit.checklist.mobileOptimization,
+          sslCertificate: audit.checklist.sslCertificate,
+          seoPresence: audit.checklist.seoPresence,
+          conversionFlow: audit.checklist.conversionFlow,
+        }
+      };
+      onUpdateLead(selectedLead.id, updates);
+      setAuditStep('Audit updated');
+    } catch (err) {
+      console.error('Audit failed', err);
+      setAuditStep('Audit failed');
+    } finally {
+      setTimeout(() => setAuditStep(null), 1500);
+      setIsAnalyzing(false);
+    }
   };
 
   const getRatingColorClass = (rating: number) => {
@@ -200,9 +230,10 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                     <div className="relative group">
                       <button 
                         onClick={handleDeepAnalysis} 
-                        className="text-[8px] md:text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                        className="text-[8px] md:text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tight hover:text-blue-800 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
+                        disabled={isAnalyzing}
                       >
-                        {isAnalyzing ? "Analyzing..." : "Deep Audit"}
+                        {isAnalyzing ? (auditStep || "Analyzing...") : "Deep Audit"}
                       </button>
                       <div className="absolute bottom-full right-0 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10 dark:ring-white/5">
                         <div className="flex items-center gap-2 mb-2 text-blue-400">
@@ -218,10 +249,10 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                   </div>
                   <div className="space-y-3">
                     {[
-                      { label: 'Mobile Optimization', score: current.score.performance > 50 },
-                      { label: 'SSL Certificate', score: true },
-                      { label: 'SEO Presence', score: current.score.trust > 40 },
-                      { label: 'Conversion Flow', score: current.score.design > 60 }
+                      { label: 'Mobile Optimization', score: current.checklist?.mobileOptimization === true },
+                      { label: 'SSL Certificate', score: current.checklist?.sslCertificate === true },
+                      { label: 'SEO Presence', score: current.checklist?.seoPresence === true },
+                      { label: 'Conversion Flow', score: current.checklist?.conversionFlow === true }
                     ].map((item, i) => (
                       <div key={i} className="flex items-center gap-3">
                         <div className={`w-4 h-4 rounded-full flex items-center justify-center ${item.score ? 'bg-blue-600 dark:bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700'}`}>

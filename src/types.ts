@@ -10,10 +10,14 @@ export enum AppView {
 export interface Lead {
   id: string;
   name: string;
+  placeId?: string;
   category: string;
   rating: number;
   lastScan: string;
   website: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
   status: 'pending' | 'approved' | 'rejected' | 'sent' | 'responded' | 'won';
   sentAt?: number; 
   draftSubject?: string;
@@ -25,6 +29,12 @@ export interface Lead {
     trust: number;
   };
   notes: string;
+  checklist?: {
+    mobileOptimization?: boolean;
+    sslCertificate?: boolean;
+    seoPresence?: boolean;
+    conversionFlow?: boolean;
+  };
 }
 
 export interface CampaignStep {
