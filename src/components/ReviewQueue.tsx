@@ -292,8 +292,8 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                       { label: 'SEO Presence', score: isAudited ? current.checklist?.seoPresence === true : false, hint: 'Title/description/canonical/structured data' },
                       { label: 'Conversion Flow', score: isAudited ? current.checklist?.conversionFlow === true : false, hint: 'Contact info or CTA present' },
                       { label: 'Page Render (mobile)', score: isAudited ? current.checklist?.hasRender === true : false, hint: 'Rendered HTML captured via Playwright' },
-                      current.checklist?.hasGoogleReviews !== undefined ? { label: 'Google Reviews', score: isAudited ? current.checklist?.hasGoogleReviews === true : false, hint: 'Places rating/count detected' } : null
-                    ].filter((item): item is { label: string; score: boolean; hint: string } => Boolean(item)).map((item, i) => (
+                      { label: 'Google Reviews', score: isAudited ? current.checklist?.hasGoogleReviews === true : false, hint: 'Places rating/count detected' }
+                    ].map((item, i) => (
                       <div key={i} className="flex items-center gap-3 relative overflow-visible">
                         <div className={`w-4 h-4 rounded-full flex items-center justify-center ${item.score ? 'bg-blue-600 dark:bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-700'}`}>
                           <CheckCircle size={10} />
