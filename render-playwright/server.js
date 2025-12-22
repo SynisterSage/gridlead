@@ -20,7 +20,7 @@ app.post('/render', async (req, res) => {
     const context = await browser.newContext(mobile ? devices['iPhone 12'] : {});
     const page = await context.newPage();
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 12000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 12000, userAgent: devices['iPhone 12'].userAgent });
       const html = await page.content();
       const title = await page.title();
       const screenshot = await page.screenshot({
@@ -39,7 +39,7 @@ app.post('/render', async (req, res) => {
       await browser.close();
     }
   } catch (err) {
-    console.error(err);
+    console.error('[render] error', err?.message || err);
     res.status(500).json({ error: 'render_failed' });
   }
 });
