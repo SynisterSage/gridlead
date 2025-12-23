@@ -1,8 +1,9 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Initialize the Google GenAI client with the provided API key from environment variables.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Use Vite client env. If missing, we’ll skip Gemini calls and return fallback copy.
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
 // Mock Search Service for Discovery
 const MOCK_BUSINESS_DATA = [
@@ -34,6 +35,9 @@ export const discoverLeadsAction = async (query: string, lat?: number, lng?: num
  */
 export const generateOutreachEmail = async (lead: any) => {
   try {
+    if (!ai) {
+      throw new Error("No Gemini API key configured");
+    }
     // Calling generateContent with the appropriate model and structured JSON configuration.
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",

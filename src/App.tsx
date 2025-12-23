@@ -764,6 +764,5 @@ const App: React.FC = () => {
     </ThemeProvider>
   );
 };
-console.log('VAPID', import.meta.env.VITE_VAPID_PUBLIC_KEY);
 
 export default App;
