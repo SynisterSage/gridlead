@@ -8,7 +8,8 @@ interface LandingPageProps {
   onLogin: () => void;
 }
 
-type MarketingPage = 'home' | 'platform' | 'pricing' | 'legal';
+type MarketingPage = 'home' | 'platform' | 'pricing';
+
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
   const [activePage, setActivePage] = useState<MarketingPage>('home');
@@ -51,8 +52,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
         <div className="flex items-center gap-8">
           {[
             { id: 'platform', label: 'Platform' },
-            { id: 'pricing', label: 'Pricing' },
-            { id: 'legal', label: 'Legal' }
+            { id: 'pricing', label: 'Pricing' }
           ].map(item => (
             <button 
               key={item.id} 
@@ -86,7 +86,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
 
       {mobileMenuOpen && (
         <div className="fixed inset-0 top-[72px] bg-white dark:bg-slate-950 z-40 p-10 flex flex-col gap-8 animate-in fade-in slide-in-from-top-4 duration-300 md:hidden">
-          {['platform', 'pricing', 'legal'].map(id => (
+          {['platform', 'pricing'].map(id => (
             <button 
               key={id}
               onClick={() => { setActivePage(id as MarketingPage); setMobileMenuOpen(false); }}
@@ -325,22 +325,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
         </main>
       )}
 
-      {activePage === 'legal' && (
-        <main className="relative z-10 flex-1 px-6 md:px-10 py-12 md:py-20 max-w-4xl mx-auto animate-in fade-in duration-700">
-          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] md:rounded-[3rem] p-8 md:p-16 shadow-sm space-y-10 md:space-y-12">
-            <section>
-              <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white mb-4 md:mb-6 tracking-tight">Terms</h2>
-              <p className="text-[10px] md:text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">By using GridLead, you agree to comply with B2B solicitation laws (CAN-SPAM, GDPR). Usage is at your discretion.</p>
-            </section>
-            <section>
-              <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white mb-4 md:mb-6 tracking-tight">Privacy</h2>
-              <p className="text-[10px] md:text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">Lead data is private to your workspace. We never store non-app related emails from connected accounts.</p>
-            </section>
-          </div>
-        </main>
-      )}
-
-      <footer className="relative z-10 p-8 md:p-10 text-center mt-auto">
+      <footer className="relative z-10 p-8 md:p-10 text-center mt-auto space-y-3">
+        <div className="flex items-center justify-center gap-4 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <a href="/privacy.html" className="hover:text-slate-900 dark:hover:text-white transition-colors">Privacy</a>
+          <span className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-800" />
+          <a href="/terms.html" className="hover:text-slate-900 dark:hover:text-white transition-colors">Terms</a>
+        </div>
         <p className="text-[8px] md:text-[10px] font-bold text-slate-300 dark:text-slate-800 uppercase tracking-widest">© 2025 GridLead Systems Inc. Built for solo creators.</p>
       </footer>
     </div>
