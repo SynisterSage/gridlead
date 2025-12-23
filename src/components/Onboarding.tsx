@@ -129,21 +129,20 @@ const Onboarding: React.FC<OnboardingProps> = ({ mode: initialMode, onComplete, 
   // If we just returned from Gmail OAuth, jump to Gmail step
   useEffect(() => {
     const checkPending = async () => {
-      if (!hasSession) return;
       const url = new URL(window.location.href);
       const fromQuery = url.searchParams.get('gmail') === '1' || url.searchParams.get('onboarding') === 'gmail';
       const pending = localStorage.getItem(GMAIL_PENDING_KEY);
-      if (fromQuery || pending) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData.session) {
-          setStep(2);
-          localStorage.removeItem(GMAIL_PENDING_KEY);
-          if (fromQuery) {
-            url.searchParams.delete('gmail');
-            url.searchParams.delete('onboarding');
-            const cleaned = url.search ? `${url.pathname}?${url.searchParams.toString()}` : url.pathname;
-            window.history.replaceState({}, document.title, cleaned);
-          }
+      if (!fromQuery && !pending) return;
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        setStep(2);
+        localStorage.removeItem(GMAIL_PENDING_KEY);
+        if (fromQuery) {
+          url.searchParams.delete('gmail');
+          url.searchParams.delete('onboarding');
+          const cleaned = url.search ? `${url.pathname}?${url.searchParams.toString()}` : url.pathname;
+          window.history.replaceState({}, document.title, cleaned);
         }
       }
     };
@@ -303,110 +302,125 @@ const Onboarding: React.FC<OnboardingProps> = ({ mode: initialMode, onComplete, 
         );
       case 1: // Profile
         return (
-          <div className="flex flex-col flex-1 justify-center space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500 mx-auto mb-6 border border-blue-100">
-                <Mail size={32} />
+          <div className="flex flex-col flex-1 justify-center space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="text-center space-y-3">
+              <div className="w-14 h-14 bg-white dark:bg-slate-100 text-slate-900 rounded-2xl flex items-center justify-center mx-auto shadow-md ring-1 ring-slate-100 dark:ring-white/20">
+                <Mail size={24} />
               </div>
-              <h2 className="text-2xl font-extrabold text-[#0f172a] tracking-tight">Set up your profile</h2>
-              <p className="text-slate-500 text-xs font-medium mt-2 max-w-xs mx-auto">Tell us who you are and your targets. You can change this anytime.</p>
+              <h2 className="text-2xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">Set up your profile</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium max-w-xs mx-auto">Tell us who you are and your targets. You can change this anytime.</p>
             </div>
-            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 sm:p-8 space-y-6 shadow-[0_24px_60px_rgba(15,23,42,0.08)] ring-1 ring-slate-100/90">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-6 sm:p-7 space-y-6 shadow-2xl overflow-hidden">
+              <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:18px_18px]" />
+              <div className="absolute -top-12 -right-10 w-28 h-28 bg-sky-500/10 blur-3xl" />
+              <div className="absolute -bottom-16 -left-14 w-32 h-32 bg-emerald-400/10 blur-3xl" />
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 relative z-10">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 px-1">Display Name</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-500 px-1">Display Name</label>
                   <input 
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     type="text" 
                     placeholder="Alex Sterling" 
-                    className="w-full h-12 sm:h-14 bg-[#edf3ff] border border-slate-100 rounded-2xl px-5 text-sm font-bold text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all placeholder:text-slate-400" 
+                    className="w-full h-12 sm:h-12 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 text-sm font-bold text-[#0f172a] dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 px-1">Agency Name</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-500 px-1">Agency Name</label>
                   <input 
                     value={agencyName}
                     onChange={(e) => setAgencyName(e.target.value)}
                     type="text" 
                     placeholder="GridLead Studio" 
-                    className="w-full h-12 sm:h-14 bg-[#edf3ff] border border-slate-100 rounded-2xl px-5 text-sm font-bold text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all placeholder:text-slate-400" 
+                    className="w-full h-12 sm:h-12 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 text-sm font-bold text-[#0f172a] dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500" 
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2 sm:col-span-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 px-1">Monthly Goal ($)</label>
+              <div className="relative z-10">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-500 px-1">Monthly Goal ($)</label>
                   <input 
                     value={monthlyGoal}
                     onChange={(e) => setMonthlyGoal(e.target.value)}
                     type="number" 
                     placeholder="10000" 
-                    className="w-full h-12 sm:h-14 bg-[#edf3ff] border border-slate-100 rounded-2xl px-5 text-sm font-bold text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all placeholder:text-slate-400" 
+                    className="w-full h-12 sm:h-12 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 text-sm font-bold text-[#0f172a] dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500" 
                   />
                 </div>
               </div>
+
+              {(profileError || profileSaveError) && (
+                <p className="text-rose-500 text-[10px] font-bold uppercase tracking-widest text-center relative z-10">{profileError || profileSaveError}</p>
+              )}
+
+              <div className="pt-2 relative z-10">
+                <button onClick={handleProfileSubmit} disabled={profileSaving} className="w-full h-12 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[11px] font-bold uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+                  {profileSaving ? 'Saving...' : 'Save & Continue'} <ArrowRight size={16} />
+                </button>
+              </div>
             </div>
-            {(profileError || profileSaveError) && (
-              <p className="text-rose-500 text-[10px] font-bold uppercase tracking-widest text-center">{profileError || profileSaveError}</p>
-            )}
-            <button 
-              onClick={handleProfileSubmit} 
-              disabled={profileSaving}
-              className="w-full h-14 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {profileSaving ? 'Saving...' : 'Save & Continue'}
-            </button>
           </div>
         );
       case 2: // Gmail Connect
         return (
-          <div className="flex flex-col flex-1 justify-center space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 mx-auto mb-6 border border-emerald-100">
-                <Send size={32} />
+          <div className="flex flex-col flex-1 justify-center space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="text-center space-y-3">
+              <div className="w-14 h-14 bg-white dark:bg-slate-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-md ring-1 ring-slate-100 dark:ring-white/20">
+                <Send size={24} />
               </div>
-              <h2 className="text-2xl font-extrabold text-[#0f172a] tracking-tight">Connect Gmail</h2>
-              <p className="text-slate-500 text-xs font-medium mt-2 max-w-xs mx-auto">Use the same Google account you’ll send outreach from.</p>
+              <h2 className="text-2xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">Connect Gmail</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium max-w-xs mx-auto">Use the same Google account you’ll send outreach from.</p>
             </div>
-            <div className="bg-white border border-slate-100 rounded-[2rem] p-6 space-y-4 shadow-sm ring-1 ring-slate-100/80">
-              <button 
-                onClick={handleGmailConnect}
-                className="w-full h-12 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-              >
-                <Mail size={14} /> {gmailConnected ? 'Connect another' : 'Connect Gmail'}
-              </button>
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 mb-2">Connected Accounts</p>
-                {gmailLoading ? (
-                  <p className="text-[10px] text-slate-400">Checking...</p>
-                ) : gmailAccounts.length === 0 ? (
-                  <p className="text-[10px] text-slate-400">None yet</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {gmailAccounts.map((acct) => (
-                      <li key={acct.email} className="flex items-center gap-2 text-[11px] font-bold text-slate-700 truncate">
-                        {acct.avatar_url ? (
-                          <img src={acct.avatar_url} alt={acct.email} className="w-6 h-6 rounded-full border border-slate-100" />
-                        ) : (
-                          <div className="w-6 h-6 rounded-full bg-slate-900 text-white text-[10px] flex items-center justify-center">
-                            {acct.email.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="truncate">{acct.email}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {gmailConnected && <p className="text-[10px] font-bold text-emerald-500 mt-2">Primary account connected.</p>}
+            <div className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-6 space-y-5 shadow-2xl overflow-hidden">
+              <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:18px_18px]" />
+              <div className="absolute -top-12 -right-10 w-28 h-28 bg-sky-500/10 blur-3xl" />
+              <div className="absolute -bottom-16 -left-14 w-32 h-32 bg-emerald-400/10 blur-3xl" />
+
+              <div className="relative z-10 space-y-4">
+                <button 
+                  onClick={handleGmailConnect}
+                  className="w-full h-12 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+                >
+                  <Mail size={14} /> {gmailConnected ? 'Connect another' : 'Connect Gmail'}
+                </button>
+
+                <div className="bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">Connected Accounts</p>
+                    {gmailLoading && <div className="w-4 h-4 border-2 border-slate-200 dark:border-slate-600 border-t-slate-500 dark:border-t-white rounded-full animate-spin" />}
+                  </div>
+                  {gmailLoading ? (
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Checking...</p>
+                  ) : gmailAccounts.length === 0 ? (
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">None yet</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {gmailAccounts.map((acct) => (
+                        <li key={acct.email} className="flex items-center gap-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate">
+                          {acct.avatar_url ? (
+                            <img src={acct.avatar_url} alt={acct.email} className="w-6 h-6 rounded-full border border-slate-100 dark:border-slate-700" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] flex items-center justify-center">
+                              {acct.email.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <span className="truncate">{acct.email}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {gmailConnected && <p className="text-[10px] font-bold text-emerald-500 mt-3">Primary account connected.</p>}
+                </div>
+
+                <button 
+                  onClick={() => setStep(3)}
+                  className="w-full h-11 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-lg active:scale-95"
+                >
+                  Continue
+                </button>
               </div>
-              <button 
-                onClick={() => setStep(3)}
-                className="w-full h-11 bg-slate-50 text-slate-600 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-100 transition-all"
-              >
-                Continue
-              </button>
             </div>
           </div>
         );
