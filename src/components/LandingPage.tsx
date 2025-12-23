@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Search, Send, BarChart3, ArrowRight, CheckCircle2, Globe, Shield, Activity, Users, Star, Layout, MousePointer2, Sparkles, Server, Cpu, Globe2, Menu, X, Rocket, Briefcase, Eye, ShieldCheck, Gauge, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
 
@@ -10,9 +10,42 @@ interface LandingPageProps {
 
 type MarketingPage = 'home' | 'platform' | 'pricing';
 
+const useReveal = (deps: React.DependencyList = []) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+
+    const fallback = window.setTimeout(() => setVisible(true), 800);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisible(true);
+            observer.disconnect();
+            window.clearTimeout(fallback);
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(fallback);
+    };
+  // include deps so this re-evaluates when referenced content mounts (e.g., tab changes)
+  }, deps);
+
+  return { ref, visible };
+};
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
   const [activePage, setActivePage] = useState<MarketingPage>('home');
+  const [heroVisible, setHeroVisible] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [demoQuery, setDemoQuery] = useState('');
   const [isDemoScanning, setIsDemoScanning] = useState(false);
@@ -20,6 +53,33 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
   const { theme, toggleTheme } = useTheme();
   
   const featureSectionRef = useRef<HTMLDivElement>(null);
+  const scoreLeftReveal = useReveal();
+  const scoreCardReveal = useReveal();
+  const platformIntroReveal = useReveal([activePage]);
+  const platformGridReveal = useReveal([activePage]);
+  const platformCtaReveal = useReveal([activePage]);
+  const pricingIntroReveal = useReveal([activePage]);
+  const pricingGridReveal = useReveal([activePage]);
+  const agencyAvatars = [
+    { initials: 'SN', name: 'Studio North', gradient: 'from-sky-500 to-blue-600' },
+    { initials: 'LA', name: 'Loop Atelier', gradient: 'from-indigo-500 to-purple-500' },
+    { initials: 'MT', name: 'Midnight Tech', gradient: 'from-emerald-500 to-teal-500' },
+    { initials: 'GD', name: 'Gridline Digital', gradient: 'from-amber-500 to-orange-500' },
+  ];
+  const platformPillars = [
+    { title: 'Signal Mining', icon: Search, pill: 'Prospect Graph', desc: 'Scrapes and enriches sites with stack signals, local SEO cues, and social proof to find gaps worth pitching.' },
+    { title: 'AI Audits', icon: Sparkles, pill: 'Perf + UX', desc: 'Runs performance and UX heuristics to score page speed, layout debt, and mobile readiness in one sweep.' },
+    { title: 'Outreach Studio', icon: Send, pill: 'Personalized', desc: 'Drafts context-rich openers tied to their gaps, with rotation-safe sending and reply tracking baked in.' },
+    { title: 'Inbox Health', icon: Shield, pill: 'Deliverability', desc: 'Rotates accounts, watches sender reputation, and alerts you before threads stall or bounce.' },
+    { title: 'Pipeline Ops', icon: MousePointer2, pill: 'Workflow', desc: 'Queues, snoozes, and routes leads so your team can work the next best action without spreadsheets.' },
+    { title: 'Proof Layer', icon: Gauge, pill: 'Evidence', desc: 'Auto-includes benchmarks and lightweight audits so every send carries a “why you” argument.' },
+  ];
+
+  useEffect(() => {
+    // Delay ensures CSS transition has time to apply before toggling visibility.
+    const id = requestAnimationFrame(() => setHeroVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const handleDemoSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,12 +126,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
                 {item.label}
               </button>
             ))}
-            <a 
-              href="/privacy.html" 
-              className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-            >
-              Privacy
-            </a>
           </div>
 
           <button 
@@ -136,10 +190,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
       
       {activePage === 'home' && (
         <div className="flex flex-col">
-          <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center max-w-5xl mx-auto pt-16 md:pt-24 pb-20 animate-in fade-in duration-700">
+          <main className={`relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center max-w-5xl mx-auto pt-16 md:pt-24 pb-20 transition-all duration-700 ease-out ${heroVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-6 scale-[0.99]'}`}>
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full mb-8">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Join 400+ Solo Web Creators</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Built for web dev agencies</span>
             </div>
             
             <h1 className="text-5xl sm:text-7xl md:text-8xl font-extrabold text-slate-900 dark:text-white tracking-tighter leading-[0.9] mb-8">
@@ -147,7 +201,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
             </h1>
             
             <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 font-medium max-w-2xl mb-12">
-              The B2B engine built for independent developers. Discovery, scoring, and personalized outreach in one unified workspace.
+              GridLead finds sites with design or performance gaps, scores intent, and drafts outreach, so your shop spends more time shipping.
             </p>
 
             <form onSubmit={handleDemoSearch} className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2 md:p-3 rounded-2xl md:rounded-[2rem] shadow-2xl mb-12 flex flex-col sm:flex-row gap-2">
@@ -169,19 +223,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
 
             <div className="flex flex-col sm:flex-row items-center gap-6">
               <div className="flex -space-x-3">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-10 h-10 rounded-full border-4 border-white dark:border-slate-950 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400">
-                    <Users size={14} />
+                {agencyAvatars.map(({ initials, name, gradient }) => (
+                  <div
+                    key={name}
+                    title={name}
+                    className={`w-10 h-10 rounded-full border-4 border-white dark:border-slate-950 bg-gradient-to-br ${gradient} flex items-center justify-center text-[10px] font-black text-white shadow-lg shadow-slate-900/10 dark:shadow-black/30`}
+                  >
+                    {initials}
                   </div>
                 ))}
               </div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Growing agencies daily</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Growing web teams daily</p>
             </div>
           </main>
 
           <section ref={featureSectionRef} className="bg-slate-50 dark:bg-slate-900/50 py-24 md:py-32 px-6 border-y border-slate-100 dark:border-slate-800">
             <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-              <div>
+              <div
+                ref={scoreLeftReveal.ref}
+                className={`transition-all duration-700 ease-out ${scoreLeftReveal.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+              >
                 <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-900 dark:text-white mb-8">
                   <Briefcase size={20} />
                 </div>
@@ -199,7 +260,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
                 </div>
               </div>
               
-              <div className="bg-white dark:bg-slate-900 p-6 md:p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-2xl relative overflow-hidden min-h-[400px]">
+              <div
+                ref={scoreCardReveal.ref}
+                className={`bg-white dark:bg-slate-900 p-6 md:p-10 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-2xl relative overflow-hidden min-h-[400px] transition-all duration-700 ease-out ${scoreCardReveal.visible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-[0.98]'} delay-100`}
+              >
                 <div className="absolute inset-0 pointer-events-none opacity-5 dark:opacity-10 bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
                 
                 {scanResult ? (
@@ -247,7 +311,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
                     </button>
                   </div>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-center py-12">
+                  <div className="flex flex-col items-center justify-center text-center py-12 min-h-[400px] w-full">
                      <div className={`w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-200 dark:text-slate-700 mb-6 ${isDemoScanning ? 'animate-pulse' : ''}`}>
                         <Activity size={32} />
                      </div>
@@ -264,30 +328,69 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
 
       {activePage === 'platform' && (
         <main className="relative z-10 flex-1 px-6 md:px-10 py-12 md:py-16 max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="text-center mb-20 md:mb-32">
-            <h2 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6 md:mb-8 leading-tight">Engineered for <br /><span className="text-slate-300 dark:text-slate-700">Conversion.</span></h2>
-            <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto font-medium leading-relaxed text-sm md:text-lg">Unified discovery-to-outreach pipeline that respects your time and your prospects' inbox.</p>
+          <div
+            ref={platformIntroReveal.ref}
+            className={`text-center mb-20 md:mb-28 transition-all duration-700 ease-out ${platformIntroReveal.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full mb-6">
+              <span className="w-1.5 h-1.5 bg-sky-500 rounded-full" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Platform</span>
+            </div>
+            <h2 className="text-4xl md:text-6xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-6 md:mb-7 leading-tight">
+              Built for web dev teams <br /><span className="text-slate-300 dark:text-slate-700">to ship more closes.</span>
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-medium leading-relaxed text-sm md:text-lg">
+              A single system for finding, scoring, and pitching leads with proof—without duct-taped spreadsheets or cold spam.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-24 md:mb-40">
-            {[
-              { title: 'Mining', icon: Search, desc: 'Real-time database extraction targeting high-intent tech stack deficits.' },
-              { title: 'Audits', icon: Sparkles, desc: 'Multi-point performance audits powered by top-tier technical intelligence.' },
-              { title: 'Hub', icon: MousePointer2, desc: 'Unified command center for rotating accounts and managing thread health.' }
-            ].map((item, i) => (
-              <div key={i} className="p-8 md:p-10 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] md:rounded-[3.5rem] shadow-sm transition-colors">
-                <div className="w-12 h-12 md:w-14 md:h-14 bg-slate-50 dark:bg-slate-800 rounded-xl md:rounded-2xl flex items-center justify-center mb-6 md:mb-8 text-slate-900 dark:text-white">
-                  <item.icon size={24} />
+          <div
+            ref={platformGridReveal.ref}
+            className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-7 mb-24 md:mb-32 transition-all duration-700 ease-out ${platformGridReveal.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            {platformPillars.map((item, i) => (
+              <div
+                key={item.title}
+                style={{ transitionDelay: platformGridReveal.visible ? `${i * 60}ms` : '0ms' }}
+                className="group relative p-8 md:p-9 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] md:rounded-[2.75rem] shadow-sm overflow-hidden transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:border-slate-200 dark:hover:border-slate-700"
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                  <div className="absolute -top-12 -right-12 w-32 h-32 bg-sky-500/10 blur-3xl" />
+                  <div className="absolute -bottom-12 -left-6 w-28 h-28 bg-emerald-400/10 blur-3xl" />
                 </div>
-                <h3 className="text-lg md:text-xl font-extrabold text-slate-900 dark:text-white mb-2 md:mb-4">{item.title}</h3>
-                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{item.desc}</p>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-11 h-11 md:w-12 md:h-12 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white shadow-sm ring-1 ring-slate-100 dark:ring-slate-700">
+                    <item.icon size={22} />
+                  </div>
+                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 rounded-full">
+                    {item.pill}
+                  </span>
+                </div>
+                <h3 className="text-lg md:text-xl font-extrabold text-slate-900 dark:text-white mb-3">{item.title}</h3>
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                  {item.desc}
+                </p>
               </div>
             ))}
           </div>
 
-          <div className="p-10 md:p-20 bg-slate-900 dark:bg-slate-900/50 rounded-[3rem] md:rounded-[5rem] text-center text-white relative shadow-2xl overflow-hidden border border-slate-100/5 dark:border-slate-800">
-            <h3 className="text-3xl md:text-5xl font-extrabold mb-8 relative z-10 leading-[0.95]">Ready to find <br /><span className="text-slate-500">high-intent clients?</span></h3>
-            <button onClick={onGetStarted} className="relative z-10 px-10 py-4 bg-white text-slate-900 rounded-xl text-[10px] md:text-[11px] font-bold uppercase tracking-widest active:scale-95">
+          <div
+            ref={platformCtaReveal.ref}
+            className={`p-10 md:p-16 bg-slate-900 dark:bg-slate-900/60 rounded-[3rem] md:rounded-[5rem] text-center text-white relative shadow-2xl overflow-hidden border border-slate-100/5 dark:border-slate-800 transition-all duration-700 ease-out ${platformCtaReveal.visible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-6 scale-[0.99]'}`}
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,#38bdf8_0,transparent_35%),radial-gradient(circle_at_80%_0%,#22d3ee_0,transparent_30%),radial-gradient(circle_at_50%_90%,#0f172a_0,transparent_40%)] opacity-30" />
+            <h3 className="text-3xl md:text-5xl font-extrabold mb-6 relative z-10 leading-[0.95]">
+              Ready to land <br /><span className="text-slate-500">design + build retainers?</span>
+            </h3>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-8 relative z-10">
+              <div className="px-4 py-2 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                <span className="w-2 h-2 bg-emerald-400 rounded-full" /> 92% reply-safe warmups
+              </div>
+              <div className="px-4 py-2 bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                <span className="w-2 h-2 bg-sky-400 rounded-full" /> Proof-first outreach
+              </div>
+            </div>
+            <button onClick={onGetStarted} className="relative z-10 px-10 py-4 bg-white text-slate-900 rounded-xl text-[10px] md:text-[11px] font-bold uppercase tracking-widest active:scale-95 shadow-lg shadow-black/10">
               Get Started Now
             </button>
           </div>
@@ -296,47 +399,110 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
 
       {activePage === 'pricing' && (
         <main className="relative z-10 flex-1 px-6 md:px-10 py-12 md:py-20 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4">Pricing Plans</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base">Scale your outreach as you grow your agency.</p>
+          <div
+            ref={pricingIntroReveal.ref}
+            className={`text-center mb-16 transition-all duration-700 ease-out ${pricingIntroReveal.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full mb-6">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Pricing</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4">Pick your pace.</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base max-w-2xl mx-auto">Start free. Upgrade when you want more sends, deeper audits, and team collaboration.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] flex flex-col">
+          <div
+            ref={pricingGridReveal.ref}
+            className={`grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 transition-all duration-700 ease-out ${pricingGridReveal.visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            <div
+              className="group bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] flex flex-col shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:border-slate-200 dark:hover:border-slate-700 relative overflow-hidden"
+              style={{ transitionDelay: pricingGridReveal.visible ? '40ms' : '0ms' }}
+            >
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                <div className="absolute -top-12 -right-12 w-28 h-28 bg-sky-500/14 blur-3xl" />
+                <div className="absolute -bottom-10 -left-8 w-24 h-24 bg-emerald-400/14 blur-3xl" />
+              </div>
               <div className="mb-8">
-                <h3 className="text-base md:text-lg font-extrabold text-slate-900 dark:text-white mb-1 md:mb-2">Solo</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white">$49</span>
+                <h3 className="text-base md:text-lg font-extrabold text-slate-900 dark:text-white mb-1 md:mb-2">Starter</h3>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white">$0</span>
                   <span className="text-slate-400 font-bold text-[8px] md:text-[10px] uppercase tracking-widest">/mo</span>
                 </div>
+                <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-2">Kick the tires with real leads.</p>
               </div>
               <ul className="space-y-4 mb-10 flex-1">
-                {['500 Leads / mo', '2 Gmail Accounts', 'Standard Support'].map((feat, i) => (
+                {['50 leads / mo', '2 sender seats', 'Light audits (perf + SSL)', 'Email templates + replies', 'Community support'].map((feat, i) => (
                   <li key={i} className="flex items-center gap-3 text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400">
                     <CheckCircle2 size={14} className="text-emerald-500" /> {feat}
                   </li>
                 ))}
               </ul>
-              <button onClick={onGetStarted} className="w-full py-4 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">Start Solo</button>
+              <button onClick={onGetStarted} className="w-full py-4 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">Start Free</button>
             </div>
 
-            <div className="bg-slate-900 dark:bg-slate-100 p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] text-white dark:text-slate-900 flex flex-col relative overflow-hidden">
-              <div className="absolute top-6 right-6 bg-blue-500 text-white text-[7px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Most Popular</div>
+            <div
+              className="group bg-slate-900 dark:bg-slate-100 p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] text-white dark:text-slate-900 flex flex-col relative overflow-hidden shadow-2xl border border-slate-800/60 dark:border-slate-200/60 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_25px_60px_-25px_rgba(0,0,0,0.45)]"
+              style={{ transitionDelay: pricingGridReveal.visible ? '120ms' : '0ms' }}
+            >
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                <div className="absolute -top-14 -right-10 w-32 h-32 bg-sky-500/18 blur-3xl" />
+                <div className="absolute -bottom-12 -left-8 w-28 h-28 bg-emerald-400/18 blur-3xl" />
+              </div>
+              <div className="absolute top-6 right-6 bg-emerald-500 text-white text-[7px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">Best Value</div>
               <div className="mb-8">
-                <h3 className="text-base md:text-lg font-extrabold mb-1 md:mb-2">Pro</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl md:text-4xl font-extrabold">$99</span>
+                <h3 className="text-base md:text-lg font-extrabold mb-1 md:mb-2">Studio</h3>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl md:text-4xl font-extrabold">$25</span>
                   <span className="text-slate-400 font-bold text-[8px] md:text-[10px] uppercase tracking-widest">/mo</span>
                 </div>
+                <p className="text-slate-300 dark:text-slate-600 text-xs md:text-sm mt-2">Built for web shops growing pipeline.</p>
               </div>
               <ul className="space-y-4 mb-10 flex-1">
-                {['Unlimited Leads', '10 Gmail Accounts', 'Priority Support', 'Deep Audits'].map((feat, i) => (
-                  <li key={i} className="flex items-center gap-3 text-[10px] md:text-xs font-bold text-slate-400 dark:text-slate-600">
-                    <CheckCircle2 size={14} className="text-blue-400" /> {feat}
+                {['1,000 leads / mo', '5 sender seats + rotation', 'Deep audits (perf, UX, SEO)', 'Auto-personalized outreach', 'Deliverability safeguards', 'Priority support'].map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[10px] md:text-xs font-bold text-slate-200 dark:text-slate-700">
+                    <CheckCircle2 size={14} className="text-emerald-400" /> {feat}
                   </li>
                 ))}
               </ul>
-              <button onClick={onGetStarted} className="w-full py-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-xl">Go Pro</button>
+              <button onClick={onGetStarted} className="w-full py-4 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-xl">Start Studio</button>
+            </div>
+
+            <div
+              className="group bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] flex flex-col shadow-sm transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl hover:border-slate-200 dark:hover:border-slate-700 relative overflow-hidden"
+              style={{ transitionDelay: pricingGridReveal.visible ? '200ms' : '0ms' }}
+            >
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                <div className="absolute -top-12 -right-10 w-28 h-28 bg-sky-500/14 blur-3xl" />
+                <div className="absolute -bottom-12 -left-8 w-24 h-24 bg-emerald-400/14 blur-3xl" />
+              </div>
+              <div className="absolute top-6 right-6 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[7px] font-bold px-2 py-0.5 rounded uppercase tracking-widest">In development</div>
+              <div className="mb-8">
+                <h3 className="text-base md:text-lg font-extrabold text-slate-900 dark:text-white mb-1 md:mb-2">Agency+</h3>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white">$49.99</span>
+                  <span className="text-slate-400 font-bold text-[8px] md:text-[10px] uppercase tracking-widest">/mo</span>
+                </div>
+                <p className="text-slate-500 dark:text-slate-400 text-xs md:text-sm mt-2">Unlimited scale with advanced AI automation.</p>
+              </div>
+              <ul className="space-y-4 mb-10 flex-1">
+                {[
+                  'Unlimited leads',
+                  'Unlimited sender seats + pools',
+                  'AI playbooks & auto-sequencing',
+                  'Gemini Site Check',
+                  'Dynamic landing tear-downs',
+                  'Deliverability guardrails + domain pools',
+                  'Dedicated success (Q4 rollout)',
+                ].map((feat, i) => (
+                  <li key={i} className="flex items-center gap-3 text-[10px] md:text-xs font-bold text-slate-500 dark:text-slate-400">
+                    <CheckCircle2 size={14} className="text-emerald-500" /> {feat}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={onGetStarted} className="w-full py-4 border border-dashed border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                Join Waitlist
+              </button>
             </div>
           </div>
         </main>

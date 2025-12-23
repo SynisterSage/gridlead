@@ -217,13 +217,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ mode: initialMode, onComplete, 
         return (
           <div className="flex flex-col flex-1 justify-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center">
-              <div className="w-14 h-14 bg-[#0f172a] rounded-2xl flex items-center justify-center text-white mx-auto mb-6 shadow-xl">
-                <Zap size={24} fill="currentColor" />
+              <div className="w-14 h-14 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-xl ring-1 ring-slate-800/15 dark:ring-white/20">
+                <img
+                  src={typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? '/icon-dark.svg' : '/icon.svg'}
+                  alt="GridLead logo"
+                  className="w-7 h-7 object-contain"
+                />
               </div>
-              <h2 className="text-2xl font-extrabold text-[#0f172a] tracking-tight">
+              <h2 className="text-2xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">
                 {hasSession ? 'Continue setup' : mode === 'signup' ? 'Create your Workspace' : 'Welcome Back'}
               </h2>
-              <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-2">
+              <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1.5">
                 {hasSession ? 'Signed in. Finish onboarding below.' : mode === 'signup' ? 'Join 400+ solo creators today.' : 'Enter your credentials to continue.'}
               </p>
             </div>
@@ -249,32 +253,32 @@ const Onboarding: React.FC<OnboardingProps> = ({ mode: initialMode, onComplete, 
                 {mode === 'signup' ? 'Sign up' : 'Log in'} with Google
               </button>
               <div className="flex items-center gap-4 py-1">
-                <div className="h-px bg-slate-100 flex-1" />
-                <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Or email</span>
-                <div className="h-px bg-slate-100 flex-1" />
+                <div className="h-px bg-slate-100 dark:bg-slate-800 flex-1" />
+                <span className="text-[8px] font-bold text-slate-300 dark:text-slate-500 uppercase tracking-widest">Or email</span>
+                <div className="h-px bg-slate-100 dark:bg-slate-800 flex-1" />
               </div>
               <div className="space-y-3">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Email</label>
+                  <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">Email</label>
                   <input 
                     type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="work@email.com" 
-                    className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-[#0f172a] focus:outline-none focus:ring-1 focus:ring-slate-200" 
+                    className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 text-xs font-bold text-[#0f172a] dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-200 dark:focus:ring-slate-700" 
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 px-1">Password</label>
+                  <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1">Password</label>
                   <div className="relative">
                     <input 
                       type={showPassword ? "text" : "password"} 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••" 
-                      className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-bold text-[#0f172a] focus:outline-none focus:ring-1 focus:ring-slate-200" 
+                      className="w-full h-12 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 text-xs font-bold text-[#0f172a] dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-200 dark:focus:ring-slate-700" 
                     />
-                    <button onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-[#0f172a]">
+                    <button onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500 hover:text-[#0f172a] dark:hover:text-white">
                       {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
@@ -284,12 +288,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ mode: initialMode, onComplete, 
               <button 
                 onClick={() => onEmailAuth(mode, email, password)} 
                 disabled={!email || !password || submitting}
-                className="w-full h-12 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full h-12 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Working...' : mode === 'signup' ? 'Create Account' : 'Enter Workspace'} <ArrowRight size={14} />
               </button>
               <div className="text-center pt-2">
-                <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-[9px] font-bold text-slate-400 hover:text-[#0f172a] transition-colors uppercase tracking-widest underline underline-offset-4">
+                <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-[9px] font-bold text-slate-400 dark:text-slate-500 hover:text-[#0f172a] dark:hover:text-white transition-colors uppercase tracking-widest underline underline-offset-4">
                   {mode === 'signup' ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
                 </button>
               </div>
@@ -463,16 +467,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ mode: initialMode, onComplete, 
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 relative overflow-hidden">
       {/* Background Decor - Simplified to avoid 'outline growth' issue */}
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:24px_24px]" />
+      <div className="absolute inset-0 pointer-events-none opacity-[0.04] bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:22px_22px]" />
       
-      <div className="w-full max-w-[440px] bg-white border border-slate-100 rounded-[3.5rem] p-10 md:p-12 shadow-[0_40px_100px_rgba(0,0,0,0.05)] relative z-10 min-h-[660px] flex flex-col">
+      <div className="w-full max-w-[480px] bg-white/95 dark:bg-slate-900/85 border border-slate-100 dark:border-slate-800/80 rounded-[2.25rem] sm:rounded-[2.75rem] p-7 sm:p-9 shadow-[0_28px_80px_rgba(0,0,0,0.05)] relative z-10 min-h-[480px] sm:min-h-[520px] md:min-h-[560px] flex flex-col justify-between">
         {/* Top Header Dock - Fixed position logic */}
         <div className="flex justify-between items-center mb-6 h-12 shrink-0">
           <div className="flex-1">
             {step > 0 && step < 4 && (
-              <button onClick={() => { setStep(step - 1); if (step === 3) setTutorialIndex(0); }} className="p-2 -ml-2 text-slate-300 hover:text-[#0f172a] transition-all active:scale-90">
+              <button onClick={() => { setStep(step - 1); if (step === 3) setTutorialIndex(0); }} className="p-2 -ml-2 text-slate-300 hover:text-[#0f172a] dark:hover:text-white transition-all active:scale-90">
                 <ArrowLeft size={20} />
               </button>
             )}
@@ -497,7 +501,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ mode: initialMode, onComplete, 
           </div>
 
           <div className="flex-1 flex justify-end">
-            <button onClick={onCancel} className="p-2 -mr-2 text-slate-300 hover:text-[#0f172a] transition-all active:scale-90">
+            <button onClick={onCancel} className="p-2 -mr-2 text-slate-300 hover:text-[#0f172a] dark:hover:text-white transition-all active:scale-90">
               <X size={20} />
             </button>
           </div>
