@@ -30,6 +30,8 @@ import {
 import { useTheme } from '../ThemeContext';
 import { supabase } from '../lib/supabaseClient';
 import { startGmailOAuth } from '../services/gmailAuth';
+import { subscribePush, saveSubscription, deleteSubscription } from '../lib/pushNotifications';
+import { AppView } from '../types';
 
 type SettingsTab = 'profile' | 'integrations' | 'security' | 'notifications';
 
@@ -70,6 +72,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const [pwdError, setPwdError] = useState<string | null>(null);
   const [pwdSaving, setPwdSaving] = useState(false);
   const [sessionInfo, setSessionInfo] = useState<{ lastSignIn?: string; expiresAt?: number } | null>(null);
+  const [pushStatus, setPushStatus] = useState<'idle' | 'granted' | 'denied' | 'error'>('idle');
+  const [pushError, setPushError] = useState<string | null>(null);
+  const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
   const notifDefaults = { 
     leads: true, 
     replies: true, 
@@ -266,6 +271,38 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     const uid = sessionData.session?.user?.id;
     if (uid) {
       await supabase.from('user_notifications').upsert({ user_id: uid, ...next });
+    }
+
+    if (key === 'browser') {
+      if (next.browser) {
+        try {
+          setPushError(null);
+          setPushStatus('idle');
+          if (!VAPID_PUBLIC_KEY) {
+            throw new Error('VAPID key is undefined. Check VITE_VAPID_PUBLIC_KEY env.');
+          }
+          const sub = await subscribePush(VAPID_PUBLIC_KEY);
+          await saveSubscription(sub);
+          setPushStatus('granted');
+        } catch (err) {
+          console.error(err);
+          const message = err instanceof Error ? err.message : 'Unable to enable push';
+          setPushError(message);
+          setPushStatus(message.toLowerCase().includes('denied') ? 'denied' : 'error');
+          setNotifPreferences(prev => ({ ...prev, browser: false }));
+          if (uid) {
+            await supabase.from('user_notifications').upsert({ user_id: uid, ...next, browser: false });
+          }
+        }
+      } else {
+        try {
+          await deleteSubscription();
+          setPushStatus('idle');
+          setPushError(null);
+        } catch (err) {
+          console.error(err);
+        }
+      }
     }
   };
 
@@ -548,9 +585,14 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                     { key: 'browser', label: 'Browser Push Notifications', desc: 'System-level alerts for critical workspace activity.' }
                   ].map((item) => (
                     <div key={item.key} className="flex items-center justify-between p-5 border border-slate-100 dark:border-slate-800 rounded-2xl hover:bg-slate-50/30 dark:hover:bg-slate-800/50 transition-all">
-                      <div className="max-w-[80%]">
+                      <div className="max-w-[80%] space-y-1">
                         <p className="text-[11px] font-bold text-[#0f172a] dark:text-white mb-0.5">{item.label}</p>
                         <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500 leading-relaxed">{item.desc}</p>
+                        {item.key === 'browser' && pushError && (
+                          <p className="text-[9px] font-bold text-rose-500">
+                            Push setup failed: {pushError}. Allow notifications in browser settings and ensure VAPID key is set.
+                          </p>
+                        )}
                       </div>
                       <button 
                         onClick={() => handleToggleNotif(item.key as keyof typeof notifPreferences)}
