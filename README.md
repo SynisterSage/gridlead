@@ -39,7 +39,7 @@ Secrets to set in Supabase:
 - `GMAIL_OAUTH_CLIENT_ID`
 - `GMAIL_OAUTH_CLIENT_SECRET`
 - `GMAIL_OAUTH_REDIRECT_URI` (matches Google OAuth client)
-- `APP_REDIRECT_URL` (e.g., `http://localhost:3000`)
+- `APP_REDIRECT_URL` (e.g., `gridlead.space`)
 
 Deploy the function from Supabase: `supabase functions deploy gmail-oauth`
 

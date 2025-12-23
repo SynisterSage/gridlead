@@ -30,7 +30,7 @@ const AVG_DEAL_SIZE = 2500;
 const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY') || '';
 const fromEmail = Deno.env.get('SENDGRID_FROM_EMAIL') || '';
 const fromName = Deno.env.get('SENDGRID_FROM_NAME') || 'GridLead';
-const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'http://localhost:3000';
+const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'gridlead.space';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

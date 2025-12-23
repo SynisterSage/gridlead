@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_GMAIL_OAUTH_REDIRECT_URI?: string;
   readonly VITE_VAPID_PUBLIC_KEY?: string;
   readonly VITE_GEMINI_API_KEY?: string;
+  readonly VITE_SITE_URL?: string;
 }
 
 interface ImportMeta {

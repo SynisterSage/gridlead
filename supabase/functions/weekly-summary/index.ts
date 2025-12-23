@@ -29,7 +29,7 @@ type ProfileRow = {
 const AVG_DEAL_SIZE = 2500;
 const resendApiKey = Deno.env.get('RESEND_API_KEY') || '';
 const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev';
-const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'http://localhost:3000';
+const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'gridlead.space';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

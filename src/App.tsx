@@ -464,7 +464,8 @@ const AppContent: React.FC = () => {
 
   const handleGoogleAuth = async () => {
     setAuthError(null);
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+    const redirectTo = `${baseUrl}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo }
