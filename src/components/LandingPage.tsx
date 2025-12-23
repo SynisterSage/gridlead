@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Search, Zap, Send, BarChart3, ArrowRight, CheckCircle2, Globe, Shield, Activity, Users, Star, Layout, MousePointer2, Sparkles, Server, Cpu, Globe2, Menu, X, Rocket, Briefcase, Eye, ShieldCheck, Gauge, Sun, Moon } from 'lucide-react';
+import { Search, Send, BarChart3, ArrowRight, CheckCircle2, Globe, Shield, Activity, Users, Star, Layout, MousePointer2, Sparkles, Server, Cpu, Globe2, Menu, X, Rocket, Briefcase, Eye, ShieldCheck, Gauge, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
 
 interface LandingPageProps {
@@ -42,8 +42,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
   const Nav = () => (
     <nav className="relative z-30 px-6 md:px-10 py-6 md:py-8 flex items-center justify-between max-w-7xl mx-auto w-full">
       <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setActivePage('home'); setMobileMenuOpen(false); }}>
-        <div className="w-9 h-9 md:w-10 md:h-10 bg-slate-900 dark:bg-slate-100 rounded-xl flex items-center justify-center text-white dark:text-slate-900 shadow-lg">
-          <Zap size={18} fill="currentColor" />
+        <div className="w-9 h-9 md:w-10 md:h-10 bg-slate-900 dark:bg-slate-100 rounded-xl flex items-center justify-center shadow-lg ring-1 ring-slate-800/20 dark:ring-white/20">
+          <img
+            src={theme === 'dark' ? '/icon-dark.svg' : '/icon.svg'}
+            alt="GridLead logo"
+            className="w-6 h-6 object-contain"
+          />
         </div>
         <span className="text-lg md:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight text-nowrap">GridLead</span>
       </div>
