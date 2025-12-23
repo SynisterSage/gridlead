@@ -50,27 +50,33 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
       
       <div className="hidden md:flex items-center gap-10">
         <div className="flex items-center gap-8">
-          {[
-            { id: 'platform', label: 'Platform' },
-            { id: 'pricing', label: 'Pricing' }
-          ].map(item => (
-            <button 
-              key={item.id} 
-              onClick={() => setActivePage(item.id as MarketingPage)}
-              className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${activePage === item.id ? 'text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+            {[
+              { id: 'platform', label: 'Platform' },
+              { id: 'pricing', label: 'Pricing' }
+            ].map(item => (
+              <button 
+                key={item.id} 
+                onClick={() => setActivePage(item.id as MarketingPage)}
+                className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${activePage === item.id ? 'text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                {item.label}
+              </button>
+            ))}
+            <a 
+              href="/privacy.html" 
+              className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
-              {item.label}
-            </button>
-          ))}
-        </div>
+              Privacy
+            </a>
+          </div>
 
-        <button 
-          onClick={toggleTheme}
-          className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-          aria-label="Toggle Theme"
-        >
-          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-        </button>
+          <button 
+            onClick={toggleTheme}
+            className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+            aria-label="Toggle Theme"
+          >
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
 
         <button 
           onClick={onGetStarted}
@@ -86,15 +92,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
 
       {mobileMenuOpen && (
         <div className="fixed inset-0 top-[72px] bg-white dark:bg-slate-950 z-40 p-10 flex flex-col gap-8 animate-in fade-in slide-in-from-top-4 duration-300 md:hidden">
-          {['platform', 'pricing'].map(id => (
-            <button 
-              key={id}
-              onClick={() => { setActivePage(id as MarketingPage); setMobileMenuOpen(false); }}
-              className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight text-left capitalize"
-            >
-              {id}
-            </button>
-          ))}
+            {['platform', 'pricing'].map(id => (
+              <button 
+                key={id}
+                onClick={() => { setActivePage(id as MarketingPage); setMobileMenuOpen(false); }}
+                className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight text-left capitalize"
+              >
+                {id}
+              </button>
+            ))}
+          <a 
+            href="/privacy.html" 
+            className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Privacy
+          </a>
           <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Theme</span>
             <button onClick={toggleTheme} className="text-slate-900 dark:text-white">
