@@ -14,6 +14,8 @@ export interface Lead {
   category: string;
   rating: number;
   lastScan: string;
+  createdAt?: number;
+  updatedAt?: number;
   website: string;
   email?: string;
   user_id?: string;

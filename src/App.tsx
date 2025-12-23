@@ -98,6 +98,8 @@ const AppContent: React.FC = () => {
           category: row.category || 'Business',
           rating: Number(row.rating) || 0,
           lastScan: row.updated_at ? new Date(row.updated_at).toLocaleDateString() : 'Recently',
+          createdAt: row.created_at ? new Date(row.created_at).getTime() : undefined,
+          updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
           website: row.website || 'No website',
           address: row.address || undefined,
           lat: row.lat ?? undefined,
