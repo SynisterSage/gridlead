@@ -70,13 +70,18 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const [pwdError, setPwdError] = useState<string | null>(null);
   const [pwdSaving, setPwdSaving] = useState(false);
   const [sessionInfo, setSessionInfo] = useState<{ lastSignIn?: string; expiresAt?: number } | null>(null);
-  const notifDefaults = { leads: true, replies: true, weekly: false, browser: false };
-  const [notifPreferences, setNotifPreferences] = useState({
-    leads: true,
-    replies: true,
-    weekly: false,
-    browser: false
-  });
+  const notifDefaults = { 
+    leads: true, 
+    replies: true, 
+    weekly: false, 
+    browser: false,
+    send_failed: true,
+    gmail_disconnected: true,
+    goal_hit: true,
+    lead_assigned: true,
+    pipeline_threshold: false
+  };
+  const [notifPreferences, setNotifPreferences] = useState({ ...notifDefaults });
   const handleGmailConnect = async () => {
     // Remember to return to Settings/Integrations after OAuth flow
     localStorage.setItem('gridlead_return_view', 'settings');
@@ -144,7 +149,12 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
           leads: data.leads ?? notifDefaults.leads,
           replies: data.replies ?? notifDefaults.replies,
           weekly: data.weekly ?? notifDefaults.weekly,
-          browser: data.browser ?? notifDefaults.browser
+          browser: data.browser ?? notifDefaults.browser,
+          send_failed: data.send_failed ?? notifDefaults.send_failed,
+          gmail_disconnected: data.gmail_disconnected ?? notifDefaults.gmail_disconnected,
+          goal_hit: data.goal_hit ?? notifDefaults.goal_hit,
+          lead_assigned: data.lead_assigned ?? notifDefaults.lead_assigned,
+          pipeline_threshold: data.pipeline_threshold ?? notifDefaults.pipeline_threshold
         });
       } else {
         await supabase.from('user_notifications').upsert({ user_id: uid, ...notifDefaults });
@@ -529,7 +539,12 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   {[
                     { key: 'leads', label: 'New Lead Discovered', desc: 'Alert me when automated discovery finds 90%+ matches.' },
                     { key: 'replies', label: 'Outreach Replies', desc: 'Immediate notification when a prospect replies to a thread.' },
-                    { key: 'weekly', label: 'Weekly Summary', desc: 'A performance recap delivered every Monday morning.' },
+                    { key: 'send_failed', label: 'Send Failed', desc: 'Notify me when an outreach send fails so I can retry.' },
+                    { key: 'gmail_disconnected', label: 'Gmail Disconnected', desc: 'Alert me when my primary Gmail disconnects or loses auth.' },
+                    { key: 'goal_hit', label: 'Goal Achieved', desc: 'Celebrate when revenue or outreach goals are hit.' },
+                    { key: 'lead_assigned', label: 'Lead Assigned', desc: 'Notify me when a lead is assigned to me.' },
+                    { key: 'pipeline_threshold', label: 'Pipeline Threshold', desc: 'Alert when pipeline value drops below or exceeds a threshold.' },
+                    { key: 'weekly', label: 'Weekly Summary', desc: 'A performance recap delivered every Monday morning. (Requires verified email sender—set up in Settings → Email.)' },
                     { key: 'browser', label: 'Browser Push Notifications', desc: 'System-level alerts for critical workspace activity.' }
                   ].map((item) => (
                     <div key={item.key} className="flex items-center justify-between p-5 border border-slate-100 dark:border-slate-800 rounded-2xl hover:bg-slate-50/30 dark:hover:bg-slate-800/50 transition-all">

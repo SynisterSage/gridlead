@@ -68,3 +68,24 @@ export interface Profile {
   created_at?: string;
   updated_at?: string;
 }
+
+export type NotificationType =
+  | 'lead'
+  | 'lead_assigned'
+  | 'reply'
+  | 'send_failed'
+  | 'gmail_disconnected'
+  | 'goal_hit'
+  | 'pipeline_threshold'
+  | 'weekly'
+  | 'info';
+
+export interface NotificationItem {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  created_at: string;
+  unread: boolean;
+  meta?: Record<string, any>;
+}

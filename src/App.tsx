@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Session } from '@supabase/supabase-js';
 import NavigationDock from './components/NavigationDock';
 import HeroDiscovery from './components/HeroDiscovery';
@@ -9,12 +9,34 @@ import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
 import LandingPage from './components/LandingPage';
 import Onboarding from './components/Onboarding';
-import { AppView, Lead, Profile } from './types';
+import NotificationCenter from './components/NotificationCenter';
+import { AppView, Lead, Profile, NotificationItem } from './types';
 import { MOCK_LEADS } from './constants';
 import { ThemeProvider } from './ThemeContext';
 import { supabase } from './lib/supabaseClient';
+import { RealtimeChannel } from '@supabase/supabase-js';
+
+const SAMPLE_NOTIFICATIONS: NotificationItem[] = [
+  {
+    id: 'sample-1',
+    type: 'reply',
+    title: 'New reply received',
+    body: 'Prospect replied to your outreach. Check your inbox.',
+    created_at: new Date().toISOString(),
+    unread: true,
+  },
+  {
+    id: 'sample-2',
+    type: 'lead',
+    title: 'New lead discovered',
+    body: 'We found 3 leads above 90% match.',
+    created_at: new Date(Date.now() - 3600_000).toISOString(),
+    unread: false,
+  },
+];
 
 const AppContent: React.FC = () => {
+  const avgDealSize = 2500;
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authProcessing, setAuthProcessing] = useState(false);
@@ -37,6 +59,29 @@ const AppContent: React.FC = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const notifChannelRef = React.useRef<RealtimeChannel | null>(null);
+  const notifDefaults = {
+    leads: true,
+    replies: true,
+    weekly: false,
+    browser: false,
+    send_failed: true,
+    gmail_disconnected: true,
+    goal_hit: true,
+    lead_assigned: true,
+    pipeline_threshold: false,
+  };
+  const [notifPrefs, setNotifPrefs] = useState(notifDefaults);
+  const goalNotifiedRef = React.useRef(false);
+
+  const hasNotification = useCallback(
+    (type: NotificationItem['type'], predicate?: (n: NotificationItem) => boolean) => {
+      return notifications.some(n => n.type === type && (!predicate || predicate(n)));
+    },
+    [notifications]
+  );
 
   useEffect(() => {
     const saved = localStorage.getItem('gridlead_leads');
@@ -48,12 +93,81 @@ const AppContent: React.FC = () => {
     localStorage.setItem('gridlead_leads', JSON.stringify(leads));
   }, [leads]);
 
+  const fetchNotifications = useCallback(
+    async (uid: string) => {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (!error && data) {
+        setNotifications(
+          data.map((n: any) => ({
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            body: n.body,
+            created_at: n.created_at,
+            unread: !n.read_at,
+            meta: n.meta || {},
+          }))
+        );
+      }
+    },
+    []
+  );
+
+  const markNotificationRead = useCallback(async (id: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, unread: false } : n)));
+    if (!uid) return;
+    await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id).eq('user_id', uid);
+  }, []);
+
+  const markAllNotificationsRead = useCallback(async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+    if (!uid) return;
+    await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('user_id', uid);
+  }, []);
+
+  const deleteNotification = useCallback(async (id: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    if (!uid) return;
+    await supabase.from('notifications').delete().eq('id', id).eq('user_id', uid);
+  }, []);
+
+  const createNotification = useCallback(
+    async (type: NotificationItem['type'], title: string, body: string, meta: Record<string, any> = {}) => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id;
+      if (!uid) return;
+      await supabase.from('notifications').insert({
+        user_id: uid,
+        type,
+        title,
+        body,
+        meta,
+        channel: 'in_app',
+      });
+    },
+    []
+  );
+
   // Fetch profile and leads when session changes
   useEffect(() => {
     const fetchProfile = async () => {
       if (!session) {
         setProfile(null);
         setLeads(MOCK_LEADS);
+        setNotifications(SAMPLE_NOTIFICATIONS);
+        setNotifPrefs(notifDefaults);
+        goalNotifiedRef.current = false;
         return;
       }
       setProfileLoading(true);
@@ -77,6 +191,30 @@ const AppContent: React.FC = () => {
         setProfile(data as Profile | null);
       }
       setProfileLoading(false);
+
+      // Load notification preferences
+      const { data: notifRow } = await supabase
+        .from('user_notifications')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (notifRow) {
+        setNotifPrefs({
+          leads: notifRow.leads ?? notifDefaults.leads,
+          replies: notifRow.replies ?? notifDefaults.replies,
+          weekly: notifRow.weekly ?? notifDefaults.weekly,
+          browser: notifRow.browser ?? notifDefaults.browser,
+          send_failed: notifRow.send_failed ?? notifDefaults.send_failed,
+          gmail_disconnected: notifRow.gmail_disconnected ?? notifDefaults.gmail_disconnected,
+          goal_hit: notifRow.goal_hit ?? notifDefaults.goal_hit,
+          lead_assigned: notifRow.lead_assigned ?? notifDefaults.lead_assigned,
+          pipeline_threshold: notifRow.pipeline_threshold ?? notifDefaults.pipeline_threshold,
+        });
+      } else {
+        await supabase.from('user_notifications').upsert({ user_id: session.user.id, ...notifDefaults });
+        setNotifPrefs(notifDefaults);
+        goalNotifiedRef.current = false;
+      }
     };
 
     void fetchProfile();
@@ -129,6 +267,96 @@ const AppContent: React.FC = () => {
     };
     void fetchLeads();
   }, [session]);
+
+  // Goal hit / pipeline threshold notifications
+  useEffect(() => {
+    if (!session || !profile?.monthly_goal) return;
+    const wins = leads.filter(l => l.status === 'won').length;
+    const currentRevenue = wins * avgDealSize;
+    const goal = profile.monthly_goal || 0;
+    const pipelineValue = leads.filter(l => ['sent','responded','won'].includes(l.status)).length * avgDealSize;
+
+    if (
+      notifPrefs.goal_hit &&
+      currentRevenue >= goal &&
+      goal > 0 &&
+      !goalNotifiedRef.current &&
+      !hasNotification('goal_hit', n => (n.meta?.goal ?? null) === goal)
+    ) {
+      goalNotifiedRef.current = true;
+      void createNotification('goal_hit', 'Goal achieved', `You hit $${goal.toLocaleString()} in revenue.`, {
+        revenue: currentRevenue,
+        goal,
+      });
+    }
+
+    if (
+      notifPrefs.pipeline_threshold &&
+      goal > 0 &&
+      pipelineValue < goal * 0.3 &&
+      !hasNotification('pipeline_threshold', n => (n.meta?.goal ?? null) === goal)
+    ) {
+      void createNotification('pipeline_threshold', 'Pipeline low', `Pipeline dropped below 30% of goal. Current: $${pipelineValue.toLocaleString()}`, {
+        pipelineValue,
+        goal,
+      });
+    }
+
+    // Reset if goal changes downward
+    if (goal > 0 && currentRevenue < goal) {
+      goalNotifiedRef.current = false;
+    }
+  }, [leads, profile?.monthly_goal, notifPrefs.goal_hit, notifPrefs.pipeline_threshold, session, createNotification, hasNotification]);
+
+  // Notifications realtime feed
+  useEffect(() => {
+    const setup = async () => {
+      if (!session) {
+        setNotifications(SAMPLE_NOTIFICATIONS);
+        if (notifChannelRef.current) {
+          notifChannelRef.current.unsubscribe();
+          notifChannelRef.current = null;
+        }
+        return;
+      }
+      await fetchNotifications(session.user.id);
+
+      if (notifChannelRef.current) {
+        notifChannelRef.current.unsubscribe();
+      }
+      const channel = supabase
+        .channel('notifications-feed')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
+          (payload) => {
+            const row: any = payload.new;
+            setNotifications(prev => [
+              {
+                id: row.id,
+                type: row.type,
+                title: row.title,
+                body: row.body,
+                created_at: row.created_at,
+                unread: !row.read_at,
+                meta: row.meta || {},
+              },
+              ...prev,
+            ].slice(0, 100));
+          }
+        )
+        .subscribe();
+      notifChannelRef.current = channel;
+    };
+    void setup();
+
+    return () => {
+      if (notifChannelRef.current) {
+        notifChannelRef.current.unsubscribe();
+        notifChannelRef.current = null;
+      }
+    };
+  }, [session, fetchNotifications]);
 
   // If user is logged in but profile is incomplete, keep onboarding visible
   useEffect(() => {
@@ -274,6 +502,11 @@ const AppContent: React.FC = () => {
           replies: true,
           weekly: false,
           browser: false,
+          send_failed: true,
+          gmail_disconnected: true,
+          goal_hit: true,
+          lead_assigned: true,
+          pipeline_threshold: false,
         });
       }
     }
@@ -339,12 +572,16 @@ const AppContent: React.FC = () => {
         ...newLead,
         id: data.id,
       }, ...prev.filter(l => l.id !== data.id)]);
+      if (notifPrefs.leads) {
+        void createNotification('lead', 'New lead added', `Lead "${newLead.name}" was added.`, { leadId: data.id });
+      }
     } else {
       setLeads(prev => [newLead, ...prev]);
     }
   };
 
   const updateLead = async (id: string, updates: Partial<Lead>) => {
+    const prevLead = leads.find(l => l.id === id);
     setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
     if (!session) return;
     const payload: any = {};
@@ -368,6 +605,17 @@ const AppContent: React.FC = () => {
       payload.checklist_render = updates.checklist.hasRender ?? null;
     }
     await supabase.from('leads').update(payload).eq('id', id).eq('user_id', session.user.id);
+
+    // Notifications: outreach reply (responded/won)
+    const nextStatus = updates.status;
+    if (notifPrefs.replies && nextStatus && prevLead && !['responded', 'won'].includes(prevLead.status) && ['responded', 'won'].includes(nextStatus)) {
+      void createNotification(
+        'reply',
+        'Outreach reply received',
+        `Lead "${prevLead.name}" replied.`,
+        { leadId: id, status: nextStatus }
+      );
+    }
   };
 
   const deleteLead = async (id: string) => {
@@ -490,7 +738,20 @@ const AppContent: React.FC = () => {
           {renderView()}
         </div>
       </main>
-      <NavigationDock activeView={activeView} setActiveView={setActiveView} />
+      <NotificationCenter
+        open={notificationsOpen}
+        notifications={notifications}
+        onClose={() => setNotificationsOpen(false)}
+        onMarkAllRead={markAllNotificationsRead}
+        onMarkRead={markNotificationRead}
+        onDelete={deleteNotification}
+      />
+      <NavigationDock 
+        activeView={activeView} 
+        setActiveView={setActiveView} 
+        onOpenNotifications={() => setNotificationsOpen(prev => !prev)} 
+        unreadCount={notifications.filter(n => n.unread).length}
+      />
       <div className="fixed inset-0 pointer-events-none opacity-[0.02] dark:opacity-[0.05] bg-[radial-gradient(#000_1px,transparent_1px)] dark:bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px] z-0" />
     </div>
   );

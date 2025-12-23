@@ -5,16 +5,19 @@ import {
   ListFilter, 
   Send, 
   BarChart3, 
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Bell
 } from 'lucide-react';
 import { AppView } from '../types';
 
 interface NavigationDockProps {
   activeView: AppView;
   setActiveView: (view: AppView) => void;
+  onOpenNotifications?: () => void;
+  unreadCount?: number;
 }
 
-const NavigationDock: React.FC<NavigationDockProps> = ({ activeView, setActiveView }) => {
+const NavigationDock: React.FC<NavigationDockProps> = ({ activeView, setActiveView, onOpenNotifications, unreadCount = 0 }) => {
   const navItems = [
     { id: AppView.DASHBOARD, label: 'Stats', icon: BarChart3 },
     { id: AppView.DISCOVERY, label: 'Discovery', icon: Search },
@@ -48,6 +51,19 @@ const NavigationDock: React.FC<NavigationDockProps> = ({ activeView, setActiveVi
 
         <div className="h-5 md:h-6 w-px bg-slate-200 dark:bg-slate-800 mx-2 md:mx-3 opacity-60" />
 
+        <div className="flex items-center gap-1 md:gap-2">
+          <button 
+            onClick={onOpenNotifications}
+            className="relative h-10 w-10 md:h-11 md:w-11 flex items-center justify-center transition-all rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white active:scale-90"
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center px-1 leading-none shadow-md">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
         <button 
           onClick={() => setActiveView(AppView.SETTINGS)}
           className={`h-10 w-10 md:h-11 md:w-11 flex items-center justify-center transition-all rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-90 ${
@@ -56,6 +72,7 @@ const NavigationDock: React.FC<NavigationDockProps> = ({ activeView, setActiveVi
         >
           <SettingsIcon size={18} />
         </button>
+        </div>
       </div>
     </div>
   );
