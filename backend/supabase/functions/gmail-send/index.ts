@@ -97,37 +97,39 @@ Deno.serve(async (req) => {
     const gmailMessageId: string | null = sendJson?.id ?? null;
     const resolvedThreadId = threadId || body.threadId || null;
 
-    // Ensure thread row
+    // Ensure thread row — create or reuse a thread for this lead even when resolvedThreadId is null
     let threadDbId: string | null = null;
+    // Try to find an existing thread for this lead. Prefer matching resolvedThreadId when available,
+    // otherwise prefer an existing thread with NULL thread_id (a local thread placeholder).
+    let existingThreadQuery = supabase.from("email_threads").select("id,thread_id").eq("lead_id", lead.id);
     if (resolvedThreadId) {
-      const { data: existingThread } = await supabase
+      existingThreadQuery = existingThreadQuery.eq("thread_id", resolvedThreadId).maybeSingle();
+    } else {
+      // look for a placeholder thread where thread_id IS NULL
+      existingThreadQuery = existingThreadQuery.is("thread_id", null).maybeSingle();
+    }
+    const { data: existingThread } = await existingThreadQuery;
+    if (existingThread?.id) {
+      threadDbId = existingThread.id;
+      await supabase
         .from("email_threads")
+        .update({ last_message_at: new Date().toISOString(), status: "sent" })
+        .eq("id", threadDbId);
+    } else {
+      const { data: insertThread, error: insThreadErr } = await supabase
+        .from("email_threads")
+        .insert({
+          lead_id: lead.id,
+          gmail_account_id: account.id,
+          thread_id: resolvedThreadId,
+          subject: body.subject,
+          status: "sent",
+          last_message_at: new Date().toISOString(),
+        })
         .select("id")
-        .eq("lead_id", lead.id)
-        .eq("thread_id", resolvedThreadId)
-        .maybeSingle();
-      if (existingThread?.id) {
-        threadDbId = existingThread.id;
-        await supabase
-          .from("email_threads")
-          .update({ last_message_at: new Date().toISOString(), status: "sent" })
-          .eq("id", threadDbId);
-      } else {
-        const { data: insertThread, error: insThreadErr } = await supabase
-          .from("email_threads")
-          .insert({
-            lead_id: lead.id,
-            gmail_account_id: account.id,
-            thread_id: resolvedThreadId,
-            subject: body.subject,
-            status: "sent",
-            last_message_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
-        if (insThreadErr) return respondError("Insert thread error", insThreadErr);
-        threadDbId = insertThread.id;
-      }
+        .single();
+      if (insThreadErr) return respondError("Insert thread error", insThreadErr);
+      threadDbId = insertThread.id;
     }
 
     // Insert message row

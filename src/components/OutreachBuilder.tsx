@@ -68,26 +68,64 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   };
 
   const fetchMessages = async (leadId: string) => {
-    // Use a left join on email_threads so messages without a thread row still appear
-    // Quote the UUID value in the .or() filter so PostgREST parses it correctly
-    const orFilter = `email_threads.lead_id.eq."${leadId}",thread_id.is.null`;
-    console.debug('fetchMessages filter', orFilter);
-    const { data, error } = await supabase
-      .from('email_messages')
-      .select('id,direction,snippet,subject,sent_at,body_html,gmail_message_id,gmail_thread_id,message_id_header,thread_id,email_threads(id,lead_id,thread_id)')
-      .or(orFilter)
-      .order('sent_at', { ascending: false })
-      .limit(50);
-    if (error) {
-      console.error('fetchMessages error', error);
-      return;
-    }
-    if (data) {
-      const rows = data.map((m: any) => ({
-        ...m,
-        gmail_thread_id: m.gmail_thread_id || m.email_threads?.thread_id || null,
-      }));
-      setMessages(rows);
+    // First fetch the email_threads for this lead. RLS on email_messages is written
+    // to check ownership via the thread -> lead relationship, so explicitly
+    // resolving thread ids for the lead makes the messages query simpler and
+    // avoids edge cases where messages have a gmail_thread_id but no thread_id.
+    try {
+      const { data: threads, error: threadErr } = await supabase
+        .from('email_threads')
+        .select('id,thread_id')
+        .eq('lead_id', leadId);
+      if (threadErr) {
+        console.error('fetchMessages thread load error', threadErr);
+        return;
+      }
+
+      const threadIds = (threads || []).map((t: any) => t.id).filter(Boolean);
+      const gmailThreadIds = (threads || []).map((t: any) => t.thread_id).filter(Boolean);
+
+      // Build filters depending on what we found. We want messages that are:
+      // - Attached to any of the lead's thread rows (thread_id IN ...)
+      // - OR have a gmail_thread_id matching the Gmail thread id from those threads
+      // If there are no threads, fall back to messages where thread_id IS NULL (or none)
+      let messagesQuery = supabase
+        .from('email_messages')
+        .select('id,direction,snippet,subject,sent_at,body_html,gmail_message_id,gmail_thread_id,message_id_header,thread_id,email_threads(id,lead_id,thread_id)')
+        .order('sent_at', { ascending: false })
+        .limit(100);
+
+      const orParts: string[] = [];
+      if (threadIds.length > 0) {
+        const threadCsv = threadIds.map((s: string) => `"${s}"`).join(',');
+        orParts.push(`thread_id.in.(${threadCsv})`);
+      }
+      if (gmailThreadIds.length > 0) {
+        const gmailCsv = gmailThreadIds.map((s: string) => `"${s}"`).join(',');
+        orParts.push(`gmail_thread_id.in.(${gmailCsv})`);
+      }
+      if (orParts.length === 0) {
+        // No threads found for this lead — attempt to surface messages without a thread row
+        orParts.push('thread_id.is.null');
+      }
+
+      const orFilter = orParts.join(',');
+      console.debug('fetchMessages orFilter', orFilter, { threadIds, gmailThreadIds });
+
+      const { data, error } = await messagesQuery.or(orFilter);
+      if (error) {
+        console.error('fetchMessages error', error);
+        return;
+      }
+      if (data) {
+        const rows = data.map((m: any) => ({
+          ...m,
+          gmail_thread_id: m.gmail_thread_id || m.email_threads?.thread_id || null,
+        }));
+        setMessages(rows);
+      }
+    } catch (err) {
+      console.error('fetchMessages unexpected error', err);
     }
   };
 
