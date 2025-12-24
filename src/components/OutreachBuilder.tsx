@@ -53,6 +53,31 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const [archivedLeads, setArchivedLeads] = useState<Lead[]>([]);
   const archivedIds = useMemo(() => new Set(archivedLeads.map(a => a.id)), [archivedLeads]);
   const [archivedCount, setArchivedCount] = useState<number>(0);
+  const filterCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: 0,
+      drafts: 0,
+      outbound: 0,
+      replied: 0,
+      won: 0,
+      stale: 0,
+      lost: 0,
+      archived: archivedLeads.length || 0,
+    };
+    // Count non-archived leads for active filters
+    leads.forEach(l => {
+      const isArchived = archivedIds.has(l.id);
+      if (!isArchived) counts.all += 1;
+      if (!isArchived && l.status === 'approved') counts.drafts += 1;
+      if (!isArchived && l.status === 'sent') counts.outbound += 1;
+      if (!isArchived && l.status === 'responded') counts.replied += 1;
+      if (!isArchived && l.status === 'won') counts.won += 1;
+      if (!isArchived && l.status === 'stale') counts.stale += 1;
+      if (!isArchived && l.status === 'lost') counts.lost += 1;
+    });
+    // 'all' should include archived as well? keep as non-archived to match active list behavior
+    return counts;
+  }, [leads, archivedLeads, archivedIds]);
   const [replyBody, setReplyBody] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
@@ -634,8 +659,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                     >
                       <span className="inline-flex items-center gap-2">
                         <span>{f.replace('drafts', 'Drafts').replace('outbound', 'Outbound').replace('replied', 'Replied').replace('won', 'Won').replace('stale', 'Stale').replace('lost', 'Lost').replace('archived', 'Archived')}</span>
-                        {f === 'archived' && archivedCount > 0 && (
-                          <span className="text-[10px] font-bold bg-slate-900 text-white rounded-full px-2 py-0.5">{archivedCount}</span>
+                        {filterCounts[f] > 0 && (
+                          <span className="text-[10px] font-bold bg-slate-900 text-white rounded-full px-2 py-0.5">{filterCounts[f]}</span>
                         )}
                       </span>
                     </button>
@@ -644,7 +669,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
               </div>
 
               <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {opportunities.length > 0 && (activeFilter === 'all' || activeFilter === 'drafts') && (
+                {opportunities.length > 0 && (activeFilter !== 'archived') && (activeFilter === 'all' || activeFilter === 'drafts') && (
                   <>
                     <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800">
                       <span className="text-[9px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2">
@@ -655,7 +680,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   </>
                 )}
                 
-                {(activeFilter === 'all' || activeFilter !== 'drafts') && activeThreads.length > 0 && (
+                {(activeFilter !== 'archived') && activeThreads.length > 0 && (
                   <>
                     <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4 first:mt-0">
                       <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
@@ -721,7 +746,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                           <div className={`text-lg font-mono font-extrabold shrink-0 ${getRatingColorClass(currentLead.rating)}`}>
                             {currentLead.rating.toFixed(1)}
                           </div>
-                          {getStatusBadge(currentLead)}
+                          {!currentLead.archivedAt && getStatusBadge(currentLead)}
                         </div>
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-4 min-w-0">
@@ -755,10 +780,10 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                             {isGenerating ? <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-900 dark:border-t-white rounded-full animate-spin" /> : <><Sparkles size={16} fill="currentColor" /> AI Craft</>}
                           </button>
                         )}
-                        {currentLead.status === 'won' && (
-                           <div className="px-8 h-11 bg-amber-500 text-white rounded-xl text-[10px] font-bold flex items-center gap-3 shadow-lg">
-                              <Trophy size={18} /> Closed Won
-                           </div>
+                        {(!currentLead.archivedAt && currentLead.status === 'won') && (
+                          <div className="px-8 h-11 bg-amber-500 text-white rounded-xl text-[10px] font-bold flex items-center gap-3 shadow-lg">
+                            <Trophy size={18} /> Closed Won
+                          </div>
                         )}
                       </div>
                     </div>
