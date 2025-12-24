@@ -584,21 +584,25 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   };
 
   const LeadCard = ({ lead }: { lead: Lead }) => (
-    <div 
+    <div
       onClick={() => { setSelectedLeadId(lead.id); setMobileView('detail'); }}
-      className={`p-5 md:p-6 cursor-pointer border-b border-slate-50 dark:border-slate-800/50 transition-all ${
+      className={`flex items-stretch gap-4 p-4 md:p-5 cursor-pointer border-b border-slate-50 dark:border-slate-800/50 transition-all ${
         selectedLeadId === lead.id ? 'bg-white dark:bg-slate-900 shadow-sm z-10' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/20'
       }`}
     >
-      <div className="flex justify-between items-center mb-1">
-        <h3 className="font-bold text-xs md:text-sm truncate text-slate-900 dark:text-white pr-2">{lead.name}</h3>
-        <div className={`text-[10px] md:text-[11px] font-mono font-extrabold ${getRatingColorClass(lead.rating)}`}>
-          {lead.rating.toFixed(1)}
+      {/* Active indicator: green for active (not archived), transparent for archived */}
+      <div className={`w-1 rounded-r ${archivedIds.has(lead.id) ? 'bg-transparent' : 'bg-emerald-500'}`} />
+      <div className="flex-1">
+        <div className="flex justify-between items-center mb-1">
+          <h3 className={`font-bold text-xs md:text-sm truncate pr-2 ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}`}>{lead.name}</h3>
+          <div className={`text-[10px] md:text-[11px] font-mono font-extrabold ${getRatingColorClass(lead.rating)}`}>
+            {lead.rating.toFixed(1)}
+          </div>
         </div>
-      </div>
-      <div className="flex items-center justify-between">
-        <p className="text-[8px] md:text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-widest truncate">{lead.category}</p>
-        {getStatusBadge(lead)}
+        <div className="flex items-center justify-between">
+          <p className={`text-[8px] md:text-[10px] uppercase tracking-widest truncate ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-400 dark:text-slate-600'}`}>{lead.category}</p>
+          {getStatusBadge(lead)}
+        </div>
       </div>
     </div>
   );
@@ -641,8 +645,9 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border-none rounded-xl text-[10px] font-bold text-slate-900 dark:text-white focus:ring-1 focus:ring-slate-900/10 transition-all"
                   />
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  {(['all', 'drafts', 'outbound', 'replied', 'archived'] as OutreachFilter[]).map(f => (
+                <div className="relative">
+                  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide pr-2">
+                    {(['all', 'drafts', 'outbound', 'replied', 'archived'] as OutreachFilter[]).map(f => (
                     <button 
                       key={f}
                       onClick={() => setActiveFilter(f)}
@@ -656,6 +661,17 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                       </span>
                     </button>
                   ))}
+                    </div>
+
+                  {/* Left fade to hint horizontal scroll */}
+                  <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 hidden sm:block z-10">
+                    <div className="h-full w-full bg-gradient-to-r from-white/90 to-transparent dark:from-slate-900/90 dark:to-transparent" />
+                  </div>
+
+                  {/* Right fade to hint horizontal scroll */}
+                  <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 hidden sm:block z-10">
+                    <div className="h-full w-full bg-gradient-to-l from-white/90 to-transparent dark:from-slate-900/90 dark:to-transparent" />
+                  </div>
                 </div>
               </div>
 
@@ -673,11 +689,11 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                 
                 {(activeFilter !== 'archived') && activeThreads.length > 0 && (
                   <>
-                    <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4 first:mt-0">
-                      <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
-                        <History size={12} /> Active Threads
-                      </span>
-                    </div>
+                    <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4">
+                          <span className="text-[9px] font-black text-emerald-400 dark:text-emerald-300 uppercase tracking-widest flex items-center gap-2">
+                            <History size={12} className="text-emerald-400" /> Active Threads
+                          </span>
+                        </div>
                     {activeThreads.map(lead => <LeadCard key={lead.id} lead={lead} />)}
                   </>
                 )}
@@ -687,7 +703,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                               if (!archivedLeads || archivedLeads.length === 0) return null;
                               return (
                                 <>
-                                  <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-6">
+                                  <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4">
                                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
                                       <History size={12} /> Archived Threads
                                     </span>
