@@ -67,6 +67,11 @@ export interface Profile {
   onboarding_completed?: boolean;
   created_at?: string;
   updated_at?: string;
+  plan?: string | null;
+  plan_status?: string | null;
+  leads_used_this_month?: number | null;
+  sender_seats_used?: number | null;
+  stripe_subscription_id?: string | null;
 }
 
 export type NotificationType =

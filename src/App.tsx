@@ -587,7 +587,16 @@ const AppContent: React.FC = () => {
         void createNotification('lead', 'New lead added', `Lead "${newLead.name}" was added.`, { leadId: data.id });
       }
     } else {
-      setLeads(prev => [newLead, ...prev]);
+      // Handle DB errors (e.g., DB trigger blocking due to lead quota)
+      const errMsg = (error?.message || '').toString();
+      if (/lead limit reached/i.test(errMsg)) {
+        setProfileError(`Lead limit reached on your ${currentPlanLimits.label} plan. Upgrade to continue adding leads.`);
+      } else if (errMsg) {
+        setProfileError(errMsg);
+      } else {
+        setProfileError('Failed to add lead.');
+      }
+      // Do not optimistically keep the lead in the UI when server rejected it.
     }
   };
 
@@ -644,7 +653,7 @@ const AppContent: React.FC = () => {
       case AppView.QUEUE:
         return <ReviewQueue leads={leads} onUpdateLead={updateLead} onDeleteLead={deleteLead} />;
       case AppView.CAMPAIGNS:
-        return <OutreachBuilder leads={leads} onUpdateLead={updateLead} onDeleteLead={deleteLead} />;
+        return <OutreachBuilder leads={leads} onUpdateLead={updateLead} onDeleteLead={deleteLead} profile={profile} />;
       case AppView.SETTINGS:
         return <Settings 
           onLogout={handleLogout} 

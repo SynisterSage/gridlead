@@ -28,6 +28,8 @@ import {
   Sun
 } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
+import { getPlanLimits } from '../lib/planLimits';
+import { Profile } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { startGmailOAuth } from '../services/gmailAuth';
 import { subscribePush, saveSubscription, deleteSubscription } from '../lib/pushNotifications';
@@ -37,11 +39,7 @@ type SettingsTab = 'profile' | 'integrations' | 'security' | 'notifications';
 
 interface SettingsProps {
   onLogout?: () => void;
-  profile?: {
-    display_name?: string;
-    agency_name?: string;
-    monthly_goal?: number;
-  } | null;
+  profile?: Profile | null;
   userName?: string;
   userEmail?: string;
   userAvatarUrl?: string;
@@ -98,6 +96,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   useEffect(() => {
     setDisplayName(userName || profile?.display_name || '');
   }, [userName, profile?.display_name]);
+
+  const billingRowRef = React.useRef<HTMLDivElement | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const saveBio = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -323,12 +324,20 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   )}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg md:text-xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">{userName || 'Public Profile'}</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg md:text-xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">{userName || 'Public Profile'}</h3>
+                    <button
+                      onClick={() => billingRowRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                      className="px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                    >
+                      {getPlanLimits(profile?.plan).label}{profile?.plan_status ? ` • ${profile.plan_status}` : ''}
+                    </button>
+                  </div>
                   <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
                     {profile?.monthly_goal ? `Goal: $${profile.monthly_goal.toLocaleString()}` : 'Goal not set'}
                   </p>
                 </div>
-                <div className="shrink-0 pt-4 sm:pt-0">
+                  <div className="shrink-0 pt-4 sm:pt-0">
                   <button 
                     onClick={toggleTheme}
                     className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
@@ -377,6 +386,59 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                     {bioSaved ? 'Changes Saved ✓' : 'Save Changes'}
                   </span>
                 </button>
+              </div>
+            </div>
+            {/* Billing Row - mockup and usage */}
+            <div ref={billingRowRef} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-6 md:p-8 shadow-sm space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h4 className="text-base font-extrabold text-[#0f172a] dark:text-white">Billing & Plan</h4>
+                  <p className="text-[9px] text-slate-400 mt-1">View plan, usage, and upgrade options.</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{getPlanLimits(profile?.plan).label}</div>
+                  <div className="text-[11px] font-bold mt-1">{profile?.plan_status ?? 'inactive'}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Leads usage</label>
+                  <div className="mt-2">
+                    {getPlanLimits(profile?.plan).leadLimit ? (
+                      <>
+                        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
+                          <div
+                            className="h-3 bg-emerald-500"
+                            style={{ width: `${Math.min(100, Math.round(((profile?.leads_used_this_month ?? 0) / (getPlanLimits(profile?.plan).leadLimit || 1)) * 100))}%` }}
+                          />
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-500 mt-2">{(profile?.leads_used_this_month ?? 0)} / {getPlanLimits(profile?.plan).leadLimit} leads this month</div>
+                      </>
+                    ) : (
+                      <div className="text-[10px] font-bold text-slate-500">Unlimited leads</div>
+                    )}
+                </div>
+                </div>
+
+                <div>
+                  <label className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Sender seats</label>
+                  <div className="mt-2">
+                    {getPlanLimits(profile?.plan).senderLimit ? (
+                      <div className="text-[10px] font-bold text-slate-500">{(profile?.sender_seats_used ?? 0)} / {getPlanLimits(profile?.plan).senderLimit} seats used</div>
+                    ) : (
+                      <div className="text-[10px] font-bold text-slate-500">Unlimited seats</div>
+                    )}
+                    <div className="mt-4 flex gap-3">
+                      <button onClick={() => setShowUpgradeModal(true)} className="px-4 py-2 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all">
+                        Upgrade
+                      </button>
+                      <button disabled className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent cursor-not-allowed">
+                        Manage subscription
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -657,6 +719,32 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
         {/* Content Area */}
         <div className="lg:col-span-2">
           {renderContent()}
+
+              {showUpgradeModal && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)} />
+                  <div className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl z-70">
+                    <h3 className="text-lg font-extrabold text-[#0f172a] dark:text-white">Upgrade to Studio</h3>
+                    <p className="text-[10px] text-slate-500 mt-2">Studio unlocks deep audits, Gemini-powered outreach, and more sender seats. Stripe is not configured in this environment — this is a mock flow.</p>
+                    <div className="mt-6 space-y-3">
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-bold">Studio</div>
+                            <div className="text-[11px] text-slate-400">$25 / mo</div>
+                          </div>
+                          <div className="text-[12px] font-bold text-emerald-500">Recommended</div>
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-3">1,000 leads / mo • 5 sender seats • Deep audits • Gemini</p>
+                      </div>
+                      <div className="flex justify-end gap-3">
+                        <button onClick={() => setShowUpgradeModal(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-[10px] font-bold">Cancel</button>
+                        <button disabled className="px-4 py-2 rounded-xl bg-[#0f172a] text-white text-[10px] font-bold cursor-not-allowed">Proceed to Checkout</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
           <div className="mt-8 md:mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 px-4">
             <p className="text-[9px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-widest">Workspace ID: GL-992-PX</p>

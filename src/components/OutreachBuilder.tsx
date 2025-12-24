@@ -19,20 +19,22 @@ import {
   ChevronRight,
   Zap
 } from 'lucide-react';
-import { Lead } from '../types';
+import { Lead, Profile } from '../types';
 import { generateOutreachEmail } from '../services/geminiService';
+import { getPlanLimits } from '../lib/planLimits';
 import { supabase } from '../lib/supabaseClient';
 
 interface OutreachBuilderProps {
   leads: Lead[];
   onUpdateLead: (id: string, updates: Partial<Lead>) => void;
   onDeleteLead: (id: string) => void;
+  profile?: Profile | null;
 }
 
 type OutreachFilter = 'drafts' | 'outbound' | 'replied' | 'won' | 'all';
 type ViewMode = 'list' | 'pipeline';
 
-const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, onDeleteLead }) => {
+const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, onDeleteLead, profile }) => {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -148,6 +150,14 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     if (!currentLead) return;
     setIsGenerating(true);
     try {
+      // Gate Gemini usage to plans that allow it (Studio+)
+      const canUse = getPlanLimits(profile?.plan).canUseGemini;
+      if (!canUse) {
+        // Friendly UX: prompt upgrade — keep simple for now
+        alert('Gemini-powered outreach is available for Studio and Agency+ plans. Upgrade in Settings to use this feature.');
+        return;
+      }
+
       const draft = await generateOutreachEmail(currentLead);
       setSubject(draft.subject);
       setBody(draft.body);
