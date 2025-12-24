@@ -168,11 +168,19 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       endpoints.push('/functions/v1/send-push');
       endpoints.push('/api/send-push');
       let resp: Response | null = null;
+      // Prepare headers: include Supabase anon/publishable key and Authorization if available
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const apikey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY) as string | undefined;
+      const baseHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (apikey) baseHeaders['apikey'] = apikey;
+      if (token) baseHeaders['Authorization'] = `Bearer ${token}`;
+
       for (const ep of endpoints) {
         try {
           resp = await fetch(ep, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: baseHeaders,
             body: JSON.stringify({ subscription: sub.toJSON(), payload }),
           });
           // If endpoint exists and is not a 404, break and use it.
