@@ -641,13 +641,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                                   </span>
                                 </div>
                                 {archivedLeads.map(lead => (
-                                  <div key={lead.id} onClick={() => { setSelectedLeadId(lead.id); setViewMode('list'); setMobileView('detail'); }} className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 p-6 cursor-pointer">
-                                    <div className="flex justify-between items-start mb-1">
-                                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate pr-2">{lead.name}</p>
-                                      <span className={`text-[10px] font-mono font-bold ${getRatingColorClass(lead.rating)}`}>{lead.rating.toFixed(1)}</span>
-                                    </div>
-                                    <p className="text-[9px] text-slate-400 dark:text-slate-600 uppercase tracking-widest">{lead.category}</p>
-                                  </div>
+                                  <LeadCard key={lead.id} lead={lead} />
                                 ))}
                               </>
                             )}
@@ -700,7 +694,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                         <button onClick={() => onDeleteLead(currentLead.id)} className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all">
                           <Trash2 size={18} />
                         </button>
-                        {(currentLead.sentAt || ['sent','responded','won','stale','lost'].includes(currentLead.status)) && (
+                        {(currentLead && !currentLead.archivedAt && (currentLead.sentAt || ['sent','responded','won','stale','lost'].includes(currentLead.status))) && (
                           <OutcomeMenu lead={currentLead} onUpdateLead={onUpdateLead} />
                         )}
                         {!['sent', 'responded', 'won', 'stale', 'lost'].includes(currentLead.status) && (
