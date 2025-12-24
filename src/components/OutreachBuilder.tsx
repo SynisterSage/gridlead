@@ -126,7 +126,15 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           gmail_thread_id: m.gmail_thread_id || m.email_threads?.thread_id || null,
         }));
         console.debug('fetchMessages rows count', rows.length, { threadIds, gmailThreadIds });
-        setMessages(rows);
+
+        // Preserve any optimistic messages (temporary ids) that haven't been
+        // reconciled with persisted rows. If an optimistic message has the same
+        // gmail_message_id as a persisted row, prefer the persisted row.
+        const optimisticItems = (messages || []).filter((mm: any) => typeof mm.id === 'string' && mm.id.startsWith('optimistic-'));
+        const persistedByGmailId = new Set(rows.map((r: any) => r.gmail_message_id).filter(Boolean));
+        const remainingOptimistic = optimisticItems.filter((o: any) => !persistedByGmailId.has(o.gmail_message_id));
+
+        setMessages([...remainingOptimistic, ...rows]);
       }
     } catch (err) {
       console.error('fetchMessages unexpected error', err);
