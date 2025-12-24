@@ -109,12 +109,17 @@ Deno.serve(async (req) => {
       existingThreadQuery = existingThreadQuery.is("thread_id", null).maybeSingle();
     }
     const { data: existingThread } = await existingThreadQuery;
+    let dbThread: any = null;
     if (existingThread?.id) {
       threadDbId = existingThread.id;
-      await supabase
+      const { data: updatedThread, error: updErr } = await supabase
         .from("email_threads")
-        .update({ last_message_at: new Date().toISOString(), status: "sent" })
-        .eq("id", threadDbId);
+        .update({ last_message_at: new Date().toISOString(), status: "sent", thread_id: resolvedThreadId })
+        .eq("id", threadDbId)
+        .select('*')
+        .single();
+      if (updErr) return respondError("Update thread error", updErr);
+      dbThread = updatedThread;
     } else {
       const { data: insertThread, error: insThreadErr } = await supabase
         .from("email_threads")
@@ -126,10 +131,11 @@ Deno.serve(async (req) => {
           status: "sent",
           last_message_at: new Date().toISOString(),
         })
-        .select("id")
+        .select("*")
         .single();
       if (insThreadErr) return respondError("Insert thread error", insThreadErr);
       threadDbId = insertThread.id;
+      dbThread = insertThread;
     }
 
     // Insert message row
@@ -146,7 +152,7 @@ Deno.serve(async (req) => {
         body_html: htmlWithPixel,
         sent_at: sentAt,
       })
-      .select("id")
+      .select('*')
       .single();
     if (msgErr) return respondError("Insert message error", msgErr);
 
@@ -173,8 +179,8 @@ Deno.serve(async (req) => {
       ok: true,
       threadId,
       messageId: gmailMessageId,
-      dbThreadId: threadDbId,
-      dbMessageId: messageRow.id,
+      dbThread: dbThread,
+      dbMessage: messageRow,
     }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
   } catch (err) {
     console.error(err);

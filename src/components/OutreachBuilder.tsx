@@ -81,21 +81,22 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         body: { leadId },
       });
 
-      const data = (fn as any)?.data || fn?.data?.messages || fn?.messages || null;
-      const threads = (fn as any)?.data?.threads || fn?.threads || null;
+      const fnPayload = (fn as any)?.data ?? (fn as any);
+      const data = Array.isArray(fnPayload?.messages) ? fnPayload.messages : (Array.isArray(fnPayload) ? fnPayload : fnPayload?.data || []);
+      const threads = Array.isArray(fnPayload?.threads) ? fnPayload.threads : [];
       const error = (fn as any)?.error || null;
       console.debug('fetchMessages (function) raw', { fn, data, threads, error });
       if (error) {
         console.error('fetchMessages error', error);
         return;
       }
-      if (data) {
+      if (Array.isArray(data) && data.length > 0) {
         const rows = data.map((m: any) => ({
           ...m,
           gmail_thread_id: m.gmail_thread_id || m.email_threads?.thread_id || null,
         }));
-        const threadIds = (threads || []).map((t: any) => t.id).filter(Boolean);
-        const gmailThreadIds = (threads || []).map((t: any) => t.thread_id).filter(Boolean);
+        const threadIds = threads.map((t: any) => t.id).filter(Boolean);
+        const gmailThreadIds = threads.map((t: any) => t.thread_id).filter(Boolean);
         console.debug('fetchMessages rows count', rows.length, { threadIds, gmailThreadIds });
 
         // Preserve any optimistic messages (temporary ids) that haven't been
@@ -198,7 +199,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     }
     setIsSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('gmail-send', {
+      const fn = await supabase.functions.invoke('gmail-send', {
         body: {
           leadId: currentLead.id,
           to: recipientEmail,
@@ -206,30 +207,16 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           html: body
         }
       });
-      if (error) throw error;
+      const resp = (fn as any)?.data || fn?.data || null;
+      if (!resp || resp?.error) throw resp?.error || new Error('gmail-send failed');
 
-      // Optimistic UI: show the sent message immediately while the backend
-      // persists and we fetch canonical rows. The function typically returns
-      // a `sendJson` with `id` and `threadId` when Gmail accepts the message.
-      try {
-        const payload = (data as any) || {};
-        const sendJson = payload.sendJson || payload.data || payload.body || payload;
-        const gmailId = sendJson?.id || sendJson?.gmail_message_id || null;
-        const gmailThread = sendJson?.threadId || sendJson?.thread_id || null;
-        const optimistic: any = {
-          id: `optimistic-${Date.now()}`,
-          direction: 'sent',
-          subject,
-          snippet: stripHtml(body).slice(0, 200),
-          sent_at: new Date().toISOString(),
-          body_html: body,
-          gmail_message_id: gmailId,
-          gmail_thread_id: gmailThread,
-          thread_id: null,
-        };
-        setMessages(prev => [optimistic, ...prev]);
-      } catch (e) {
-        console.debug('optimistic insert failed', e);
+      // Use the persisted DB row returned by the function. This ensures the
+      // frontend displays server-persisted messages (authoritative) and avoids
+      // relying solely on optimistic placeholders.
+      const dbMessage = resp.dbMessage || resp.data?.dbMessage || null;
+      const dbThread = resp.dbThread || resp.data?.dbThread || null;
+      if (dbMessage) {
+        setMessages(prev => [dbMessage, ...prev.filter((m: any) => m.id !== dbMessage.id)]);
       }
       onUpdateLead(currentLead.id, { 
         status: 'sent', 
@@ -273,7 +260,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
 
       console.log('reply send', { threadId, to: replyTo, inReplyTo: replyMsgIdHeader });
 
-      const { data, error } = await supabase.functions.invoke('gmail-send', {
+      const fn = await supabase.functions.invoke('gmail-send', {
         body: {
           leadId: currentLead.id,
           to: replyTo,
@@ -284,28 +271,12 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           references: replyMsgIdHeader || undefined,
         },
       });
-      if (error) throw error;
+      const resp = (fn as any)?.data || fn?.data || null;
+      if (!resp || resp?.error) throw resp?.error || new Error('gmail-send failed');
 
-      // Optimistic UI for replies as well
-      try {
-        const payload = (data as any) || {};
-        const sendJson = payload.sendJson || payload.data || payload.body || payload;
-        const gmailId = sendJson?.id || sendJson?.gmail_message_id || null;
-        const gmailThread = sendJson?.threadId || sendJson?.thread_id || threadId || null;
-        const optimistic: any = {
-          id: `optimistic-${Date.now()}`,
-          direction: 'sent',
-          subject: subjectLine,
-          snippet: stripHtml(replyBody).slice(0, 200),
-          sent_at: new Date().toISOString(),
-          body_html: replyBody,
-          gmail_message_id: gmailId,
-          gmail_thread_id: gmailThread,
-          thread_id: null,
-        };
-        setMessages(prev => [optimistic, ...prev]);
-      } catch (e) {
-        console.debug('optimistic reply insert failed', e);
+      const dbMessage = resp.dbMessage || resp.data?.dbMessage || null;
+      if (dbMessage) {
+        setMessages(prev => [dbMessage, ...prev.filter((m: any) => m.id !== dbMessage.id)]);
       }
 
       setReplyBody('');
