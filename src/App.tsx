@@ -103,7 +103,9 @@ const AppContent: React.FC = () => {
         .eq('user_id', uid)
         .order('created_at', { ascending: false })
         .limit(50);
+      console.debug('[notif] fetchNotifications', { uid, error, count: data?.length });
       if (!error && data) {
+        console.debug('[notif] fetched ids', data.map((n: any) => n.id));
         setNotifications(
           data.map((n: any) => ({
             id: n.id,
@@ -263,6 +265,7 @@ const AppContent: React.FC = () => {
         const msg = ev.data || {};
         if (msg.type === 'push:received') {
           const payload = msg.payload || {};
+          console.debug('[SW] push payload received', payload);
           const meta = payload.meta || {};
           const serverId = meta?.serverNotificationId || null;
 
@@ -296,6 +299,7 @@ const AppContent: React.FC = () => {
             // Persist to server-side notifications using the ref to the latest
             // createNotification callback. The callback itself will check session.
             try {
+              console.debug('[SW] persisting push to server', { type: item.type, meta: item.meta });
               createNotificationRef.current?.(item.type, item.title, item.body, item.meta || {});
             } catch (e) {
               console.warn('Failed to persist push notification', e);
@@ -419,7 +423,10 @@ const AppContent: React.FC = () => {
 
       if (notifChannelRef.current) {
         notifChannelRef.current.unsubscribe();
+        notifChannelRef.current = null;
       }
+
+      // Primary subscription: filtered by user_id on the server to reduce noise.
       const channel = supabase
         .channel('notifications-feed')
         .on(
@@ -427,7 +434,6 @@ const AppContent: React.FC = () => {
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
             (payload) => {
               const row: any = payload.new;
-              // Avoid duplicates if the client already inserted this notification.
               setNotifications(prev => {
                 if (prev.some(n => n.id === row.id)) return prev;
                 const next = [
@@ -447,13 +453,60 @@ const AppContent: React.FC = () => {
             }
         )
         .subscribe();
+
+      // Fallback subscription: listen to all notifications INSERTs and filter
+      // client-side. This catches cases where server-side filtering or mismatched
+      // user_id values prevent the filtered channel from delivering events.
+      const fallback = supabase
+        .channel('notifications-feed-all')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications' },
+          (payload) => {
+            const row: any = payload.new;
+            try {
+              if (row.user_id !== session.user.id) return;
+            } catch (e) {
+              return;
+            }
+            setNotifications(prev => {
+              if (prev.some(n => n.id === row.id)) return prev;
+              const next = [
+                {
+                  id: row.id,
+                  type: row.type,
+                  title: row.title,
+                  body: row.body,
+                  created_at: row.created_at,
+                  unread: !row.read_at,
+                  meta: row.meta || {},
+                },
+                ...prev,
+              ].slice(0, 100);
+              return next;
+            });
+          }
+        )
+        .subscribe();
+
       notifChannelRef.current = channel;
+      // Store fallback in a symbol on the channel ref so we can unsubscribe both
+      // when cleaning up.
+      (notifChannelRef as any).fallback = fallback;
     };
     void setup();
 
     return () => {
       if (notifChannelRef.current) {
+        // unsubscribe primary channel
         notifChannelRef.current.unsubscribe();
+        // unsubscribe fallback if present
+        try {
+          const fb = (notifChannelRef as any).fallback;
+          if (fb) fb.unsubscribe();
+        } catch (e) {
+          /* ignore */
+        }
         notifChannelRef.current = null;
       }
     };
