@@ -665,18 +665,27 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                     {activeThreads.map(lead => <LeadCard key={lead.id} lead={lead} />)}
                   </>
                 )}
-                            {archivedLeads.length > 0 && (
-                              <>
-                                <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-6">
-                                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
-                                    <History size={12} /> Archived Threads
-                                  </span>
-                                </div>
-                                {archivedLeads.map(lead => (
-                                  <LeadCard key={lead.id} lead={lead} />
-                                ))}
-                              </>
-                            )}
+                            {(() => {
+                              const showForStatus = ['won', 'stale', 'lost'];
+                              const archivedVisible = activeFilter === 'all' || activeFilter === 'archived' || showForStatus.includes(activeFilter as any);
+                              if (!archivedVisible) return null;
+                              const archivedToShow = showForStatus.includes(activeFilter as any)
+                                ? archivedLeads.filter(l => l.status === activeFilter)
+                                : archivedLeads;
+                              if (!archivedToShow || archivedToShow.length === 0) return null;
+                              return (
+                                <>
+                                  <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-6">
+                                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
+                                      <History size={12} /> Archived Threads
+                                    </span>
+                                  </div>
+                                  {archivedToShow.map(lead => (
+                                    <LeadCard key={lead.id} lead={lead} />
+                                  ))}
+                                </>
+                              );
+                            })()}
                 
                 {filtered.length === 0 && (
                   <div className="py-20 text-center opacity-20">
@@ -714,15 +723,17 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                           </div>
                           {getStatusBadge(currentLead)}
                         </div>
-                        <div className="flex items-center gap-4">
-                          <a href={`https://${currentLead.website}`} target="_blank" className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 text-[10px] md:text-[11px] font-bold underline underline-offset-4 truncate">
-                            {currentLead.website} <ExternalLink size={10} />
-                          </a>
-                          <span className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">• {currentLead.category}</span>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-4 min-w-0">
+                            <a href={`https://${currentLead.website}`} target="_blank" className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 text-[10px] md:text-[11px] font-bold underline underline-offset-4 truncate max-w-[240px]">
+                              {currentLead.website} <ExternalLink size={10} />
+                            </a>
+                            <span className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest truncate">• {currentLead.category}</span>
+                          </div>
                           {(currentLead.archivedAt || ['sent','responded','won','stale','lost'].includes(currentLead.status)) && (currentLead.email || recipientEmail) && (
-                            <a href={`mailto:${currentLead.email || recipientEmail}`} className="ml-4 inline-flex items-center gap-2 bg-slate-50/20 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-full px-3 py-1 text-[12px] font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors truncate">
+                            <a href={`mailto:${currentLead.email || recipientEmail}`} className="inline-flex items-center gap-2 bg-slate-50/8 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-full px-3 py-1 text-[12px] font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors max-w-[260px]">
                               <Mail size={14} />
-                              <span className="truncate max-w-[220px]">{currentLead.email || recipientEmail}</span>
+                              <span className="truncate">{currentLead.email || recipientEmail}</span>
                             </a>
                           )}
                         </div>
