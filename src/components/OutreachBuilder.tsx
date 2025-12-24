@@ -69,10 +69,13 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
 
   const fetchMessages = async (leadId: string) => {
     // Use a left join on email_threads so messages without a thread row still appear
+    // Quote the UUID value in the .or() filter so PostgREST parses it correctly
+    const orFilter = `email_threads.lead_id.eq."${leadId}",thread_id.is.null`;
+    console.debug('fetchMessages filter', orFilter);
     const { data, error } = await supabase
       .from('email_messages')
       .select('id,direction,snippet,subject,sent_at,body_html,gmail_message_id,gmail_thread_id,message_id_header,thread_id,email_threads(id,lead_id,thread_id)')
-      .or(`email_threads.lead_id.eq.${leadId},thread_id.is.null`) // include messages linked to this lead or messages without a thread
+      .or(orFilter)
       .order('sent_at', { ascending: false })
       .limit(50);
     if (error) {
