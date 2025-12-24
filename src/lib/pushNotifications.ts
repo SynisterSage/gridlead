@@ -34,13 +34,32 @@ export const saveSubscription = async (sub: PushSubscription) => {
   const auth = json.keys?.auth;
   if (!endpoint || !p256dh || !auth) throw new Error('Invalid subscription');
 
-  const { error } = await supabase.from('web_push_subscriptions').upsert({
-    user_id: uid,
-    endpoint,
-    p256dh,
-    auth,
-  });
-  if (error) throw error;
+  try {
+    // Use onConflict to target the unique endpoint constraint so upsert works reliably.
+    const { error } = await supabase
+      .from('web_push_subscriptions')
+      .upsert({
+        user_id: uid,
+        endpoint,
+        p256dh,
+        auth,
+      }, { onConflict: 'endpoint' });
+    if (error) {
+      // PostgREST/Supabase may return a 409 if a unique constraint race occurred.
+      // Treat 409 (conflict) as non-fatal for save (subscription already exists).
+      // The error object may include `status` or `code` depending on client; handle both.
+      const status = (error as any).status || (error as any).code || null;
+      if (status === 409) {
+        // ignore duplicate subscription error
+        return;
+      }
+      throw error;
+    }
+  } catch (err: any) {
+    // If the server responds with a 409 conflict (sometimes surfaced differently), ignore it.
+    if (err && (err.status === 409 || err.code === 409)) return;
+    throw err;
+  }
 };
 
 export const deleteSubscription = async () => {

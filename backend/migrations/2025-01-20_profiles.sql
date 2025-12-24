@@ -1,16 +1,36 @@
-create table public.profiles (
-  id uuid not null,
-  display_name text null,
-  agency_name text null,
-  monthly_goal integer null,
-  gmail_connected boolean null default false,
-  onboarding_completed boolean null default false,
-  created_at timestamp with time zone null default now(),
-  updated_at timestamp with time zone null default now(),
-  constraint profiles_pkey primary key (id),
-  constraint profiles_id_fkey foreign KEY (id) references auth.users (id) on delete CASCADE
-) TABLESPACE pg_default;
+-- 2025-01-20: create profiles table with RLS and updated_at trigger
 
-create trigger trg_profiles_updated_at BEFORE
-update on profiles for EACH row
-execute FUNCTION handle_profiles_updated_at ();
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  display_name text,
+  agency_name text,
+  monthly_goal integer,
+  gmail_connected boolean default false,
+  onboarding_completed boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.profiles enable row level security;
+
+create policy "Profiles are viewable by owner" on public.profiles
+  for select using (auth.uid() = id);
+
+create policy "Profiles are insertable by owner" on public.profiles
+  for insert with check (auth.uid() = id);
+
+create policy "Profiles are updatable by owner" on public.profiles
+  for update using (auth.uid() = id);
+
+create or replace function public.handle_profiles_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_profiles_updated_at on public.profiles;
+create trigger trg_profiles_updated_at
+before update on public.profiles
+for each row execute procedure public.handle_profiles_updated_at();
