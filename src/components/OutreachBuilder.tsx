@@ -73,49 +73,18 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     // resolving thread ids for the lead makes the messages query simpler and
     // avoids edge cases where messages have a gmail_thread_id but no thread_id.
     try {
-      const { data: threads, error: threadErr } = await supabase
-        .from('email_threads')
-        .select('id,thread_id')
-        .eq('lead_id', leadId);
-      if (threadErr) {
-        console.error('fetchMessages thread load error', threadErr);
-        return;
-      }
+      // Use server-side function to fetch messages. The function runs with
+      // the service role key and validates ownership, avoiding client-side
+      // RLS restrictions that appear to be blocking reads in some sessions.
+      const fn = await supabase.functions.invoke('outreach-messages', {
+        method: 'POST',
+        body: { leadId },
+      });
 
-      console.debug('fetchMessages threads raw', { threads });
-
-      const threadIds = (threads || []).map((t: any) => t.id).filter(Boolean);
-      const gmailThreadIds = (threads || []).map((t: any) => t.thread_id).filter(Boolean);
-
-      // Build filters depending on what we found. We want messages that are:
-      // - Attached to any of the lead's thread rows (thread_id IN ...)
-      // - OR have a gmail_thread_id matching the Gmail thread id from those threads
-      // If there are no threads, fall back to messages where thread_id IS NULL (or none)
-      let messagesQuery = supabase
-        .from('email_messages')
-        .select('id,direction,snippet,subject,sent_at,body_html,gmail_message_id,gmail_thread_id,message_id_header,thread_id,email_threads(id,lead_id,thread_id)')
-        .order('sent_at', { ascending: false })
-        .limit(100);
-
-      const orParts: string[] = [];
-      if (threadIds.length > 0) {
-        const threadCsv = threadIds.map((s: string) => `"${s}"`).join(',');
-        orParts.push(`thread_id.in.(${threadCsv})`);
-      }
-      if (gmailThreadIds.length > 0) {
-        const gmailCsv = gmailThreadIds.map((s: string) => `"${s}"`).join(',');
-        orParts.push(`gmail_thread_id.in.(${gmailCsv})`);
-      }
-      if (orParts.length === 0) {
-        // No threads found for this lead — attempt to surface messages without a thread row
-        orParts.push('thread_id.is.null');
-      }
-
-      const orFilter = orParts.join(',');
-      console.debug('fetchMessages orFilter', orFilter, { threadIds, gmailThreadIds });
-
-      const { data, error } = await messagesQuery.or(orFilter);
-      console.debug('fetchMessages messages raw', { data, error });
+      const data = (fn as any)?.data || fn?.data?.messages || fn?.messages || null;
+      const threads = (fn as any)?.data?.threads || fn?.threads || null;
+      const error = (fn as any)?.error || null;
+      console.debug('fetchMessages (function) raw', { fn, data, threads, error });
       if (error) {
         console.error('fetchMessages error', error);
         return;
@@ -125,6 +94,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           ...m,
           gmail_thread_id: m.gmail_thread_id || m.email_threads?.thread_id || null,
         }));
+        const threadIds = (threads || []).map((t: any) => t.id).filter(Boolean);
+        const gmailThreadIds = (threads || []).map((t: any) => t.thread_id).filter(Boolean);
         console.debug('fetchMessages rows count', rows.length, { threadIds, gmailThreadIds });
 
         // Preserve any optimistic messages (temporary ids) that haven't been
