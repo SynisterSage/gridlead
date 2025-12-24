@@ -14,6 +14,7 @@ import { AppView, Lead, Profile, NotificationItem } from './types';
 import { MOCK_LEADS } from './constants';
 import { ThemeProvider } from './ThemeContext';
 import { supabase } from './lib/supabaseClient';
+import { getPlanLimits, isOverLeadLimit } from './lib/planLimits';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 const SAMPLE_NOTIFICATIONS: NotificationItem[] = [
@@ -543,6 +544,11 @@ const AppContent: React.FC = () => {
       setLeads(prev => [newLead, ...prev]);
       return;
     }
+    const currentPlanLimits = getPlanLimits(profile?.plan);
+    if (isOverLeadLimit(profile?.plan, profile?.leads_used_this_month ?? 0)) {
+      setProfileError(`Lead limit reached on your ${currentPlanLimits.label} plan. Upgrade to continue adding leads.`);
+      return;
+    }
     const isUuid = /^[0-9a-fA-F-]{36}$/.test(newLead.id);
     const payload: any = {
       user_id: session.user.id,
@@ -573,6 +579,10 @@ const AppContent: React.FC = () => {
         ...newLead,
         id: data.id,
       }, ...prev.filter(l => l.id !== data.id)]);
+      setProfile(prev => prev ? {
+        ...prev,
+        leads_used_this_month: (prev.leads_used_this_month ?? 0) + 1,
+      } : prev);
       if (notifPrefs.leads) {
         void createNotification('lead', 'New lead added', `Lead "${newLead.name}" was added.`, { leadId: data.id });
       }

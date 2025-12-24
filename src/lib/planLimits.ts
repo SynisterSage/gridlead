@@ -42,6 +42,11 @@ export const getPlanLimits = (plan?: string | null): PlanLimits => {
   return PLAN_LIMITS[normalized] ?? PLAN_LIMITS.starter;
 };
 
+export const isOverLeadLimit = (plan: string | null | undefined, leadsUsed: number): boolean => {
+  const { leadLimit } = getPlanLimits(plan);
+  return leadLimit !== null && leadsUsed >= leadLimit;
+};
+
 export const isOverSenderLimit = (plan: string | null | undefined, seatsUsed: number): boolean => {
   const { senderLimit } = getPlanLimits(plan);
   return senderLimit !== null && seatsUsed >= senderLimit;

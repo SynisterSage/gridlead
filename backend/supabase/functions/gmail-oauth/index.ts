@@ -1,5 +1,53 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { getPlanLimits, isOverSenderLimit } from "./planLimits.ts";
+
+type PlanTier = "starter" | "studio" | "agency_waitlist";
+
+interface PlanLimits {
+  leadLimit: number | null;
+  senderLimit: number | null;
+  auditDepth: "light" | "deep" | "full";
+  canUseGemini: boolean;
+  label: string;
+  description: string;
+}
+
+const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
+  starter: {
+    leadLimit: 50,
+    senderLimit: 2,
+    auditDepth: "light",
+    canUseGemini: false,
+    label: "Starter",
+    description: "Free tier with light audits and 2 sender seats.",
+  },
+  studio: {
+    leadLimit: 1000,
+    senderLimit: 5,
+    auditDepth: "deep",
+    canUseGemini: true,
+    label: "Studio",
+    description: "Paid tier with deep audits, rotation, and AI outreach.",
+  },
+  agency_waitlist: {
+    leadLimit: null,
+    senderLimit: null,
+    auditDepth: "full",
+    canUseGemini: true,
+    label: "Agency+",
+    description: "In-development tier; treat as unlimited once activated.",
+  },
+};
+
+const getPlanLimits = (plan?: string | null): PlanLimits => {
+  if (!plan) return PLAN_LIMITS.starter;
+  const normalized = plan.toLowerCase() as PlanTier;
+  return PLAN_LIMITS[normalized] ?? PLAN_LIMITS.starter;
+};
+
+const isOverSenderLimit = (plan: string | null | undefined, seatsUsed: number): boolean => {
+  const { senderLimit } = getPlanLimits(plan);
+  return senderLimit !== null && seatsUsed >= senderLimit;
+};
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
