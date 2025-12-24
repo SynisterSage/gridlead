@@ -263,22 +263,43 @@ const AppContent: React.FC = () => {
         const msg = ev.data || {};
         if (msg.type === 'push:received') {
           const payload = msg.payload || {};
-          const item: NotificationItem = {
-            id: `push-${Date.now()}`,
-            type: (payload.type as any) || 'reply',
-            title: payload.title || 'Notification',
-            body: payload.body || '',
-            created_at: new Date().toISOString(),
-            unread: true,
-            meta: payload.meta || {},
-          };
-          setNotifications(prev => [item, ...prev].slice(0, 100));
-          // Persist to server-side notifications using the ref to the latest
-          // createNotification callback. The callback itself will check session.
-          try {
-            createNotificationRef.current?.(item.type, item.title, item.body, item.meta || {});
-          } catch (e) {
-            console.warn('Failed to persist push notification', e);
+          const meta = payload.meta || {};
+          const serverId = meta?.serverNotificationId || null;
+
+          if (serverId) {
+            // If server already created the notification (and we have its id),
+            // avoid calling createNotification (which would insert a duplicate).
+            setNotifications(prev => {
+              if (prev.some(n => n.id === serverId)) return prev;
+              const item: NotificationItem = {
+                id: serverId,
+                type: (payload.type as any) || 'reply',
+                title: payload.title || 'Notification',
+                body: payload.body || '',
+                created_at: new Date().toISOString(),
+                unread: true,
+                meta,
+              };
+              return [item, ...prev].slice(0, 100);
+            });
+          } else {
+            const item: NotificationItem = {
+              id: `push-${Date.now()}`,
+              type: (payload.type as any) || 'reply',
+              title: payload.title || 'Notification',
+              body: payload.body || '',
+              created_at: new Date().toISOString(),
+              unread: true,
+              meta,
+            };
+            setNotifications(prev => [item, ...prev].slice(0, 100));
+            // Persist to server-side notifications using the ref to the latest
+            // createNotification callback. The callback itself will check session.
+            try {
+              createNotificationRef.current?.(item.type, item.title, item.body, item.meta || {});
+            } catch (e) {
+              console.warn('Failed to persist push notification', e);
+            }
           }
         }
       } catch (e) {
@@ -845,6 +866,15 @@ const AppContent: React.FC = () => {
         onMarkRead={markNotificationRead}
         onDelete={deleteNotification}
       />
+      {/* Global ephemeral toast (for send_failed, gmail_disconnected, etc.) */}
+      {toast && (
+        <div className="fixed top-8 right-8 z-[100] animate-in slide-in-from-right-10 duration-500">
+          <div className="bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-800 dark:border-slate-100">
+            <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center" />
+            <span className="text-xs font-bold uppercase tracking-widest">{toast}</span>
+          </div>
+        </div>
+      )}
       {toast && (
         <div className="fixed top-8 right-8 z-[100] pointer-events-auto">
           <div className="bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-800 dark:border-slate-100">
