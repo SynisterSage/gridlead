@@ -340,6 +340,7 @@ const AppContent: React.FC = () => {
           createdAt: row.created_at ? new Date(row.created_at).getTime() : undefined,
           updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
           website: row.website || 'No website',
+          email: row.email || undefined,
           address: row.address || undefined,
           lat: row.lat ?? undefined,
           lng: row.lng ?? undefined,
@@ -829,6 +830,7 @@ const AppContent: React.FC = () => {
     if (updates.notes !== undefined) payload.notes = updates.notes;
     if (updates.draftSubject !== undefined) payload.draft_subject = updates.draftSubject;
     if (updates.draftBody !== undefined) payload.draft_body = updates.draftBody;
+    if (updates.email !== undefined) payload.email = updates.email;
     if (updates.sentAt !== undefined) payload.sent_at = updates.sentAt ? new Date(updates.sentAt).toISOString() : null;
     if (updates.score) {
       payload.score_design = updates.score.design;
@@ -860,6 +862,7 @@ const AppContent: React.FC = () => {
           createdAt: row.created_at ? new Date(row.created_at).getTime() : undefined,
           updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
           website: row.website || 'No website',
+          email: row.email || undefined,
           address: row.address || undefined,
           lat: row.lat ?? undefined,
           lng: row.lng ?? undefined,

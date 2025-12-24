@@ -146,6 +146,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         createdAt: row.created_at ? new Date(row.created_at).getTime() : undefined,
         updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
         website: row.website || 'No website',
+        email: row.email || undefined,
         address: row.address || undefined,
         lat: row.lat ?? undefined,
         lng: row.lng ?? undefined,
@@ -718,10 +719,10 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                             {currentLead.website} <ExternalLink size={10} />
                           </a>
                           <span className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">• {currentLead.category}</span>
-                          {(currentLead.archivedAt || ['sent','responded','won','stale','lost'].includes(currentLead.status)) && currentLead.email && (
-                            <a href={`mailto:${currentLead.email}`} className="ml-4 inline-flex items-center gap-2 bg-slate-50/20 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-full px-3 py-1 text-[12px] font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors truncate">
+                          {(currentLead.archivedAt || ['sent','responded','won','stale','lost'].includes(currentLead.status)) && (currentLead.email || recipientEmail) && (
+                            <a href={`mailto:${currentLead.email || recipientEmail}`} className="ml-4 inline-flex items-center gap-2 bg-slate-50/20 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-full px-3 py-1 text-[12px] font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors truncate">
                               <Mail size={14} />
-                              <span className="truncate max-w-[220px]">{currentLead.email}</span>
+                              <span className="truncate max-w-[220px]">{currentLead.email || recipientEmail}</span>
                             </a>
                           )}
                         </div>
