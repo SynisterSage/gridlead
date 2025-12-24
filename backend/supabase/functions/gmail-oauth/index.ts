@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
-import { getPlanLimits, isOverSenderLimit } from "../_shared/planLimits.ts";
+import { getPlanLimits, isOverSenderLimit } from "./planLimits.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
