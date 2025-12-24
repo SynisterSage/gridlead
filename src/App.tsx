@@ -705,7 +705,7 @@ const AppContent: React.FC = () => {
     const isUuid = /^[0-9a-fA-F-]{36}$/.test(newLead.id);
     const payload: any = {
       user_id: session.user.id,
-      place_id: newLead.placeId,
+      place_id: newLead.placeId ?? null,
       name: newLead.name,
       category: newLead.category,
       rating: newLead.rating,
@@ -726,9 +726,11 @@ const AppContent: React.FC = () => {
     if (isUuid) {
       payload.id = newLead.id;
     }
-    const { data, error } = await supabase.from('leads').upsert(payload, { onConflict: 'user_id,place_id' }).select('*').single();
-    // Log DB error details for troubleshooting (PostgREST / Supabase returns useful info)
-    if (error) console.error('leads.upsert error', error);
+    // Log payload for debugging (make sure place_id is included)
+    console.debug('leads.upsert payload', payload);
+    const { data, error } = await supabase.from('leads').upsert(payload, { onConflict: ['user_id', 'place_id'] }).select('*').single();
+    // Log DB error details for troubleshooting (show full error object)
+    if (error) console.error('leads.upsert error', JSON.stringify(error));
     if (!error && data) {
       setLeads(prev => [{
         ...newLead,
