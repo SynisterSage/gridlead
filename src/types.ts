@@ -22,7 +22,7 @@ export interface Lead {
   address?: string;
   lat?: number;
   lng?: number;
-  status: 'pending' | 'approved' | 'rejected' | 'sent' | 'responded' | 'won';
+  status: 'pending' | 'approved' | 'rejected' | 'sent' | 'responded' | 'won' | 'stale' | 'lost';
   sentAt?: number; 
   draftSubject?: string;
   draftBody?: string;

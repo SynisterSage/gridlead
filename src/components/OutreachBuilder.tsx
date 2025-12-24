@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   List,
   Trophy,
+  X,
   History,
   ArrowLeft,
   ExternalLink,
@@ -167,6 +168,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const getStatusBadge = (lead: Lead) => {
     const baseClasses = "px-2 py-0.5 rounded text-[8px] font-black border uppercase tracking-widest shrink-0";
     if (lead.status === 'won') return <span className={`${baseClasses} bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/50`}>Won</span>;
+    if (lead.status === 'stale') return <span className={`${baseClasses} bg-slate-50 dark:bg-slate-800/20 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-800`}>Stale</span>;
+    if (lead.status === 'lost') return <span className={`${baseClasses} bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/30`}>Lost</span>;
     if (lead.status === 'responded') return <span className={`${baseClasses} bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50`}>Reply</span>;
     if (lead.status === 'approved') return <span className={`${baseClasses} bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/50`}>Draft</span>;
     return <span className={`${baseClasses} bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-700`}>Sent</span>;
@@ -303,6 +306,43 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     } finally {
       setManualPollLoading(false);
     }
+  };
+
+  // Outcome menu component (inline) - keeps appearance compact and calls onUpdateLead
+  const OutcomeMenu: React.FC<{ lead: Lead; onUpdateLead: (id: string, updates: Partial<Lead>) => void }> = ({ lead, onUpdateLead }) => {
+    const [open, setOpen] = useState(false);
+    const toggle = () => setOpen(v => !v);
+    const select = (value: 'won'|'stale'|'lost') => {
+      onUpdateLead(lead.id, { status: value });
+      setOpen(false);
+    };
+    return (
+      <div className="relative">
+        <button
+          onClick={toggle}
+          className="flex-1 lg:flex-none px-4 h-11 bg-amber-500 text-white rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-amber-600 transition-all flex items-center justify-center gap-2 shadow-md"
+          title="Set outcome"
+        >
+          <Trophy size={16} />
+        </button>
+        {open && (
+          <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg shadow-lg z-50">
+            <button onClick={() => select('won')} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
+              <Trophy size={14} /> <span className="font-bold">Won</span>
+              <span className="text-xs text-slate-400 ml-auto">Closed deal</span>
+            </button>
+            <button onClick={() => select('stale')} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
+              <History size={14} /> <span className="font-bold">Stale</span>
+              <span className="text-xs text-slate-400 ml-auto">No recent activity</span>
+            </button>
+            <button onClick={() => select('lost')} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
+              <X size={14} /> <span className="font-bold">Lost</span>
+              <span className="text-xs text-slate-400 ml-auto">Lead uninterested</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const filtered = useMemo(() => {
@@ -512,13 +552,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                         <button onClick={() => onDeleteLead(currentLead.id)} className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all">
                           <Trash2 size={18} />
                         </button>
-                        <button 
-                          onClick={() => onUpdateLead(currentLead.id, { status: 'won' })} 
-                          className="flex-1 lg:flex-none px-4 h-11 bg-amber-500 text-white rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-amber-600 transition-all flex items-center justify-center gap-2 shadow-md"
-                          title="Mark as Closed Won"
-                        >
-                          <Trophy size={16} />
-                        </button>
+                        <OutcomeMenu lead={currentLead} onUpdateLead={onUpdateLead} />
                         {!['sent', 'responded', 'won'].includes(currentLead.status) && (
                           <button 
                             onClick={handleGenerate} 
