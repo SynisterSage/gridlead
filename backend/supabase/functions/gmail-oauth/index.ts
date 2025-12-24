@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { getPlanLimits, isOverSenderLimit } from "../_shared/planLimits.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -80,11 +81,25 @@ Deno.serve(async (req) => {
 
     if (!email) return new Response("No email in token", { status: 400 });
 
-    // Ensure profile exists (FK target) and mark connected
-    const { error: profileError } = await supabase
+    // Ensure profile exists and fetch plan/seats
+    let plan = "starter";
+    let senderSeatsUsed = 0;
+    const { data: profileRow, error: profileFetchError } = await supabase
       .from("profiles")
-      .upsert({ id: userId, gmail_connected: true }, { onConflict: "id" });
-    if (profileError) return respondError("Upsert profile error", profileError);
+      .select("id, plan, sender_seats_used")
+      .eq("id", userId)
+      .maybeSingle();
+    if (profileFetchError) return respondError("Fetch profile error", profileFetchError);
+
+    if (!profileRow) {
+      const { error: profileInsertError } = await supabase
+        .from("profiles")
+        .insert({ id: userId, gmail_connected: true });
+      if (profileInsertError) return respondError("Create profile error", profileInsertError);
+    } else {
+      plan = profileRow.plan || "starter";
+      senderSeatsUsed = profileRow.sender_seats_used ?? 0;
+    }
 
     // Find or create gmail_account for this user/email
     let accountId: string | null = null;
@@ -112,6 +127,12 @@ Deno.serve(async (req) => {
         .eq("id", accountId);
       if (updateAccountError) return respondError("Update account error", updateAccountError);
     } else {
+      if (isOverSenderLimit(plan, senderSeatsUsed)) {
+        const upgradeUrl = new URL(appRedirect);
+        upgradeUrl.searchParams.set("error", "sender_limit");
+        upgradeUrl.searchParams.set("plan", getPlanLimits(plan).label);
+        return Response.redirect(upgradeUrl.toString(), 302);
+      }
       const { data: insertAccount, error: insertAccountError } = await supabase
         .from("gmail_accounts")
         .insert({

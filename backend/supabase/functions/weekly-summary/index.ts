@@ -1,7 +1,7 @@
 // Supabase Edge Function: weekly-summary
-// Sends weekly performance emails via SendGrid and inserts an in-app notification.
+// Sends weekly performance emails via Resend and inserts an in-app notification.
 // Env vars required:
-// SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME, APP_BASE_URL (for CTA)
+// RESEND_API_KEY, RESEND_FROM_EMAIL, APP_BASE_URL (for CTA)
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7';
@@ -27,10 +27,9 @@ type ProfileRow = {
 };
 
 const AVG_DEAL_SIZE = 2500;
-const sendgridApiKey = Deno.env.get('SENDGRID_API_KEY') || '';
-const fromEmail = Deno.env.get('SENDGRID_FROM_EMAIL') || '';
-const fromName = Deno.env.get('SENDGRID_FROM_NAME') || 'GridLead';
-const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'gridlead.space';
+const resendApiKey = Deno.env.get('RESEND_API_KEY') || '';
+const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev';
+const appBaseUrl = Deno.env.get('APP_BASE_URL') || 'http://gridlead.space';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -115,23 +114,23 @@ const renderEmail = (data: {
 };
 
 const sendEmail = async (to: string, subject: string, html: string) => {
-  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+  const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${sendgridApiKey}`,
+      Authorization: `Bearer ${resendApiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: fromEmail, name: fromName },
+      from: fromEmail,
+      to: [to],
       subject,
-      content: [{ type: 'text/html', value: html }],
+      html,
     }),
   });
   if (!res.ok) {
     const txt = await res.text();
-    console.error('SendGrid error', res.status, txt);
-    throw new Error(`SendGrid error ${res.status}`);
+    console.error('Resend error', res.status, txt);
+    throw new Error(`Resend error ${res.status}`);
   }
 };
 
@@ -179,28 +178,56 @@ serve(async (req) => {
       return new Response('ok', { headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' } });
     }
 
+    const url = new URL(req.url);
+    const forceSend = url.searchParams.get('force') === '1';
+    const onlyUser = url.searchParams.get('user_id') || null;
+
+    const results: Array<Record<string, unknown>> = [];
+
     // Fetch users with weekly enabled
     const { data: users, error: usersError } = await supabase
       .from('user_notifications')
-      .select('user_id, weekly');
+      .select('user_id, weekly')
+      .eq('weekly', true);
 
     if (usersError) throw usersError;
 
-    const targets = (users || []).filter((u: UserNotifRow) => !!u.weekly);
+    let targets = (users || []).filter((u: UserNotifRow) => !!u.weekly);
+    if (onlyUser) targets = targets.filter(t => t.user_id === onlyUser);
 
     for (const target of targets) {
       // Fetch profile
       const { data: profile, error: profErr } = await supabase
         .from('profiles')
-        .select('id, monthly_goal, display_name, email')
+        .select('id, monthly_goal, display_name')
         .eq('id', target.user_id)
         .maybeSingle();
-      if (profErr || !profile) continue;
+      if (profErr || !profile) {
+        results.push({ user_id: target.user_id, status: 'skip', reason: 'no_profile_or_error', error: profErr?.message });
+        continue;
+      }
 
       // Fetch user auth email
-      const { data: auth } = await supabase.auth.admin.getUserById(target.user_id);
-      const toEmail = auth.user?.email;
-      if (!toEmail) continue;
+    const { data: auth } = await supabase.auth.admin.getUserById(target.user_id);
+    let toEmail = auth.user?.email || '';
+
+    // Prefer primary Gmail if available
+    const { data: gmail } = await supabase
+      .from('gmail_accounts')
+      .select('email, is_primary, status')
+      .eq('user_id', target.user_id)
+      .eq('status', 'connected')
+      .order('is_primary', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (gmail?.email) {
+      toEmail = gmail.email;
+    }
+
+    if (!toEmail) {
+      results.push({ user_id: target.user_id, status: 'skip', reason: 'no_target_email' });
+      continue;
+    }
 
       // Fetch leads
       const { data: leads } = await supabase
@@ -216,7 +243,10 @@ serve(async (req) => {
         summary.current.replies === 0 &&
         summary.current.wins === 0
       ) {
-        continue;
+        if (!forceSend) {
+          results.push({ user_id: target.user_id, status: 'skip', reason: 'no_activity_last_7d' });
+          continue;
+        }
       }
 
       const goal = profile.monthly_goal || 0;
@@ -242,7 +272,14 @@ serve(async (req) => {
         topLeads: summary.top.map((l) => ({ name: l.name, status: l.status })),
       });
 
-      await sendEmail(toEmail, 'Your Weekly GridLead Summary', html);
+      try {
+        await sendEmail(toEmail, 'Your Weekly GridLead Summary', html);
+        results.push({ user_id: target.user_id, status: 'sent', email: toEmail });
+        console.log(`sent weekly summary to ${toEmail}`);
+      } catch (err: any) {
+        results.push({ user_id: target.user_id, status: 'error', email: toEmail, error: err?.message || 'send failed' });
+        continue;
+      }
 
       // Insert in-app notification
       await supabase.from('notifications').insert({
@@ -254,7 +291,7 @@ serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify({ ok: true, results }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     });
   } catch (err: any) {
