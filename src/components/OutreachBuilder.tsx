@@ -311,33 +311,56 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   // Outcome menu component (inline) - keeps appearance compact and calls onUpdateLead
   const OutcomeMenu: React.FC<{ lead: Lead; onUpdateLead: (id: string, updates: Partial<Lead>) => void }> = ({ lead, onUpdateLead }) => {
     const [open, setOpen] = useState(false);
+    const ref = React.useRef<HTMLDivElement | null>(null);
     const toggle = () => setOpen(v => !v);
     const select = (value: 'won'|'stale'|'lost') => {
       onUpdateLead(lead.id, { status: value });
       setOpen(false);
     };
+
+    // Close on outside click
+    useEffect(() => {
+      const onDoc = (ev: MouseEvent) => {
+        if (!ref.current) return;
+        if (!ref.current.contains(ev.target as Node)) setOpen(false);
+      };
+      if (open) document.addEventListener('mousedown', onDoc);
+      return () => document.removeEventListener('mousedown', onDoc);
+    }, [open]);
+
     return (
-      <div className="relative">
+      <div className="relative" ref={ref}>
         <button
           onClick={toggle}
+          aria-haspopup="menu"
+          aria-expanded={open}
           className="flex-1 lg:flex-none px-4 h-11 bg-amber-500 text-white rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-amber-600 transition-all flex items-center justify-center gap-2 shadow-md"
           title="Set outcome"
         >
           <Trophy size={16} />
         </button>
         {open && (
-          <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg shadow-lg z-50">
-            <button onClick={() => select('won')} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
-              <Trophy size={14} /> <span className="font-bold">Won</span>
-              <span className="text-xs text-slate-400 ml-auto">Closed deal</span>
+          <div role="menu" className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg shadow-xl z-50 py-1">
+            <button role="menuitem" onClick={() => select('won')} className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3">
+              <Trophy size={16} className="text-amber-500" />
+              <div>
+                <div className="font-bold">Won</div>
+                <div className="text-xs text-slate-400">Closed deal</div>
+              </div>
             </button>
-            <button onClick={() => select('stale')} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
-              <History size={14} /> <span className="font-bold">Stale</span>
-              <span className="text-xs text-slate-400 ml-auto">No recent activity</span>
+            <button role="menuitem" onClick={() => select('stale')} className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3">
+              <History size={16} className="text-slate-500" />
+              <div>
+                <div className="font-bold">Stale</div>
+                <div className="text-xs text-slate-400">No recent activity</div>
+              </div>
             </button>
-            <button onClick={() => select('lost')} className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2">
-              <X size={14} /> <span className="font-bold">Lost</span>
-              <span className="text-xs text-slate-400 ml-auto">Lead uninterested</span>
+            <button role="menuitem" onClick={() => select('lost')} className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3">
+              <X size={16} className="text-rose-500" />
+              <div>
+                <div className="font-bold">Lost</div>
+                <div className="text-xs text-slate-400">Lead uninterested</div>
+              </div>
             </button>
           </div>
         )}
