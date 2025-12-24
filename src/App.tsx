@@ -160,6 +160,14 @@ const AppContent: React.FC = () => {
     []
   );
 
+  // Keep a ref to the latest createNotification so an early-installed
+  // service-worker message listener can persist notifications even before
+  // React effects that depend on session run.
+  const createNotificationRef = React.useRef(createNotification);
+  React.useEffect(() => {
+    createNotificationRef.current = createNotification;
+  }, [createNotification]);
+
   // Fetch profile and leads when session changes
   useEffect(() => {
     const fetchProfile = async () => {
@@ -221,7 +229,9 @@ const AppContent: React.FC = () => {
     void fetchProfile();
   }, [session]);
 
-  // Listen for messages from the service worker (push events forwarded by SW)
+  // Listen for messages from the service worker (push events forwarded by SW).
+  // This listener is installed once (empty deps) so it can receive messages
+  // immediately after the SW claims the page — no refresh required.
   useEffect(() => {
     const onSWMessage = (ev: MessageEvent) => {
       try {
@@ -238,9 +248,12 @@ const AppContent: React.FC = () => {
             meta: payload.meta || {},
           };
           setNotifications(prev => [item, ...prev].slice(0, 100));
-          // Persist to server-side notifications table when user is logged in.
-          if (session) {
-            void createNotification(item.type, item.title, item.body, item.meta || {});
+          // Persist to server-side notifications using the ref to the latest
+          // createNotification callback. The callback itself will check session.
+          try {
+            createNotificationRef.current?.(item.type, item.title, item.body, item.meta || {});
+          } catch (e) {
+            console.warn('Failed to persist push notification', e);
           }
         }
       } catch (e) {
@@ -255,7 +268,7 @@ const AppContent: React.FC = () => {
         navigator.serviceWorker.removeEventListener('message', onSWMessage as any);
       }
     };
-  }, [session, createNotification]);
+  }, []);
 
   useEffect(() => {
     const fetchLeads = async () => {

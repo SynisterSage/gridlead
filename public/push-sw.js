@@ -1,3 +1,19 @@
+// Ensure new service worker takes control immediately so clients receive postMessage
+self.addEventListener('install', (event) => {
+  // Activate worker immediately
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    try {
+      await self.clients.claim();
+    } catch (e) {
+      console.warn('[push-sw] clients.claim failed', e?.message || e);
+    }
+  })());
+});
+
 self.addEventListener('push', (event) => {
   try {
     const data = event.data?.json ? event.data.json() : {};
@@ -5,8 +21,8 @@ self.addEventListener('push', (event) => {
     const title = (data && data.title) || 'GridLead';
     const options = {
       body: (data && data.body) || '',
-      icon: '/icon.png',
-      badge: '/icon.png',
+      icon: '/icon.svg',
+      badge: '/icon.svg',
       data: (data && data.url) || '/',
       // During testing, requireInteraction keeps the notification visible until dismissed.
       // Remove or set to false for production.
