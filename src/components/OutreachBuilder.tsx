@@ -51,6 +51,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const [manualPollLoading, setManualPollLoading] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [archivedLeads, setArchivedLeads] = useState<Lead[]>([]);
+  const archivedIds = useMemo(() => new Set(archivedLeads.map(a => a.id)), [archivedLeads]);
   const [archivedCount, setArchivedCount] = useState<number>(0);
   const [replyBody, setReplyBody] = useState('');
   const [isReplying, setIsReplying] = useState(false);
@@ -80,7 +81,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       // Use server-side function to fetch messages. The function runs with
       // the service role key and validates ownership, avoiding client-side
       // RLS restrictions that appear to be blocking reads in some sessions.
-      const includeArchived = !!(currentLead as any)?.archivedAt;
+      const includeArchived = archivedIds.has(leadId);
       const fn = await supabase.functions.invoke('outreach-messages', {
         method: 'POST',
         body: { leadId, includeArchived },
@@ -117,6 +118,10 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       console.error('fetchMessages unexpected error', err);
     }
   };
+
+  useEffect(() => {
+    setArchivedCount(archivedLeads.length);
+  }, [archivedLeads.length]);
 
   const fetchArchivedLeads = async () => {
     if (!profile?.id) return;
@@ -202,13 +207,17 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const lastInbound = useMemo(() => [...messages].find(m => m.direction === 'inbound'), [messages]);
   const lastSent = useMemo(() => [...messages].find(m => m.direction === 'sent'), [messages]);
 
-   const outreachLeads = useMemo(() => 
-    leads.filter(l => ['approved', 'sent', 'responded', 'won', 'stale', 'lost'].includes(l.status))
-  , [leads]);
+  const outreachLeads = useMemo(() => 
+    leads.filter(l => ['approved', 'sent', 'responded', 'won', 'stale', 'lost'].includes(l.status) && !archivedIds.has(l.id))
+  , [leads, archivedIds]);
 
-  const currentLead = useMemo(() => 
-    outreachLeads.find(l => l.id === selectedLeadId) || null
-  , [outreachLeads, selectedLeadId]);
+  const currentLead = useMemo(() => {
+    const fromActive = outreachLeads.find(l => l.id === selectedLeadId);
+    if (fromActive) return fromActive;
+    const fromArchived = archivedLeads.find(l => l.id === selectedLeadId);
+    if (fromArchived) return fromArchived;
+    return null;
+  }, [outreachLeads, archivedLeads, selectedLeadId]);
 
   useEffect(() => {
     if (currentLead) {
@@ -389,6 +398,18 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     const ref = React.useRef<HTMLDivElement | null>(null);
     const toggle = () => setOpen(v => !v);
     const select = (value: 'won'|'stale'|'lost') => {
+      // Immediately reflect archiving in the UI by moving the lead into archivedLeads
+      if (value === 'won' || value === 'stale' || value === 'lost') {
+        const now = new Date().toISOString();
+        setArchivedLeads(prev => {
+          // avoid duplicate
+          if (prev.some(p => p.id === lead.id)) return prev;
+          return [{ ...lead, archivedAt: now }, ...prev];
+        });
+      } else {
+        // if selecting a non-archived outcome, remove from archived local list
+        setArchivedLeads(prev => prev.filter(p => p.id !== lead.id));
+      }
       onUpdateLead(lead.id, { status: value });
       setOpen(false);
     };
