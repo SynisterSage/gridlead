@@ -419,10 +419,7 @@ const AppContent: React.FC = () => {
 
       if (notifChannelRef.current) {
         notifChannelRef.current.unsubscribe();
-        notifChannelRef.current = null;
       }
-
-      // Primary subscription: filtered by user_id on the server to reduce noise.
       const channel = supabase
         .channel('notifications-feed')
         .on(
@@ -430,6 +427,7 @@ const AppContent: React.FC = () => {
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
             (payload) => {
               const row: any = payload.new;
+              // Avoid duplicates if the client already inserted this notification.
               setNotifications(prev => {
                 if (prev.some(n => n.id === row.id)) return prev;
                 const next = [
@@ -449,60 +447,13 @@ const AppContent: React.FC = () => {
             }
         )
         .subscribe();
-
-      // Fallback subscription: listen to all notifications INSERTs and filter
-      // client-side. This catches cases where server-side filtering or mismatched
-      // user_id values prevent the filtered channel from delivering events.
-      const fallback = supabase
-        .channel('notifications-feed-all')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'notifications' },
-          (payload) => {
-            const row: any = payload.new;
-            try {
-              if (row.user_id !== session.user.id) return;
-            } catch (e) {
-              return;
-            }
-            setNotifications(prev => {
-              if (prev.some(n => n.id === row.id)) return prev;
-              const next = [
-                {
-                  id: row.id,
-                  type: row.type,
-                  title: row.title,
-                  body: row.body,
-                  created_at: row.created_at,
-                  unread: !row.read_at,
-                  meta: row.meta || {},
-                },
-                ...prev,
-              ].slice(0, 100);
-              return next;
-            });
-          }
-        )
-        .subscribe();
-
       notifChannelRef.current = channel;
-      // Store fallback in a symbol on the channel ref so we can unsubscribe both
-      // when cleaning up.
-      (notifChannelRef as any).fallback = fallback;
     };
     void setup();
 
     return () => {
       if (notifChannelRef.current) {
-        // unsubscribe primary channel
         notifChannelRef.current.unsubscribe();
-        // unsubscribe fallback if present
-        try {
-          const fb = (notifChannelRef as any).fallback;
-          if (fb) fb.unsubscribe();
-        } catch (e) {
-          /* ignore */
-        }
         notifChannelRef.current = null;
       }
     };
