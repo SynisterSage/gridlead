@@ -392,6 +392,26 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     }
   };
 
+  const handleDeleteCurrentLead = async () => {
+    if (!currentLead) return;
+    // Optimistically remove from archived list if archived
+    if ((currentLead as any).archivedAt) {
+      setArchivedLeads(prev => prev.filter(p => p.id !== currentLead.id));
+      setArchivedCount(c => Math.max(0, c - 1));
+    }
+    // Clear selection to avoid showing stale UI
+    setSelectedLeadId(null);
+    try {
+      // Call parent handler (may be async)
+      await onDeleteLead(currentLead.id);
+    } catch (err) {
+      console.error('delete lead failed', err);
+    } finally {
+      // Refresh archived list from server to reconcile state
+      try { void fetchArchivedLeads(); void fetchArchivedCount(); } catch (e) { /* ignore */ }
+    }
+  };
+
   // Outcome menu component (inline) - keeps appearance compact and calls onUpdateLead
   const OutcomeMenu: React.FC<{ lead: Lead; onUpdateLead: (id: string, updates: Partial<Lead>) => void }> = ({ lead, onUpdateLead }) => {
     const [open, setOpen] = useState(false);
@@ -691,7 +711,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                       </div>
                       
                       <div className="flex gap-3 w-full lg:w-auto">
-                        <button onClick={() => onDeleteLead(currentLead.id)} className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all">
+                        <button onClick={handleDeleteCurrentLead} className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all">
                           <Trash2 size={18} />
                         </button>
                         {(currentLead && !currentLead.archivedAt && (currentLead.sentAt || ['sent','responded','won','stale','lost'].includes(currentLead.status))) && (
