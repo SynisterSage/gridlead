@@ -50,6 +50,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const [recipientEmail, setRecipientEmail] = useState('');
   const [manualPollLoading, setManualPollLoading] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
+  const [archivedLeads, setArchivedLeads] = useState<Lead[]>([]);
+  const [archivedCount, setArchivedCount] = useState<number>(0);
   const [replyBody, setReplyBody] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
@@ -78,9 +80,10 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       // Use server-side function to fetch messages. The function runs with
       // the service role key and validates ownership, avoiding client-side
       // RLS restrictions that appear to be blocking reads in some sessions.
+      const includeArchived = !!(currentLead as any)?.archivedAt;
       const fn = await supabase.functions.invoke('outreach-messages', {
         method: 'POST',
-        body: { leadId },
+        body: { leadId, includeArchived },
       });
 
       const fnPayload = (fn as any)?.data ?? (fn as any);
@@ -114,6 +117,70 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       console.error('fetchMessages unexpected error', err);
     }
   };
+
+  const fetchArchivedLeads = async () => {
+    if (!profile?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('user_id', profile.id)
+        .not('archived_at', 'is', null)
+        .order('archived_at', { ascending: false });
+      if (error) {
+        console.error('fetchArchivedLeads error', error);
+        return;
+      }
+      const mapped = (data || []).map((row: any) => ({
+        id: row.id,
+        placeId: row.place_id || undefined,
+        name: row.name,
+        category: row.category || 'Business',
+        rating: Number(row.rating) || 0,
+        lastScan: row.updated_at ? new Date(row.updated_at).toLocaleDateString() : 'Recently',
+        createdAt: row.created_at ? new Date(row.created_at).getTime() : undefined,
+        updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
+        website: row.website || 'No website',
+        address: row.address || undefined,
+        lat: row.lat ?? undefined,
+        lng: row.lng ?? undefined,
+        status: row.status || 'pending',
+        sentAt: row.sent_at ? new Date(row.sent_at).getTime() : undefined,
+        draftSubject: row.draft_subject || undefined,
+        draftBody: row.draft_body || undefined,
+        archivedAt: row.archived_at || null,
+        score: {
+          design: row.score_design ?? 50,
+          performance: row.score_performance ?? 50,
+          reviews: row.score_reviews ?? 50,
+          trust: row.score_trust ?? 50,
+        },
+        notes: row.notes || '',
+      })) as Lead[];
+      setArchivedLeads(mapped);
+      setArchivedCount(mapped.length);
+    } catch (err) {
+      console.error('fetchArchivedLeads unexpected', err);
+    }
+  };
+
+  const fetchArchivedCount = async () => {
+    if (!profile?.id) return setArchivedCount(0);
+    try {
+      const { count, error } = await supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: false })
+        .eq('user_id', profile.id)
+        .not('archived_at', 'is', null);
+      if (!error) setArchivedCount(count || 0);
+    } catch (err) {
+      console.warn('fetchArchivedCount error', err);
+    }
+  };
+
+  useEffect(() => {
+    void fetchArchivedCount();
+  }, [profile?.id]);
 
   const ensureLeadEmail = async (leadId: string) => {
     if (recipientEmail) return;
@@ -153,6 +220,13 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       ensureLeadEmail(currentLead.id);
     }
   }, [selectedLeadId, currentLead]);
+
+  // When the user selects Archived filter, fetch archived leads
+  useEffect(() => {
+    if (activeFilter === 'archived') {
+      void fetchArchivedLeads();
+    }
+  }, [activeFilter]);
 
   useEffect(() => {
     if (!selectedLeadId && outreachLeads.length > 0) {
@@ -370,6 +444,10 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   };
 
   const filtered = useMemo(() => {
+    // Archived is handled separately and sourced from archivedLeads
+    if (activeFilter === 'archived') {
+      return archivedLeads.filter(l => l.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
     return outreachLeads.filter(l => {
       const matchesSearch = l.name.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
@@ -382,7 +460,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       if (activeFilter === 'lost') return l.status === 'lost';
       return true;
     });
-  }, [outreachLeads, activeFilter, searchQuery]);
+  }, [outreachLeads, activeFilter, searchQuery, archivedLeads]);
 
   const opportunities = useMemo(() => 
     filtered.filter(l => l.status === 'approved').reverse()
@@ -495,13 +573,18 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   />
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  {(['all', 'drafts', 'outbound', 'replied', 'won', 'stale', 'lost'] as OutreachFilter[]).map(f => (
+                  {(['all', 'drafts', 'outbound', 'replied', 'won', 'stale', 'lost', 'archived'] as OutreachFilter[]).map(f => (
                     <button 
                       key={f}
                       onClick={() => setActiveFilter(f)}
                       className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all shrink-0 ${activeFilter === f ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-100 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
                     >
-                      {f.replace('drafts', 'Drafts').replace('outbound', 'Outbound').replace('replied', 'Replied').replace('won', 'Won').replace('stale', 'Stale').replace('lost', 'Lost')}
+                      <span className="inline-flex items-center gap-2">
+                        <span>{f.replace('drafts', 'Drafts').replace('outbound', 'Outbound').replace('replied', 'Replied').replace('won', 'Won').replace('stale', 'Stale').replace('lost', 'Lost').replace('archived', 'Archived')}</span>
+                        {f === 'archived' && archivedCount > 0 && (
+                          <span className="text-[10px] font-bold bg-slate-900 text-white rounded-full px-2 py-0.5">{archivedCount}</span>
+                        )}
+                      </span>
                     </button>
                   ))}
                 </div>

@@ -26,6 +26,7 @@ export interface Lead {
   sentAt?: number; 
   draftSubject?: string;
   draftBody?: string;
+  archivedAt?: string | number | null;
   score: {
     design: number;
     performance: number;
