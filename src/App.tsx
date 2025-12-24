@@ -728,12 +728,61 @@ const AppContent: React.FC = () => {
     }
     // Log payload for debugging (make sure place_id is included)
     console.debug('leads.upsert payload', payload);
-    // Choose onConflict target depending on whether place_id is provided.
-    // The DB has a partial unique index on (user_id, place_id) WHERE place_id IS NOT NULL.
-    // If place_id is null, Postgres reports 42P10 because no matching unique constraint exists.
-    const conflictTarget = payload.place_id ? ['user_id', 'place_id'] : 'id';
-    const { data, error } = await supabase.from('leads').upsert(payload, { onConflict: conflictTarget }).select('*').single();
-    // Log DB error details for troubleshooting (show full error object)
+
+    // Use safe select-then-insert/update flow to avoid ON CONFLICT errors (42P10)
+    let data = null;
+    let error = null;
+    try {
+      if (payload.place_id) {
+        // If place_id is present, check for existing lead with that unique key
+        const { data: existing, error: selErr } = await supabase
+          .from('leads')
+          .select('id')
+          .eq('user_id', session.user.id)
+          .eq('place_id', payload.place_id)
+          .maybeSingle();
+        if (selErr) {
+          console.error('leads.select error', JSON.stringify(selErr));
+        }
+
+        if (existing && existing.id) {
+          const { data: updated, error: updErr } = await supabase
+            .from('leads')
+            .update(payload)
+            .eq('id', existing.id)
+            .select('*')
+            .single();
+          data = updated;
+          error = updErr;
+        } else {
+          const { data: inserted, error: insErr } = await supabase
+            .from('leads')
+            .insert(payload)
+            .select('*')
+            .single();
+          data = inserted;
+          error = insErr;
+        }
+      } else if (payload.id) {
+        // If we have an id, upsert on id is safe
+        const res = await supabase.from('leads').upsert(payload, { onConflict: 'id' }).select('*').single();
+        data = res.data;
+        error = res.error;
+      } else {
+        // Fallback: plain insert
+        const { data: inserted, error: insErr } = await supabase
+          .from('leads')
+          .insert(payload)
+          .select('*')
+          .single();
+        data = inserted;
+        error = insErr;
+      }
+    } catch (err) {
+      console.error('leads.upsert exception', err);
+      error = err as any;
+    }
+
     if (error) console.error('leads.upsert error', JSON.stringify(error));
     if (!error && data) {
       setLeads(prev => [{
