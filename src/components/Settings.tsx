@@ -99,6 +99,15 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
 
   const billingRowRef = React.useRef<HTMLDivElement | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const planLimits = getPlanLimits(profile?.plan);
+  const leadLimit = planLimits.leadLimit;
+  const leadsUsed = profile?.leads_used_this_month ?? 0;
+  const leadsPct = leadLimit ? Math.min(100, Math.round((leadsUsed / (leadLimit || 1)) * 100)) : 0;
+  let leadBarColor = 'bg-emerald-500';
+  if (leadLimit) {
+    if (leadsPct >= 100) leadBarColor = 'bg-rose-500';
+    else if (leadsPct >= 80) leadBarColor = 'bg-amber-400';
+  }
 
   const saveBio = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
@@ -409,8 +418,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       <>
                         <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
                           <div
-                            className="h-3 bg-emerald-500"
-                            style={{ width: `${Math.min(100, Math.round(((profile?.leads_used_this_month ?? 0) / (getPlanLimits(profile?.plan).leadLimit || 1)) * 100))}%` }}
+                            className={`h-3 ${leadBarColor}`}
+                            style={{ width: `${leadsPct}%` }}
                           />
                         </div>
                         <div className="text-[10px] font-bold text-slate-500 mt-2">{(profile?.leads_used_this_month ?? 0)} / {getPlanLimits(profile?.plan).leadLimit} leads this month</div>
@@ -457,10 +466,20 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Connected Channels</p>
                   </div>
                 </div>
-                <button onClick={handleGmailConnect} disabled={isConnecting} className="w-full sm:w-auto px-5 h-10 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-slate-900/10">
-                  {isConnecting ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={14} />} 
-                  Connect Gmail
-                </button>
+                <div className="flex items-center gap-3">
+                  <div className="text-right hidden sm:block">
+                    {getPlanLimits(profile?.plan).senderLimit ? (
+                      <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{connectedEmails.length} / {getPlanLimits(profile?.plan).senderLimit} seats</div>
+                    ) : (
+                      <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Unlimited seats</div>
+                    )}
+                    <div className="text-[9px] text-slate-400">Sender seats used</div>
+                  </div>
+                  <button onClick={handleGmailConnect} disabled={isConnecting} className="w-full sm:w-auto px-5 h-10 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-slate-900/10">
+                    {isConnecting ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={14} />} 
+                    Connect Gmail
+                  </button>
+                </div>
               </div>
               <div className="space-y-3">
                 {connectedEmails.length === 0 ? (
