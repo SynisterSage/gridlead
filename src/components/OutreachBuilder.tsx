@@ -33,7 +33,7 @@ interface OutreachBuilderProps {
   profile?: Profile | null;
 }
 
- type OutreachFilter = 'drafts' | 'outbound' | 'replied' | 'won' | 'stale' | 'lost' | 'all';
+type OutreachFilter = 'drafts' | 'outbound' | 'replied' | 'all' | 'archived';
 type ViewMode = 'list' | 'pipeline';
 
 const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, onDeleteLead, profile }) => {
@@ -59,9 +59,6 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       drafts: 0,
       outbound: 0,
       replied: 0,
-      won: 0,
-      stale: 0,
-      lost: 0,
       archived: archivedLeads.length || 0,
     };
     // Count non-archived leads for active filters
@@ -71,9 +68,6 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       if (!isArchived && l.status === 'approved') counts.drafts += 1;
       if (!isArchived && l.status === 'sent') counts.outbound += 1;
       if (!isArchived && l.status === 'responded') counts.replied += 1;
-      if (!isArchived && l.status === 'won') counts.won += 1;
-      if (!isArchived && l.status === 'stale') counts.stale += 1;
-      if (!isArchived && l.status === 'lost') counts.lost += 1;
     });
     // 'all' should include archived as well? keep as non-archived to match active list behavior
     return counts;
@@ -234,7 +228,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const lastSent = useMemo(() => [...messages].find(m => m.direction === 'sent'), [messages]);
 
   const outreachLeads = useMemo(() => 
-    leads.filter(l => ['approved', 'sent', 'responded', 'won', 'stale', 'lost'].includes(l.status) && !archivedIds.has(l.id))
+    leads.filter(l => ['approved', 'sent', 'responded'].includes(l.status) && !archivedIds.has(l.id))
   , [leads, archivedIds]);
 
   const currentLead = useMemo(() => {
@@ -533,9 +527,6 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       if (activeFilter === 'drafts') return l.status === 'approved';
       if (activeFilter === 'outbound') return l.status === 'sent';
       if (activeFilter === 'replied') return l.status === 'responded';
-      if (activeFilter === 'won') return l.status === 'won';
-      if (activeFilter === 'stale') return l.status === 'stale';
-      if (activeFilter === 'lost') return l.status === 'lost';
       return true;
     });
   }, [outreachLeads, activeFilter, searchQuery, archivedLeads]);
@@ -553,7 +544,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       { id: 'drafts', label: 'Drafts', leads: outreachLeads.filter(l => l.status === 'approved'), color: 'bg-blue-500' },
       { id: 'outbound', label: 'Outbound', leads: outreachLeads.filter(l => l.status === 'sent'), color: 'bg-slate-400' },
       { id: 'replied', label: 'Replied', leads: outreachLeads.filter(l => l.status === 'responded'), color: 'bg-emerald-500' },
-      { id: 'won', label: 'Closed Won', leads: outreachLeads.filter(l => l.status === 'won'), color: 'bg-amber-500' },
+      // 'Won' is an archived-only status and is excluded from the live pipeline
     ];
 
     return (
@@ -651,14 +642,14 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   />
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  {(['all', 'drafts', 'outbound', 'replied', 'won', 'stale', 'lost', 'archived'] as OutreachFilter[]).map(f => (
+                  {(['all', 'drafts', 'outbound', 'replied', 'archived'] as OutreachFilter[]).map(f => (
                     <button 
                       key={f}
                       onClick={() => setActiveFilter(f)}
                       className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all shrink-0 ${activeFilter === f ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-100 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
                     >
                       <span className="inline-flex items-center gap-2">
-                        <span>{f.replace('drafts', 'Drafts').replace('outbound', 'Outbound').replace('replied', 'Replied').replace('won', 'Won').replace('stale', 'Stale').replace('lost', 'Lost').replace('archived', 'Archived')}</span>
+                        <span>{f.replace('drafts', 'Drafts').replace('outbound', 'Outbound').replace('replied', 'Replied').replace('archived', 'Archived')}</span>
                         {filterCounts[f] > 0 && (
                           <span className="text-[10px] font-bold bg-slate-900 text-white rounded-full px-2 py-0.5">{filterCounts[f]}</span>
                         )}
@@ -691,13 +682,9 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   </>
                 )}
                             {(() => {
-                              const showForStatus = ['won', 'stale', 'lost'];
-                              const archivedVisible = activeFilter === 'all' || activeFilter === 'archived' || showForStatus.includes(activeFilter as any);
+                              const archivedVisible = activeFilter === 'all' || activeFilter === 'archived';
                               if (!archivedVisible) return null;
-                              const archivedToShow = showForStatus.includes(activeFilter as any)
-                                ? archivedLeads.filter(l => l.status === activeFilter)
-                                : archivedLeads;
-                              if (!archivedToShow || archivedToShow.length === 0) return null;
+                              if (!archivedLeads || archivedLeads.length === 0) return null;
                               return (
                                 <>
                                   <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-6">
@@ -705,7 +692,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                                       <History size={12} /> Archived Threads
                                     </span>
                                   </div>
-                                  {archivedToShow.map(lead => (
+                                  {archivedLeads.map(lead => (
                                     <LeadCard key={lead.id} lead={lead} />
                                   ))}
                                 </>
@@ -755,7 +742,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                             </a>
                             <span className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest truncate">• {currentLead.category}</span>
                           </div>
-                          {(currentLead.archivedAt || ['sent','responded','won','stale','lost'].includes(currentLead.status)) && (currentLead.email || recipientEmail) && (
+                          {(currentLead.archivedAt || currentLead.sentAt || currentLead.status === 'responded') && (currentLead.email || recipientEmail) && (
                             <a href={`mailto:${currentLead.email || recipientEmail}`} className="inline-flex items-center gap-2 bg-slate-50/8 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-full px-3 py-1 text-[12px] font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors max-w-[260px]">
                               <Mail size={14} />
                               <span className="truncate">{currentLead.email || recipientEmail}</span>
@@ -768,10 +755,10 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                         <button onClick={handleDeleteCurrentLead} className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all">
                           <Trash2 size={18} />
                         </button>
-                        {(currentLead && !currentLead.archivedAt && (currentLead.sentAt || ['sent','responded','won','stale','lost'].includes(currentLead.status))) && (
+                        {(currentLead && !currentLead.archivedAt && (currentLead.sentAt || ['sent','responded'].includes(currentLead.status))) && (
                           <OutcomeMenu lead={currentLead} onUpdateLead={onUpdateLead} />
                         )}
-                        {!['sent', 'responded', 'won', 'stale', 'lost'].includes(currentLead.status) && (
+                        {!['sent', 'responded'].includes(currentLead.status) && (
                           <button 
                             onClick={handleGenerate} 
                             disabled={isGenerating}
@@ -792,7 +779,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   {/* Editor Body */}
                   <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 custom-scrollbar bg-slate-50/10 dark:bg-slate-950 pb-32">
                     <div className="max-w-4xl mx-auto space-y-8">
-                      {['sent', 'responded', 'won', 'stale', 'lost'].includes(currentLead.status) ? (
+                      { (['sent', 'responded'].includes(currentLead.status) || currentLead.archivedAt) ? (
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -916,7 +903,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   </div>
 
                   {/* Footer Action Area */}
-                  {!['sent', 'responded', 'won', 'stale', 'lost'].includes(currentLead.status) && (
+                      {!['sent', 'responded'].includes(currentLead.status) && (
                     <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent pointer-events-none z-20">
                       <div className="max-w-4xl mx-auto pointer-events-auto">
                         <button 
