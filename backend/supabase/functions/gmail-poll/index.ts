@@ -1,93 +1,103 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+          if (direction === "inbound") {
+            await supabase.from("leads").update({ status: "responded" }).eq("id", th.lead_id);
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+            // Determine the owner user_id for this lead; prefer the lead owner
+            // so the notification is visible to the correct user in the UI.
+            let notifyUserId = acct.user_id;
+            try {
+              const { data: leadRow } = await supabase.from('leads').select('user_id').eq('id', th.lead_id).maybeSingle();
+              if (leadRow?.user_id) notifyUserId = leadRow.user_id;
+            } catch (e) {
+              console.warn('Failed to resolve lead owner, falling back to account user', e);
+            }
 
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  global: { headers: { "x-client-info": "gmail-poll-fn" } },
-});
+            // Create an in-app notification for inbound replies so the frontend
+            // (Notification Center / realtime feed) can show it immediately.
+            // Guard: only create one recent notification per lead to avoid spam
+            // (5 minute window). Use the resolved notifyUserId for checks and inserts.
+            try {
+              const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+              const { data: existing, error: existErr } = await supabase
+                .from('notifications')
+                .select('id')
+                .eq('user_id', notifyUserId)
+                .eq('type', 'reply')
+                .filter('meta->>leadId', 'eq', String(th.lead_id))
+                .gte('created_at', fiveMinAgo)
+                .limit(1)
+                .maybeSingle();
+              if (!existErr && !existing) {
+                const title = subject ? `Reply: ${subject}` : `Reply from thread`;
+                const bodyText = cleanSnippetForNotification(snippet) || subject || 'You have a new reply.';
+                // Insert and capture created row so we can include its id in the
+                // push payload (serverNotificationId) to help clients de-dup.
+                const { data: created, error: createErr } = await supabase.from('notifications').insert({
+                  user_id: notifyUserId,
+                  type: 'reply',
+                  title,
+                  body: bodyText,
+                  channel: 'in_app',
+                  meta: {
+                    leadId: th.lead_id,
+                    threadId: th.id,
+                    gmail_thread_id: m.threadId || th.thread_id,
+                  },
+                }).select().maybeSingle();
 
-interface PollRequest {
-  userId?: string;
-}
+                const serverNotificationId = created?.id || null;
 
-const manualCooldownMs = 60_000; // 1 minute per user for manual trigger
-const manualMap = new Map<string, number>();
-
-Deno.serve(async (req) => {
-  try {
-    if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-    const isManual = req.method === "POST";
-    const body: PollRequest = isManual ? await req.json().catch(() => ({})) : {};
-    const userId = body.userId || null;
-
-    if (isManual && userId) {
-      const last = manualMap.get(userId) || 0;
-      if (Date.now() - last < manualCooldownMs) {
-        return new Response("Too many requests", { status: 429, headers: corsHeaders });
-      }
-      manualMap.set(userId, Date.now());
-    }
-
-    // Fetch primary gmail accounts
-    const { data: accounts, error: acctErr } = await supabase
-      .from("gmail_accounts")
-      .select("id, user_id, email, is_primary")
-      .eq("is_primary", true);
-    if (acctErr) return respondError("Account fetch error", acctErr);
-
-    const results: Array<{ accountId: string; newMessages: number }> = [];
-
-    for (const acct of accounts || []) {
-      const token = await getAccessToken(acct.id);
-      if (!token) continue;
-
-      // threads for this account
-      const { data: threads } = await supabase
-        .from("email_threads")
-        .select("id, thread_id, lead_id")
-        .eq("gmail_account_id", acct.id);
-      if (!threads?.length) continue;
-
-      let newMsgs = 0;
-      for (const th of threads) {
-        if (!th.thread_id) continue;
-        const threadRes = await fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/threads/${th.thread_id}?format=metadata`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        if (!threadRes.ok) continue;
-        const threadJson = await threadRes.json();
-        const messages = threadJson?.messages || [];
-        for (const m of messages) {
-          const gmId = m.id as string;
-          // skip if exists
-          const { data: exists } = await supabase
-            .from("email_messages")
-            .select("id")
-            .eq("thread_id", th.id)
-            .eq("gmail_message_id", gmId)
-            .maybeSingle();
-          if (exists) continue;
-
-          const headers = m?.payload?.headers || [];
-          const subject = headerVal(headers, "Subject") || "";
-          const from = headerVal(headers, "From") || "";
-          const dateHeader = headerVal(headers, "Date") || "";
-          const messageIdHeader = headerVal(headers, "Message-ID");
-          const sentAt = dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString();
-          const snippet = m.snippet || "";
-          // Determine direction by extracting addresses from the From header and
-          // comparing canonicalized addresses to the account's email. This avoids
-          // false positives when the From header contains display names or extra text.
-          const senderEmails = extractEmails(from);
-          const acctEmail = (acct.email || "").toLowerCase();
-          const direction = senderEmails.some(e => e === acctEmail) ? "sent" : "inbound";
-
+                // If we have service role key and supabase URL, try to send a push
+                // to any saved web push subscriptions for this user so the client
+                // receives the notification immediately (hot update).
+                try {
+                  const { data: subs } = await supabase
+                    .from('web_push_subscriptions')
+                    .select('*')
+                    .eq('user_id', notifyUserId);
+                  if (subs && subs.length) {
+                    for (const s of subs) {
+                      try {
+                        // Prefer calling app-hosted Node fallback which supports
+                        // encrypted payloads so the service worker receives the
+                        // payload and app can hot-insert the notification.
+                        const appBase = Deno.env.get('APP_BASE_URL') || Deno.env.get('VITE_SITE_URL') || '';
+                        const sendPushUrl = appBase ? `${appBase.replace(/\/$/, '')}/api/send-push` : `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`;
+                        await fetch(sendPushUrl, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
+                            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''}`,
+                          },
+                          body: JSON.stringify({
+                            subscription: s.subscription,
+                            payload: {
+                              type: 'reply',
+                              title,
+                              body: bodyText,
+                              meta: {
+                                leadId: th.lead_id,
+                                threadId: th.id,
+                                gmail_thread_id: m.threadId || th.thread_id,
+                                serverNotificationId,
+                              },
+                            },
+                          }),
+                        });
+                      } catch (pushErr) {
+                        console.warn('Failed to send push for reply', pushErr);
+                      }
+                    }
+                  }
+                } catch (pushQueryErr) {
+                  console.warn('Failed to load web_push_subscriptions', pushQueryErr);
+                }
+              }
+            } catch (notifErr) {
+              console.warn('Failed to create reply notification', notifErr);
+            }
+          }
           await supabase.from("email_messages").insert({
             thread_id: th.id,
             gmail_message_id: gmId,
@@ -126,7 +136,7 @@ Deno.serve(async (req) => {
                 .maybeSingle();
               if (!existErr && !existing) {
                 const title = subject ? `Reply: ${subject}` : `Reply from thread`;
-                const bodyText = snippet || subject || 'You have a new reply.';
+                const bodyText = cleanSnippetForNotification(snippet) || subject || 'You have a new reply.';
                 // Insert and capture created row so we can include its id in the
                 // push payload (serverNotificationId) to help clients de-dup.
                 const { data: created, error: createErr } = await supabase.from('notifications').insert({
@@ -157,7 +167,12 @@ Deno.serve(async (req) => {
                       try {
                         // Call the send-push function endpoint with service role key
                         // so it can deliver the push.
-                        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`, {
+                        // Prefer calling app-hosted Node fallback which supports
+                        // encrypted payloads so the service worker receives the
+                        // payload and app can hot-insert the notification.
+                        const appBase = Deno.env.get('APP_BASE_URL') || Deno.env.get('VITE_SITE_URL') || '';
+                        const sendPushUrl = appBase ? `${appBase.replace(/\/$/, '')}/api/send-push` : `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`;
+                        await fetch(sendPushUrl, {
                           method: 'POST',
                           headers: {
                             'Content-Type': 'application/json',
@@ -222,6 +237,24 @@ function extractEmails(text: string | null): string[] {
     out.push(m[1]);
   }
   return out;
+}
+
+function decodeHtmlEntities(str: string) {
+  return str.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
+function cleanSnippetForNotification(raw: string) {
+  if (!raw) return '';
+  let s = decodeHtmlEntities(raw);
+  // Split into lines and remove quoted sections and common reply headers
+  const lines = s.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const filtered = lines.filter(l => !/^(on\s.+wrote:)|(^>+)|(^--+Original)|(^from:)|(^to:)|(^sent:)/i.test(l));
+  if (filtered.length === 0) return lines[0] || s;
+  // Prefer the first short meaningful line
+  for (const line of filtered) {
+    if (line.length > 20) return line;
+  }
+  return filtered[0] || lines[0] || s;
 }
 
 async function getAccessToken(accountId: string): Promise<string | null> {
