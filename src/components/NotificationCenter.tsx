@@ -75,8 +75,13 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 >
                   <div className={`w-2 h-2 rounded-full mt-1.5 ${badgeColor(n.type)}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate">{n.title}</p>
+                      <p className="text-sm font-bold truncate">{n.title}</p>
                     <p className="text-[11px] text-slate-400 leading-snug">{n.body}</p>
+                      {n.meta?.icon ? (
+                        <div className="mt-2">
+                          <img src={n.meta.icon} alt="icon" className="w-10 h-10 rounded-md object-cover" />
+                        </div>
+                      ) : null}
                     <div className="flex items-center gap-2 mt-2 text-[10px] uppercase tracking-[0.2em] text-slate-500">
                       <Clock size={10} />
                       <span>{new Date(n.created_at).toLocaleString()}</span>

@@ -221,6 +221,42 @@ const AppContent: React.FC = () => {
     void fetchProfile();
   }, [session]);
 
+  // Listen for messages from the service worker (push events forwarded by SW)
+  useEffect(() => {
+    const onSWMessage = (ev: MessageEvent) => {
+      try {
+        const msg = ev.data || {};
+        if (msg.type === 'push:received') {
+          const payload = msg.payload || {};
+          const item: NotificationItem = {
+            id: `push-${Date.now()}`,
+            type: (payload.type as any) || 'reply',
+            title: payload.title || 'Notification',
+            body: payload.body || '',
+            created_at: new Date().toISOString(),
+            unread: true,
+            meta: payload.meta || {},
+          };
+          setNotifications(prev => [item, ...prev].slice(0, 100));
+          // Persist to server-side notifications table when user is logged in.
+          if (session) {
+            void createNotification(item.type, item.title, item.body, item.meta || {});
+          }
+        }
+      } catch (e) {
+        console.warn('SW message handler error', e);
+      }
+    };
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', onSWMessage as any);
+    }
+    return () => {
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', onSWMessage as any);
+      }
+    };
+  }, [session, createNotification]);
+
   useEffect(() => {
     const fetchLeads = async () => {
       if (!session) return;

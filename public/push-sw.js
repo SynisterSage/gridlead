@@ -14,7 +14,19 @@ self.addEventListener('push', (event) => {
       tag: 'gridlead-push',
       renotify: true,
     };
-    event.waitUntil(self.registration.showNotification(title, options));
+    // Use a single async task for showNotification + client.postMessage so we can
+    // await inside it and pass the promise to event.waitUntil.
+    event.waitUntil((async () => {
+      await self.registration.showNotification(title, options);
+      try {
+        const clientsArr = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+        for (const client of clientsArr) {
+          client.postMessage({ type: 'push:received', payload: data || {} });
+        }
+      } catch (pmErr) {
+        console.warn('[push-sw] failed to postMessage to clients', pmErr?.message || pmErr);
+      }
+    })());
   } catch (e) {
     console.error('[push-sw] error handling push', e);
   }
