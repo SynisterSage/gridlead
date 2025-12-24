@@ -62,6 +62,7 @@ const AppContent: React.FC = () => {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
   const notifChannelRef = React.useRef<RealtimeChannel | null>(null);
   const notifDefaults = {
     leads: true,
@@ -148,6 +149,15 @@ const AppContent: React.FC = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const uid = sessionData.session?.user?.id;
       if (!uid) return;
+      // Certain event types are noisy as persistent in-app items and are
+      // better surfaced as ephemeral toasts. Show a toast and skip DB insert
+      // for those types.
+      if (type === 'send_failed' || type === 'gmail_disconnected') {
+        setToast(title || body || 'Notification');
+        window.setTimeout(() => setToast(null), 4000);
+        return;
+      }
+
       // Insert and return the created row so we can optimistically update UI
       const insert = await supabase.from('notifications').insert({
         user_id: uid,
@@ -835,6 +845,14 @@ const AppContent: React.FC = () => {
         onMarkRead={markNotificationRead}
         onDelete={deleteNotification}
       />
+      {toast && (
+        <div className="fixed top-8 right-8 z-[100] pointer-events-auto">
+          <div className="bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-800 dark:border-slate-100">
+            <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center" />
+            <span className="text-xs font-bold uppercase tracking-widest">{toast}</span>
+          </div>
+        </div>
+      )}
       <NavigationDock 
         activeView={activeView} 
         setActiveView={setActiveView} 

@@ -81,7 +81,12 @@ Deno.serve(async (req) => {
           const messageIdHeader = headerVal(headers, "Message-ID");
           const sentAt = dateHeader ? new Date(dateHeader).toISOString() : new Date().toISOString();
           const snippet = m.snippet || "";
-          const direction = from.toLowerCase().includes((acct.email || "").toLowerCase()) ? "sent" : "inbound";
+          // Determine direction by extracting addresses from the From header and
+          // comparing canonicalized addresses to the account's email. This avoids
+          // false positives when the From header contains display names or extra text.
+          const senderEmails = extractEmails(from);
+          const acctEmail = (acct.email || "").toLowerCase();
+          const direction = senderEmails.some(e => e === acctEmail) ? "sent" : "inbound";
 
           await supabase.from("email_messages").insert({
             thread_id: th.id,
@@ -122,6 +127,18 @@ Deno.serve(async (req) => {
 function headerVal(headers: any[], name: string): string | null {
   const h = headers.find((x) => (x.name || "").toLowerCase() === name.toLowerCase());
   return h?.value || null;
+}
+
+function extractEmails(text: string | null): string[] {
+  if (!text) return [];
+  const lower = text.toLowerCase();
+  const re = /([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/g;
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(lower)) !== null) {
+    out.push(m[1]);
+  }
+  return out;
 }
 
 async function getAccessToken(accountId: string): Promise<string | null> {
