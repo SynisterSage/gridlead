@@ -34,6 +34,8 @@ interface SendRequest {
 async function tryDeleteSubscription(endpoint: string) {
   if (!supabase) return;
   try {
+    // No request object available here — keep deletion logic focused and
+    // avoid referencing request-scoped variables.
     await supabase.from('web_push_subscriptions').delete().eq('endpoint', endpoint);
     console.log('Deleted expired subscription:', endpoint);
   } catch (e) {
@@ -43,6 +45,26 @@ async function tryDeleteSubscription(endpoint: string) {
 
 Deno.serve(async (req) => {
   try {
+    // Log incoming request (method, url, and whether the common auth headers
+    // are present). This helps detect whether the function is being invoked
+    // at all or whether the request is blocked upstream (Supabase ingress).
+    try {
+      const authHeader = req.headers.get('authorization') || '';
+      const authPrefix = authHeader.split(' ')[0] || '';
+      const authTokenLen = authHeader.split(' ')[1]?.length || 0;
+      console.log('send-push incoming', {
+        method: req.method,
+        url: req.url,
+        origin: req.headers.get('origin') || req.headers.get('referer') || 'unknown',
+        hasApikey: !!req.headers.get('apikey'),
+        hasAuth: !!authHeader,
+        authPrefix,
+        authTokenLen,
+      });
+    } catch (diag) {
+      console.warn('send-push incoming diag failed', diag?.message || diag);
+    }
+
     // Answer preflight immediately before attempting to load server modules
     if (req.method === 'OPTIONS') return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
     if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
@@ -215,6 +237,16 @@ Deno.serve(async (req) => {
       headers.set('Crypto-Key', `p256ecdsa=${pubB64Url}`);
 
       const resp = await fetch(endpoint, { method: 'POST', headers, body: '' });
+      // Read the push response body once, use for logging and diagnosis.
+      const pushResponseText = await resp.text().catch(() => '');
+      const bodySnippet = pushResponseText.slice(0, 1000);
+      console.log('push endpoint response', { endpoint, status: resp.status, statusText: resp.statusText, bodySnippet });
+      // If the push gateway specifically reports a VAPID credential mismatch,
+      // return a clear, actionable error so the frontend can prompt re-subscribe.
+      if (resp.status === 403 && /vapid credentials/i.test(pushResponseText)) {
+        console.warn('VAPID mismatch detected for endpoint', endpoint);
+        return new Response(JSON.stringify({ error: 'vapid_mismatch', message: 'VAPID key pair used to create this subscription does not match server VAPID keys. Client must re-subscribe.' }), { status: 400, headers: corsHeaders });
+      }
       if (resp.status === 410 || resp.status === 404) {
         await tryDeleteSubscription(endpoint);
       }

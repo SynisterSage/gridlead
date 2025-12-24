@@ -1,16 +1,27 @@
 self.addEventListener('push', (event) => {
-  const data = event.data?.json() || {};
-  const title = data.title || 'GridLead';
-  const options = {
-    body: data.body || '',
-    icon: '/icon.png',
-    badge: '/icon.png',
-    data: data.url || '/',
-  };
-  event.waitUntil(self.registration.showNotification(title, options));
+  try {
+    const data = event.data?.json ? event.data.json() : {};
+    console.log('[push-sw] push event received', data);
+    const title = (data && data.title) || 'GridLead';
+    const options = {
+      body: (data && data.body) || '',
+      icon: '/icon.png',
+      badge: '/icon.png',
+      data: (data && data.url) || '/',
+      // During testing, requireInteraction keeps the notification visible until dismissed.
+      // Remove or set to false for production.
+      requireInteraction: true,
+      tag: 'gridlead-push',
+      renotify: true,
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (e) {
+    console.error('[push-sw] error handling push', e);
+  }
 });
 
 self.addEventListener('notificationclick', (event) => {
+  console.log('[push-sw] notification click', event.notification && event.notification.data);
   event.notification.close();
   const target = event.notification.data || '/';
   event.waitUntil(
