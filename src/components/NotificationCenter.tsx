@@ -2,6 +2,42 @@ import React from 'react';
 import { CheckCircle2, Clock, X, Bell } from 'lucide-react';
 import { NotificationItem } from '../types';
 
+function decodeHtmlEntities(str: string) {
+  if (!str) return '';
+  return str.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
+function cleanSnippetForNotification(raw?: string) {
+  if (!raw) return '';
+  let s = decodeHtmlEntities(raw);
+  // Remove any HTML tags
+  s = s.replace(/<[^>]*>/g, '');
+  // Split into lines, trim and remove empty
+  const lines = s.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  // Filter out common reply headers, quoted lines and date lines
+  const filtered = lines.filter(l => {
+    if (!l) return false;
+    // quoted lines
+    if (/^>+/.test(l)) return false;
+    // common reply separators or headers
+    if (/^(on\s.+wrote:)/i.test(l)) return false;
+    if (/^(from:)/i.test(l)) return false;
+    if (/^(to:)/i.test(l)) return false;
+    if (/^(sent:)/i.test(l)) return false;
+    if (/^--+original/i.test(l)) return false;
+    // lines that look like timestamps (e.g., Dec 24, 2025 at 1:15 PM)
+    if (/\b\d{1,2}[:\.]?\d{0,2}\b/.test(l) && /[AP]M/i.test(l)) return false;
+    return true;
+  });
+  if (filtered.length === 0) return lines[0] || s;
+  // Prefer first reasonably long line
+  for (const line of filtered) {
+    if (line.length > 20) return line.length > 240 ? line.slice(0, 237) + '...' : line;
+  }
+  const first = filtered[0];
+  return first.length > 240 ? first.slice(0, 237) + '...' : first;
+}
+
 interface NotificationCenterProps {
   open: boolean;
   notifications: NotificationItem[];
@@ -76,7 +112,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   <div className={`w-2 h-2 rounded-full mt-1.5 ${badgeColor(n.type)}`} />
                   <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate">{n.title}</p>
-                    <p className="text-[11px] text-slate-400 leading-snug">{n.body}</p>
+                    <p className="text-[11px] text-slate-400 leading-snug">{n.type === 'reply' ? cleanSnippetForNotification(n.body) : n.body}</p>
                       {n.meta?.icon ? (
                         <div className="mt-2">
                           <img src={n.meta.icon} alt="icon" className="w-10 h-10 rounded-md object-cover" />
