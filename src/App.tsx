@@ -327,6 +327,7 @@ const AppContent: React.FC = () => {
         .from('leads')
         .select('*')
         .eq('user_id', session.user.id)
+        .is('archived_at', null)
         .order('created_at', { ascending: false });
       if (!error && data) {
         const mapped = data.map((row: any) => ({
@@ -843,7 +844,50 @@ const AppContent: React.FC = () => {
       payload.checklist_google_reviews = updates.checklist.hasGoogleReviews ?? null;
       payload.checklist_render = updates.checklist.hasRender ?? null;
     }
-    await supabase.from('leads').update(payload).eq('id', id).eq('user_id', session.user.id);
+    const { data: updatedRow, error: updateErr } = await supabase.from('leads').update(payload).eq('id', id).eq('user_id', session.user.id).select('*').single();
+
+    // Refresh authoritative row from server so client sees archived_at and any trigger side-effects
+    try {
+      if (!updateErr && updatedRow && updatedRow.id) {
+        const row = updatedRow as any;
+        const mapped = {
+          id: row.id,
+          placeId: row.place_id || undefined,
+          name: row.name,
+          category: row.category || 'Business',
+          rating: Number(row.rating) || 0,
+          lastScan: row.updated_at ? new Date(row.updated_at).toLocaleDateString() : 'Recently',
+          createdAt: row.created_at ? new Date(row.created_at).getTime() : undefined,
+          updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : undefined,
+          website: row.website || 'No website',
+          address: row.address || undefined,
+          lat: row.lat ?? undefined,
+          lng: row.lng ?? undefined,
+          status: row.status || 'pending',
+          sentAt: row.sent_at ? new Date(row.sent_at).getTime() : undefined,
+          draftSubject: row.draft_subject || undefined,
+          draftBody: row.draft_body || undefined,
+          score: {
+            design: row.score_design ?? 50,
+            performance: row.score_performance ?? 50,
+            reviews: row.score_reviews ?? 50,
+            trust: row.score_trust ?? 50,
+          },
+          notes: row.notes || '',
+          checklist: {
+            mobileOptimization: row.checklist_mobile_optimization ?? undefined,
+            sslCertificate: row.checklist_ssl_certificate ?? undefined,
+            seoPresence: row.checklist_seo_presence ?? undefined,
+            conversionFlow: row.checklist_conversion_flow ?? undefined,
+            hasGoogleReviews: row.checklist_google_reviews ?? undefined,
+            hasRender: row.checklist_render ?? undefined,
+          }
+        } as Lead;
+        setLeads(prev => prev.map(l => l.id === id ? mapped : l));
+      }
+    } catch (e) {
+      console.warn('Failed to refresh lead after update', e);
+    }
 
     // Notifications: outreach reply (responded/won)
     const nextStatus = updates.status;

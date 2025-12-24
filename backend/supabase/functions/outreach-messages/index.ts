@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const leadId = body?.leadId;
+    const includeArchived = !!body?.includeArchived;
     if (!leadId) return new Response(JSON.stringify({ error: 'missing leadId' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const authHeader = req.headers.get('authorization') || '';
@@ -31,13 +32,17 @@ Deno.serve(async (req) => {
     if (userErr || !userData?.user) return new Response(JSON.stringify({ error: 'invalid auth token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     const uid = userData.user.id;
 
-    const { data: leadRow, error: leadErr } = await supabase.from('leads').select('id,user_id').eq('id', leadId).maybeSingle();
+    const { data: leadRow, error: leadErr } = await supabase.from('leads').select('id,user_id,archived_at').eq('id', leadId).maybeSingle();
     if (leadErr || !leadRow) return new Response(JSON.stringify({ error: 'lead not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     if (leadRow.user_id !== uid) {
       return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-
-    const { data: threads, error: threadErr } = await supabase.from('email_threads').select('id,thread_id').eq('lead_id', leadId);
+    if (leadRow.archived_at && !includeArchived) {
+      return new Response(JSON.stringify({ error: 'lead archived' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    let threadsQuery = supabase.from('email_threads').select('id,thread_id,archived_at').eq('lead_id', leadId);
+    if (!includeArchived) threadsQuery = threadsQuery.is('archived_at', null);
+    const { data: threads, error: threadErr } = await threadsQuery;
     if (threadErr) return new Response(JSON.stringify({ error: 'failed to load threads', details: threadErr }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const threadIds = (threads || []).map((t: any) => t.id).filter(Boolean);

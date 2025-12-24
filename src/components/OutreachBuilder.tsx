@@ -13,6 +13,7 @@ import {
   LayoutGrid,
   List,
   Trophy,
+  MoreVertical,
   X,
   History,
   ArrowLeft,
@@ -32,7 +33,7 @@ interface OutreachBuilderProps {
   profile?: Profile | null;
 }
 
-type OutreachFilter = 'drafts' | 'outbound' | 'replied' | 'won' | 'all';
+ type OutreachFilter = 'drafts' | 'outbound' | 'replied' | 'won' | 'stale' | 'lost' | 'all';
 type ViewMode = 'list' | 'pipeline';
 
 const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, onDeleteLead, profile }) => {
@@ -134,8 +135,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const lastInbound = useMemo(() => [...messages].find(m => m.direction === 'inbound'), [messages]);
   const lastSent = useMemo(() => [...messages].find(m => m.direction === 'sent'), [messages]);
 
-  const outreachLeads = useMemo(() => 
-    leads.filter(l => ['approved', 'sent', 'responded', 'won'].includes(l.status))
+   const outreachLeads = useMemo(() => 
+    leads.filter(l => ['approved', 'sent', 'responded', 'won', 'stale', 'lost'].includes(l.status))
   , [leads]);
 
   const currentLead = useMemo(() => 
@@ -337,7 +338,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           className="flex-1 lg:flex-none px-4 h-11 bg-amber-500 text-white rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-amber-600 transition-all flex items-center justify-center gap-2 shadow-md"
           title="Set outcome"
         >
-          <Trophy size={16} />
+          <MoreVertical size={16} />
         </button>
         {open && (
           <div role="menu" className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg shadow-xl z-50 py-1">
@@ -377,6 +378,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       if (activeFilter === 'outbound') return l.status === 'sent';
       if (activeFilter === 'replied') return l.status === 'responded';
       if (activeFilter === 'won') return l.status === 'won';
+      if (activeFilter === 'stale') return l.status === 'stale';
+      if (activeFilter === 'lost') return l.status === 'lost';
       return true;
     });
   }, [outreachLeads, activeFilter, searchQuery]);
@@ -492,13 +495,13 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   />
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  {(['all', 'drafts', 'outbound', 'replied', 'won'] as OutreachFilter[]).map(f => (
+                  {(['all', 'drafts', 'outbound', 'replied', 'won', 'stale', 'lost'] as OutreachFilter[]).map(f => (
                     <button 
                       key={f}
                       onClick={() => setActiveFilter(f)}
                       className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all shrink-0 ${activeFilter === f ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-100 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
                     >
-                      {f.replace('drafts', 'Drafts').replace('outbound', 'Outbound').replace('replied', 'Replied').replace('won', 'Won')}
+                      {f.replace('drafts', 'Drafts').replace('outbound', 'Outbound').replace('replied', 'Replied').replace('won', 'Won').replace('stale', 'Stale').replace('lost', 'Lost')}
                     </button>
                   ))}
                 </div>
@@ -575,8 +578,10 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                         <button onClick={() => onDeleteLead(currentLead.id)} className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all">
                           <Trash2 size={18} />
                         </button>
-                        <OutcomeMenu lead={currentLead} onUpdateLead={onUpdateLead} />
-                        {!['sent', 'responded', 'won'].includes(currentLead.status) && (
+                        {(currentLead.sentAt || ['sent','responded','won','stale','lost'].includes(currentLead.status)) && (
+                          <OutcomeMenu lead={currentLead} onUpdateLead={onUpdateLead} />
+                        )}
+                        {!['sent', 'responded', 'won', 'stale', 'lost'].includes(currentLead.status) && (
                           <button 
                             onClick={handleGenerate} 
                             disabled={isGenerating}
@@ -597,7 +602,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   {/* Editor Body */}
                   <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 custom-scrollbar bg-slate-50/10 dark:bg-slate-950 pb-32">
                     <div className="max-w-4xl mx-auto space-y-8">
-                      {['sent', 'responded', 'won'].includes(currentLead.status) ? (
+                      {['sent', 'responded', 'won', 'stale', 'lost'].includes(currentLead.status) ? (
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -721,7 +726,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   </div>
 
                   {/* Footer Action Area */}
-                  {!['sent', 'responded', 'won'].includes(currentLead.status) && (
+                  {!['sent', 'responded', 'won', 'stale', 'lost'].includes(currentLead.status) && (
                     <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent pointer-events-none z-20">
                       <div className="max-w-4xl mx-auto pointer-events-auto">
                         <button 
