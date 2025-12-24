@@ -5,6 +5,9 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Credentials": "true",
+  "Access-Control-Max-Age": "600",
 };
 
 const supabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -16,28 +19,24 @@ Deno.serve(async (req) => {
     if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
     if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const leadId = body?.leadId;
     if (!leadId) return new Response(JSON.stringify({ error: 'missing leadId' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    // Extract the user's access token from Authorization header
     const authHeader = req.headers.get('authorization') || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
     if (!token) return new Response(JSON.stringify({ error: 'missing auth token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    // Validate the token and get user
     const { data: userData, error: userErr } = await supabase.auth.getUser(token as string);
     if (userErr || !userData?.user) return new Response(JSON.stringify({ error: 'invalid auth token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     const uid = userData.user.id;
 
-    // Ensure the user owns the lead (primary ownership path)
     const { data: leadRow, error: leadErr } = await supabase.from('leads').select('id,user_id').eq('id', leadId).maybeSingle();
     if (leadErr || !leadRow) return new Response(JSON.stringify({ error: 'lead not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     if (leadRow.user_id !== uid) {
       return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Load threads, then messages (service role bypasses RLS)
     const { data: threads, error: threadErr } = await supabase.from('email_threads').select('id,thread_id').eq('lead_id', leadId);
     if (threadErr) return new Response(JSON.stringify({ error: 'failed to load threads', details: threadErr }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
