@@ -728,7 +728,11 @@ const AppContent: React.FC = () => {
     }
     // Log payload for debugging (make sure place_id is included)
     console.debug('leads.upsert payload', payload);
-    const { data, error } = await supabase.from('leads').upsert(payload, { onConflict: ['user_id', 'place_id'] }).select('*').single();
+    // Choose onConflict target depending on whether place_id is provided.
+    // The DB has a partial unique index on (user_id, place_id) WHERE place_id IS NOT NULL.
+    // If place_id is null, Postgres reports 42P10 because no matching unique constraint exists.
+    const conflictTarget = payload.place_id ? ['user_id', 'place_id'] : 'id';
+    const { data, error } = await supabase.from('leads').upsert(payload, { onConflict: conflictTarget }).select('*').single();
     // Log DB error details for troubleshooting (show full error object)
     if (error) console.error('leads.upsert error', JSON.stringify(error));
     if (!error && data) {
