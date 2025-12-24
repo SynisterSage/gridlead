@@ -1,4 +1,3 @@
-import webpush from 'https://esm.sh/web-push@3.6.7';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:support@gridlead.space';
@@ -14,9 +13,11 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 };
 
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-}
+// NOTE: do not import `web-push` at module scope in Deno Edge runtime —
+// some of its dependencies (jws/util) require Node builtins and can
+// throw during module initialization. We'll dynamically import it inside
+// the request handler so OPTIONS preflight can be answered without loading
+// the module.
 
 let supabase: any = null;
 if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
@@ -42,6 +43,7 @@ async function tryDeleteSubscription(endpoint: string) {
 
 Deno.serve(async (req) => {
   try {
+    // Answer preflight immediately before attempting to load server modules
     if (req.method === 'OPTIONS') return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
     if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
 
@@ -58,17 +60,35 @@ Deno.serve(async (req) => {
 
     const data = body.payload ?? { title: 'GridLead test', body: 'This is a test push from GridLead.' };
 
+    // Dynamically import web-push to avoid module initialization errors
     try {
-      await webpush.sendNotification(subscription, JSON.stringify(data));
-      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders });
-    } catch (err: any) {
-      const status = err?.statusCode || err?.status || 500;
-      console.error('webpush error', status, err?.message || err);
-      // If subscription is gone/expired, remove it from DB (410 Gone / 404 Not Found)
-      if (status === 410 || status === 404) {
-        await tryDeleteSubscription(endpoint);
+      const mod = await import('https://esm.sh/web-push@3.6.7');
+      const webpush = (mod && (mod.default || mod)) as any;
+      if (!webpush || typeof webpush.sendNotification !== 'function') {
+        console.error('web-push import did not provide expected API', Object.keys(mod || {}));
+        return new Response(JSON.stringify({ error: 'web-push unavailable in this runtime' }), { status: 500, headers: corsHeaders });
       }
-      return new Response(JSON.stringify({ error: err?.message || 'send_failed' }), { status, headers: corsHeaders });
+      try {
+        webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+      } catch (e) {
+        console.warn('setVapidDetails failed', e?.message || e);
+      }
+
+      try {
+        await webpush.sendNotification(subscription, JSON.stringify(data));
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders });
+      } catch (err: any) {
+        const status = err?.statusCode || err?.status || 500;
+        console.error('webpush send error', status, err?.message || err);
+        if (status === 410 || status === 404) {
+          await tryDeleteSubscription(endpoint);
+        }
+        return new Response(JSON.stringify({ error: err?.message || 'send_failed' }), { status, headers: corsHeaders });
+      }
+    } catch (impErr: any) {
+      // Log the import error details so we can see if the module fails to initialize
+      console.error('Failed to import web-push in Edge runtime', impErr?.message || impErr);
+      return new Response(JSON.stringify({ error: 'server_module_load_failed', detail: impErr?.message || String(impErr) }), { status: 500, headers: corsHeaders });
     }
   } catch (err: any) {
     console.error('send-push error', err);
