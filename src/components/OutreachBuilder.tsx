@@ -68,10 +68,11 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   };
 
   const fetchMessages = async (leadId: string) => {
+    // Use a left join on email_threads so messages without a thread row still appear
     const { data, error } = await supabase
       .from('email_messages')
-      .select('id,direction,snippet,subject,sent_at,body_html,gmail_message_id,gmail_thread_id,message_id_header,thread_id,email_threads!inner(id,lead_id,thread_id)')
-      .eq('email_threads.lead_id', leadId)
+      .select('id,direction,snippet,subject,sent_at,body_html,gmail_message_id,gmail_thread_id,message_id_header,thread_id,email_threads(id,lead_id,thread_id)')
+      .or(`email_threads.lead_id.eq.${leadId},thread_id.is.null`) // include messages linked to this lead or messages without a thread
       .order('sent_at', { ascending: false })
       .limit(50);
     if (error) {
