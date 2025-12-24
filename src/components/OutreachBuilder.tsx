@@ -417,21 +417,32 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     const [open, setOpen] = useState(false);
     const ref = React.useRef<HTMLDivElement | null>(null);
     const toggle = () => setOpen(v => !v);
-    const select = (value: 'won'|'stale'|'lost') => {
+    const select = async (value: 'won'|'stale'|'lost') => {
       // Immediately reflect archiving in the UI by moving the lead into archivedLeads
+      const now = new Date().toISOString();
       if (value === 'won' || value === 'stale' || value === 'lost') {
-        const now = new Date().toISOString();
         setArchivedLeads(prev => {
-          // avoid duplicate
-          if (prev.some(p => p.id === lead.id)) return prev;
-          return [{ ...lead, archivedAt: now }, ...prev];
+          // if already present, update its status
+          if (prev.some(p => p.id === lead.id)) {
+            return prev.map(p => p.id === lead.id ? { ...p, status: value, archivedAt: now } : p);
+          }
+          return [{ ...lead, status: value, archivedAt: now }, ...prev];
         });
       } else {
         // if selecting a non-archived outcome, remove from archived local list
         setArchivedLeads(prev => prev.filter(p => p.id !== lead.id));
       }
-      onUpdateLead(lead.id, { status: value });
-      setOpen(false);
+
+      // Persist to server and refresh authoritative archived rows to ensure badges are correct
+      try {
+        await onUpdateLead(lead.id, { status: value });
+      } catch (err) {
+        console.error('Outcome update failed', err);
+      } finally {
+        setOpen(false);
+        // reconcile local archived list with server state
+        try { void fetchArchivedLeads(); void fetchArchivedCount(); } catch (e) { /* ignore */ }
+      }
     };
 
     // Close on outside click
