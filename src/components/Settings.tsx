@@ -73,6 +73,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const [pushStatus, setPushStatus] = useState<'idle' | 'granted' | 'denied' | 'error'>('idle');
   const [pushError, setPushError] = useState<string | null>(null);
   const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const notifDefaults = { 
     leads: true, 
     replies: true, 
@@ -157,7 +158,15 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
         body: 'This is a test push. Click to open GridLead.',
         url: '/',
       };
-      const endpoints = ['/functions/v1/send-push', '/api/send-push'];
+      const endpoints: string[] = [];
+      // Prefer the full Supabase functions URL when available (dev or prod)
+      if (SUPABASE_URL) {
+        const base = SUPABASE_URL.replace(/\/$/, '');
+        endpoints.push(`${base}/functions/v1/send-push`);
+      }
+      // Also try relative paths (useful when deployed behind a proxy or using serverless api)
+      endpoints.push('/functions/v1/send-push');
+      endpoints.push('/api/send-push');
       let resp: Response | null = null;
       for (const ep of endpoints) {
         try {
