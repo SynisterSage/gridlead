@@ -148,14 +148,29 @@ const AppContent: React.FC = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const uid = sessionData.session?.user?.id;
       if (!uid) return;
-      await supabase.from('notifications').insert({
+      // Insert and return the created row so we can optimistically update UI
+      const insert = await supabase.from('notifications').insert({
         user_id: uid,
         type,
         title,
         body,
         meta,
         channel: 'in_app',
-      });
+      }).select().maybeSingle();
+      // If insert returned a row, add it to local notifications state immediately.
+      const created = insert?.data || null;
+      if (created) {
+        const item: NotificationItem = {
+          id: created.id,
+          type: created.type,
+          title: created.title,
+          body: created.body,
+          created_at: created.created_at,
+          unread: !created.read_at,
+          meta: created.meta || {},
+        };
+        setNotifications(prev => [item, ...prev].slice(0, 100));
+      }
     },
     []
   );
@@ -379,21 +394,26 @@ const AppContent: React.FC = () => {
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
-          (payload) => {
-            const row: any = payload.new;
-            setNotifications(prev => [
-              {
-                id: row.id,
-                type: row.type,
-                title: row.title,
-                body: row.body,
-                created_at: row.created_at,
-                unread: !row.read_at,
-                meta: row.meta || {},
-              },
-              ...prev,
-            ].slice(0, 100));
-          }
+            (payload) => {
+              const row: any = payload.new;
+              // Avoid duplicates if the client already inserted this notification.
+              setNotifications(prev => {
+                if (prev.some(n => n.id === row.id)) return prev;
+                const next = [
+                  {
+                    id: row.id,
+                    type: row.type,
+                    title: row.title,
+                    body: row.body,
+                    created_at: row.created_at,
+                    unread: !row.read_at,
+                    meta: row.meta || {},
+                  },
+                  ...prev,
+                ].slice(0, 100);
+                return next;
+              });
+            }
         )
         .subscribe();
       notifChannelRef.current = channel;
