@@ -6,7 +6,7 @@ alter table if exists public.gmail_accounts
 -- Ensure only owners can delete their gmail accounts
 drop policy if exists "gmail accounts deletable by owner" on public.gmail_accounts;
 create policy "gmail accounts deletable by owner" on public.gmail_accounts
-  for delete using (auth.uid() = user_id);
+  for delete using (auth.uid()::uuid = user_id);
 
 -- Enforce a single primary per user
 drop index if exists idx_gmail_accounts_primary_unique;

@@ -13,13 +13,13 @@ create table if not exists public.gmail_accounts (
 alter table public.gmail_accounts enable row level security;
 
 create policy "gmail accounts viewable by owner" on public.gmail_accounts
-  for select using (auth.uid() = user_id);
+  for select using (auth.uid()::uuid = user_id);
 
 create policy "gmail accounts insertable by owner" on public.gmail_accounts
-  for insert with check (auth.uid() = user_id);
+  for insert with check (auth.uid()::uuid = user_id);
 
 create policy "gmail accounts updatable by owner" on public.gmail_accounts
-  for update using (auth.uid() = user_id);
+  for update using (auth.uid()::uuid = user_id);
 
 create or replace function public.handle_gmail_accounts_updated_at()
 returns trigger as $$

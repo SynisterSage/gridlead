@@ -14,13 +14,13 @@ create table if not exists public.profiles (
 alter table public.profiles enable row level security;
 
 create policy "Profiles are viewable by owner" on public.profiles
-  for select using (auth.uid() = id);
+  for select using (auth.uid()::uuid = id);
 
 create policy "Profiles are insertable by owner" on public.profiles
-  for insert with check (auth.uid() = id);
+  for insert with check (auth.uid()::uuid = id);
 
 create policy "Profiles are updatable by owner" on public.profiles
-  for update using (auth.uid() = id);
+  for update using (auth.uid()::uuid = id);
 
 create or replace function public.handle_profiles_updated_at()
 returns trigger as $$

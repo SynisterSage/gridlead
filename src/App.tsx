@@ -726,7 +726,9 @@ const AppContent: React.FC = () => {
     if (isUuid) {
       payload.id = newLead.id;
     }
-    const { data, error } = await supabase.from('leads').upsert(payload, { onConflict: 'id' }).select('*').single();
+    const { data, error } = await supabase.from('leads').upsert(payload, { onConflict: 'user_id,place_id' }).select('*').single();
+    // Log DB error details for troubleshooting (PostgREST / Supabase returns useful info)
+    if (error) console.error('leads.upsert error', error);
     if (!error && data) {
       setLeads(prev => [{
         ...newLead,
