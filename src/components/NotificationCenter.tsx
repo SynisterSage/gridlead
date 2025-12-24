@@ -12,30 +12,29 @@ function cleanSnippetForNotification(raw?: string) {
   let s = decodeHtmlEntities(raw);
   // Remove any HTML tags
   s = s.replace(/<[^>]*>/g, '');
+  // Remove inline reply headers like "On ... wrote:" and trailing quoted sections
+  // e.g. "Yooo On Wed, Dec 24, 2025 at 1:25 PM wrote: dwadaw" -> "Yooo"
+  s = s.replace(/\s*On\s[\s\S]{0,200}?wrote:\s[\s\S]*$/i, '');
+  // Also remove common headers that may appear inline
+  s = s.replace(/\s*From:\s[\s\S]*$/i, '');
+  s = s.replace(/\s*Sent:\s[\s\S]*$/i, '');
+  s = s.replace(/\s*To:\s[\s\S]*$/i, '');
+  s = s.replace(/--+\s*Original[\s\S]*$/i, '');
+
   // Split into lines, trim and remove empty
   const lines = s.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  // Filter out common reply headers, quoted lines and date lines
+  // Filter out quoted lines and short timestamp-only lines
   const filtered = lines.filter(l => {
     if (!l) return false;
-    // quoted lines
     if (/^>+/.test(l)) return false;
-    // common reply separators or headers
-    if (/^(on\s.+wrote:)/i.test(l)) return false;
-    if (/^(from:)/i.test(l)) return false;
-    if (/^(to:)/i.test(l)) return false;
-    if (/^(sent:)/i.test(l)) return false;
-    if (/^--+original/i.test(l)) return false;
-    // lines that look like timestamps (e.g., Dec 24, 2025 at 1:15 PM)
-    if (/\b\d{1,2}[:\.]?\d{0,2}\b/.test(l) && /[AP]M/i.test(l)) return false;
+    if (/^\d{1,2}[:\.]?\d{0,2}\b/.test(l) && /[AP]M/i.test(l)) return false;
     return true;
   });
-  if (filtered.length === 0) return lines[0] || s;
-  // Prefer first reasonably long line
-  for (const line of filtered) {
-    if (line.length > 20) return line.length > 240 ? line.slice(0, 237) + '...' : line;
-  }
-  const first = filtered[0];
-  return first.length > 240 ? first.slice(0, 237) + '...' : first;
+
+  const source = filtered.length ? filtered : lines;
+  const pick = source[0] || '';
+  const out = pick.length > 240 ? pick.slice(0, 237) + '...' : pick;
+  return out;
 }
 
 interface NotificationCenterProps {
