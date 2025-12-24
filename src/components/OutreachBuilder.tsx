@@ -228,6 +228,30 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         }
       });
       if (error) throw error;
+
+      // Optimistic UI: show the sent message immediately while the backend
+      // persists and we fetch canonical rows. The function typically returns
+      // a `sendJson` with `id` and `threadId` when Gmail accepts the message.
+      try {
+        const payload = (data as any) || {};
+        const sendJson = payload.sendJson || payload.data || payload.body || payload;
+        const gmailId = sendJson?.id || sendJson?.gmail_message_id || null;
+        const gmailThread = sendJson?.threadId || sendJson?.thread_id || null;
+        const optimistic: any = {
+          id: `optimistic-${Date.now()}`,
+          direction: 'sent',
+          subject,
+          snippet: stripHtml(body).slice(0, 200),
+          sent_at: new Date().toISOString(),
+          body_html: body,
+          gmail_message_id: gmailId,
+          gmail_thread_id: gmailThread,
+          thread_id: null,
+        };
+        setMessages(prev => [optimistic, ...prev]);
+      } catch (e) {
+        console.debug('optimistic insert failed', e);
+      }
       onUpdateLead(currentLead.id, { 
         status: 'sent', 
         sentAt: Date.now(),
@@ -270,7 +294,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
 
       console.log('reply send', { threadId, to: replyTo, inReplyTo: replyMsgIdHeader });
 
-      const { error } = await supabase.functions.invoke('gmail-send', {
+      const { data, error } = await supabase.functions.invoke('gmail-send', {
         body: {
           leadId: currentLead.id,
           to: replyTo,
@@ -282,6 +306,29 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         },
       });
       if (error) throw error;
+
+      // Optimistic UI for replies as well
+      try {
+        const payload = (data as any) || {};
+        const sendJson = payload.sendJson || payload.data || payload.body || payload;
+        const gmailId = sendJson?.id || sendJson?.gmail_message_id || null;
+        const gmailThread = sendJson?.threadId || sendJson?.thread_id || threadId || null;
+        const optimistic: any = {
+          id: `optimistic-${Date.now()}`,
+          direction: 'sent',
+          subject: subjectLine,
+          snippet: stripHtml(replyBody).slice(0, 200),
+          sent_at: new Date().toISOString(),
+          body_html: replyBody,
+          gmail_message_id: gmailId,
+          gmail_thread_id: gmailThread,
+          thread_id: null,
+        };
+        setMessages(prev => [optimistic, ...prev]);
+      } catch (e) {
+        console.debug('optimistic reply insert failed', e);
+      }
+
       setReplyBody('');
       await fetchMessages(currentLead.id);
     } catch (err) {
