@@ -789,10 +789,19 @@ const AppContent: React.FC = () => {
         ...newLead,
         id: data.id,
       }, ...prev.filter(l => l.id !== data.id)]);
-      setProfile(prev => prev ? {
-        ...prev,
-        leads_used_this_month: (prev.leads_used_this_month ?? 0) + 1,
-      } : prev);
+      // Avoid optimistic double-counting: refresh profile from server so
+      // the DB trigger (enforce_lead_quota) is authoritative for the
+      // monthly counter.
+      try {
+        const { data: refreshed, error: profErr } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        if (!profErr && refreshed) setProfile(refreshed as any);
+      } catch (e) {
+        console.warn('Failed to refresh profile after lead insert', e);
+      }
       if (notifPrefs.leads) {
         void createNotification('lead', 'New lead added', `Lead "${newLead.name}" was added.`, { leadId: data.id });
       }
@@ -851,7 +860,22 @@ const AppContent: React.FC = () => {
   const deleteLead = async (id: string) => {
     setLeads(prev => prev.filter(l => l.id !== id));
     if (!session) return;
-    await supabase.from('leads').delete().eq('id', id).eq('user_id', session.user.id);
+    const { error } = await supabase.from('leads').delete().eq('id', id).eq('user_id', session.user.id);
+    if (error) {
+      console.error('Failed to delete lead', error);
+      return;
+    }
+    // Refresh profile from server so the monthly counter reflects the DB trigger
+    try {
+      const { data: refreshed, error: profErr } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
+      if (!profErr && refreshed) setProfile(refreshed as any);
+    } catch (e) {
+      console.warn('Failed to refresh profile after lead delete', e);
+    }
   };
 
   const renderView = () => {

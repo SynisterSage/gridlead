@@ -112,41 +112,25 @@ Deno.serve(async (req) => {
           if (direction === "inbound") {
             await supabase.from("leads").update({ status: "responded" }).eq("id", th.lead_id);
 
-            // Create an in-app notification for inbound replies so the frontend
-            // (Notification Center / realtime feed) can show it immediately.
-            // Guard: only create one recent notification per lead to avoid spam
-            // (5 minute window).
+            // We rely on the DB trigger to create the in-app notification.
+            // Query for the recently-created notification (if any) so we can
+            // include its id in the optional push payload for client de-dup.
             try {
               const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-              const { data: existing, error: existErr } = await supabase
+              const { data: createdNotif, error: notifErr } = await supabase
                 .from('notifications')
-                .select('id')
+                .select('id, created_at')
                 .eq('user_id', acct.user_id)
                 .eq('type', 'reply')
                 .filter('meta->>leadId', 'eq', String(th.lead_id))
                 .gte('created_at', fiveMinAgo)
+                .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
-              if (!existErr && !existing) {
-                const title = subject ? `Reply: ${subject}` : `Reply from thread`;
-                const bodyText = snippet || subject || 'You have a new reply.';
-                // Insert and capture created row so we can include its id in the
-                // push payload (serverNotificationId) to help clients de-dup.
-                const { data: created, error: createErr } = await supabase.from('notifications').insert({
-                  user_id: acct.user_id,
-                  type: 'reply',
-                  title,
-                  body: bodyText,
-                  channel: 'in_app',
-                  meta: {
-                    leadId: th.lead_id,
-                    threadId: th.id,
-                    gmail_thread_id: m.threadId || th.thread_id,
-                  },
-                }).select().maybeSingle();
 
-                const serverNotificationId = created?.id || null;
+              const serverNotificationId = createdNotif?.id || null;
 
+              if (!notifErr) {
                 // If we have service role key and supabase URL, try to send a push
                 // to any saved web push subscriptions for this user so the client
                 // receives the notification immediately (hot update).
@@ -156,10 +140,10 @@ Deno.serve(async (req) => {
                     .select('*')
                     .eq('user_id', acct.user_id);
                   if (subs && subs.length) {
+                    const title = subject ? `Reply: ${subject}` : `Reply from thread`;
+                    const bodyText = snippet || subject || 'You have a new reply.';
                     for (const s of subs) {
                       try {
-                        // Call the send-push function endpoint with service role key
-                        // so it can deliver the push.
                         await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`, {
                           method: 'POST',
                           headers: {
@@ -191,8 +175,8 @@ Deno.serve(async (req) => {
                   console.warn('Failed to load web_push_subscriptions', pushQueryErr);
                 }
               }
-            } catch (notifErr) {
-              console.warn('Failed to create reply notification', notifErr);
+            } catch (err) {
+              console.warn('Failed to query notification after insert', err);
             }
           }
         }
