@@ -140,6 +140,54 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     }
   };
 
+  const handleSendTestPush = async () => {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        setNotification('No service worker registered. Register push-sw.js first.');
+        return;
+      }
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        setNotification('No push subscription found. Enable push in Notifications first.');
+        return;
+      }
+      const payload = {
+        title: 'GridLead — test notification',
+        body: 'This is a test push. Click to open GridLead.',
+        url: '/',
+      };
+      const endpoints = ['/functions/v1/send-push', '/api/send-push'];
+      let resp: Response | null = null;
+      for (const ep of endpoints) {
+        try {
+          resp = await fetch(ep, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: sub.toJSON(), payload }),
+          });
+          // If endpoint exists and is not a 404, break and use it.
+          if (resp && resp.status !== 404) break;
+        } catch (e) {
+          resp = null;
+        }
+      }
+      if (!resp) {
+        setNotification('No push send endpoint available (tried /functions/v1/send-push and /api/send-push)');
+        return;
+      }
+      if (!resp.ok) {
+        const json = await resp.json().catch(() => ({}));
+        setNotification(json?.error || 'Push send failed');
+        return;
+      }
+      setNotification('Test push sent — check your device.');
+    } catch (err: any) {
+      console.error('test push failed', err);
+      setNotification(err?.message || 'Test push failed');
+    }
+  };
+
   useEffect(() => {
     fetchGmailAccounts();
     if (typeof window !== 'undefined') {
@@ -444,6 +492,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       </button>
                       <button disabled className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent cursor-not-allowed">
                         Manage subscription
+                      </button>
+                      <button onClick={handleSendTestPush} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-200 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                        Send test push
                       </button>
                     </div>
                   </div>
