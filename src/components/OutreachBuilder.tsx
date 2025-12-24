@@ -82,6 +82,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         return;
       }
 
+      console.debug('fetchMessages threads raw', { threads });
+
       const threadIds = (threads || []).map((t: any) => t.id).filter(Boolean);
       const gmailThreadIds = (threads || []).map((t: any) => t.thread_id).filter(Boolean);
 
@@ -113,6 +115,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       console.debug('fetchMessages orFilter', orFilter, { threadIds, gmailThreadIds });
 
       const { data, error } = await messagesQuery.or(orFilter);
+      console.debug('fetchMessages messages raw', { data, error });
       if (error) {
         console.error('fetchMessages error', error);
         return;
@@ -122,6 +125,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           ...m,
           gmail_thread_id: m.gmail_thread_id || m.email_threads?.thread_id || null,
         }));
+        console.debug('fetchMessages rows count', rows.length, { threadIds, gmailThreadIds });
         setMessages(rows);
       }
     } catch (err) {
