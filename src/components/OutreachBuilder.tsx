@@ -222,11 +222,11 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   }, [selectedLeadId, currentLead]);
 
   // When the user selects Archived filter, fetch archived leads
+  // Always keep archived leads loaded so they can be shown in their own
+  // sidebar section regardless of the active filter.
   useEffect(() => {
-    if (activeFilter === 'archived') {
-      void fetchArchivedLeads();
-    }
-  }, [activeFilter]);
+    void fetchArchivedLeads();
+  }, [profile?.id, leads.length]);
 
   useEffect(() => {
     if (!selectedLeadId && outreachLeads.length > 0) {
@@ -612,6 +612,24 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                     {activeThreads.map(lead => <LeadCard key={lead.id} lead={lead} />)}
                   </>
                 )}
+                            {archivedLeads.length > 0 && (
+                              <>
+                                <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-6">
+                                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
+                                    <History size={12} /> Archived Threads
+                                  </span>
+                                </div>
+                                {archivedLeads.map(lead => (
+                                  <div key={lead.id} onClick={() => { setSelectedLeadId(lead.id); setViewMode('list'); setMobileView('detail'); }} className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 p-6 cursor-pointer">
+                                    <div className="flex justify-between items-start mb-1">
+                                      <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate pr-2">{lead.name}</p>
+                                      <span className={`text-[10px] font-mono font-bold ${getRatingColorClass(lead.rating)}`}>{lead.rating.toFixed(1)}</span>
+                                    </div>
+                                    <p className="text-[9px] text-slate-400 dark:text-slate-600 uppercase tracking-widest">{lead.category}</p>
+                                  </div>
+                                ))}
+                              </>
+                            )}
                 
                 {filtered.length === 0 && (
                   <div className="py-20 text-center opacity-20">
