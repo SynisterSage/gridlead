@@ -415,12 +415,10 @@ const AppContent: React.FC = () => {
         }
         return;
       }
-      // Subscribe first so we don't miss inserts that happen while fetching
-      // existing notifications (race condition). The realtime handler will
-      // ignore duplicates by id, so fetching afterwards is safe.
+      await fetchNotifications(session.user.id);
+
       if (notifChannelRef.current) {
-        try { notifChannelRef.current.unsubscribe(); } catch (e) { /* ignore */ }
-        notifChannelRef.current = null;
+        notifChannelRef.current.unsubscribe();
       }
       const channel = supabase
         .channel('notifications-feed')
@@ -450,10 +448,6 @@ const AppContent: React.FC = () => {
         )
         .subscribe();
       notifChannelRef.current = channel;
-
-      // Now fetch existing notifications; any inserts that happened after
-      // this point will be handled by the realtime handler.
-      await fetchNotifications(session.user.id);
     };
     void setup();
 
