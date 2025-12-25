@@ -586,22 +586,22 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const LeadCard = ({ lead }: { lead: Lead }) => (
     <div
       onClick={() => { setSelectedLeadId(lead.id); setMobileView('detail'); }}
-      className={`flex items-stretch gap-4 p-4 md:p-5 cursor-pointer border-b border-slate-50 dark:border-slate-800/50 transition-all ${
+      className={`w-full overflow-hidden p-4 md:p-5 cursor-pointer border-b border-slate-50 dark:border-slate-800/50 transition-all ${
         selectedLeadId === lead.id ? 'bg-white dark:bg-slate-900 shadow-sm z-10' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/20'
       }`}
     >
-      {/* Active indicator: green for active (not archived), transparent for archived */}
-      <div className={`w-1 rounded-r ${archivedIds.has(lead.id) ? 'bg-transparent' : 'bg-emerald-500'}`} />
-      <div className="flex-1">
-        <div className="flex justify-between items-center mb-1">
-          <h3 className={`font-bold text-xs md:text-sm truncate pr-2 ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}`}>{lead.name}</h3>
-          <div className={`text-[10px] md:text-[11px] font-mono font-extrabold ${getRatingColorClass(lead.rating)}`}>
-            {lead.rating.toFixed(1)}
+      <div className="flex items-center justify-between gap-4 min-w-0">
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className={`font-bold text-xs md:text-sm truncate pr-2 ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}`}>{lead.name}</h3>
+            <div className={`text-[10px] md:text-[11px] font-mono font-extrabold ${getRatingColorClass(lead.rating)}`}>
+              {lead.rating.toFixed(1)}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center justify-between">
-          <p className={`text-[8px] md:text-[10px] uppercase tracking-widest truncate ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-400 dark:text-slate-600'}`}>{lead.category}</p>
-          {getStatusBadge(lead)}
+          <div className="flex items-center justify-between">
+            <p className={`text-[8px] md:text-[10px] uppercase tracking-widest truncate ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-400 dark:text-slate-600'}`}>{lead.category}</p>
+            {getStatusBadge(lead)}
+          </div>
         </div>
       </div>
     </div>
@@ -689,7 +689,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                 
                 {(activeFilter !== 'archived') && activeThreads.length > 0 && (
                   <>
-                    <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4">
+                    <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4 first:mt-0">
                           <span className="text-[9px] font-black text-emerald-400 dark:text-emerald-300 uppercase tracking-widest flex items-center gap-2">
                             <History size={12} className="text-emerald-400" /> Active Threads
                           </span>
@@ -703,7 +703,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                               if (!archivedLeads || archivedLeads.length === 0) return null;
                               return (
                                 <>
-                                  <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4">
+                                  <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4 first:mt-0">
                                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
                                       <History size={12} /> Archived Threads
                                     </span>
