@@ -527,16 +527,6 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
               </div>
             </div>
           </div>
-          {showUpgradeModal && (
-            <UpgradeModal
-              visible={showUpgradeModal}
-              onClose={() => setShowUpgradeModal(false)}
-              onConfirm={(planId) => {
-                setNotification(`Mock upgrade to ${planId} complete.`);
-                setShowUpgradeModal(false);
-              }}
-            />
-          )}
         );
       case 'integrations':
         return (
@@ -826,29 +816,14 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
           {renderContent()}
 
               {showUpgradeModal && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center">
-                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)} />
-                  <div className="relative bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl z-70">
-                    <h3 className="text-lg font-extrabold text-[#0f172a] dark:text-white">Upgrade to Studio</h3>
-                    <p className="text-[10px] text-slate-500 mt-2">Studio unlocks deep audits, Gemini-powered outreach, and more sender seats. Stripe is not configured in this environment — this is a mock flow.</p>
-                    <div className="mt-6 space-y-3">
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-bold">Studio</div>
-                            <div className="text-[11px] text-slate-400">$25 / mo</div>
-                          </div>
-                          <div className="text-[12px] font-bold text-emerald-500">Recommended</div>
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-3">1,000 leads / mo • 5 sender seats • Deep audits • Gemini</p>
-                      </div>
-                      <div className="flex justify-end gap-3">
-                        <button onClick={() => setShowUpgradeModal(false)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-[10px] font-bold">Cancel</button>
-                        <button disabled className="px-4 py-2 rounded-xl bg-[#0f172a] text-white text-[10px] font-bold cursor-not-allowed">Proceed to Checkout</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <UpgradeModal
+                  visible={showUpgradeModal}
+                  onClose={() => setShowUpgradeModal(false)}
+                  onConfirm={(planId) => {
+                    setNotification(`Mock upgrade to ${planId} complete.`);
+                    setShowUpgradeModal(false);
+                  }}
+                />
               )}
 
           <div className="mt-8 md:mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 px-4">
