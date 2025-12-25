@@ -836,7 +836,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   </div>
 
                   {/* Editor Body */}
-                  <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 custom-scrollbar bg-slate-50/10 dark:bg-slate-950 pb-32">
+                  <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-10 custom-scrollbar bg-slate-50/10 dark:bg-slate-950 pb-48">
                     <div className="max-w-4xl mx-auto space-y-8">
                       { (['sent', 'responded'].includes(currentLead.status) || currentLead.archivedAt) ? (
                         <div className="space-y-6">
