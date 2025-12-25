@@ -792,18 +792,20 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         </div>
         
         {/* Scroll hint placed just left of the List/Pipeline toggle to avoid overlapping pipeline cards */}
-        <div className="hidden md:flex items-center gap-2 mr-3 pointer-events-none">
-          <style>{`
-            @keyframes slideRight {
-              0% { transform: translateX(0); opacity: 0; }
-              30% { opacity: 1; }
-              100% { transform: translateX(14px); opacity: 0; }
-            }
-            .pipeline-scroll svg { color: rgba(148,163,184,0.9); animation: slideRight 1.2s ease-in-out infinite; }
-          `}</style>
-          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Scroll</div>
-          <div className="pipeline-scroll"><ChevronRight size={18} /></div>
-        </div>
+        {viewMode === 'pipeline' && (
+          <div className="hidden md:flex items-center gap-2 mr-1 pointer-events-none">
+            <style>{`
+              @keyframes slideRight {
+                0% { transform: translateX(0); opacity: 0; }
+                30% { opacity: 1; }
+                100% { transform: translateX(14px); opacity: 0; }
+              }
+              .pipeline-scroll svg { color: rgba(148,163,184,0.9); animation: slideRight 1.2s ease-in-out infinite; }
+            `}</style>
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Scroll</div>
+            <div className="pipeline-scroll"><ChevronRight size={18} /></div>
+          </div>
+        )}
 
         <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl w-fit border border-slate-200 dark:border-slate-800 shadow-inner">
           <button
@@ -976,7 +978,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                               void handleDeleteCurrentLead();
                             }
                           }}
-                          className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all"
+                          className="flex-none w-14 h-11 flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-colors"
                         >
                           <Trash2 size={18} />
                         </button>
