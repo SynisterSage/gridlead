@@ -210,10 +210,13 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
             ))
           ) : (
             filteredResults.map((item, i) => (
-              <div key={i} className="group bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:-translate-y-1 hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all relative overflow-visible animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                  <div className="absolute -top-12 -right-12 w-32 h-32 bg-sky-500/10 blur-3xl" />
-                  <div className="absolute -bottom-12 -left-6 w-28 h-28 bg-emerald-400/10 blur-3xl" />
+              <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:-translate-y-1 hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all relative overflow-visible animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
+                {/* hover glow — clipped by an inner rounded mask so it doesn't bleed outside the card */}
+                <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                  <div className="w-full h-full rounded-[2rem] overflow-hidden relative">
+                    <div className="absolute -top-12 -right-12 w-32 h-32 bg-sky-500/10 blur-3xl" />
+                    <div className="absolute -bottom-12 -left-6 w-28 h-28 bg-emerald-400/10 blur-3xl" />
+                  </div>
                 </div>
                 {item.potentialScore >= 80 && item.website && (
                   <div className="absolute top-6 left-6 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 text-[7px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest shadow-sm">
