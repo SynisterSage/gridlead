@@ -665,7 +665,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       { id: 'drafts', label: 'Drafts', leads: outreachLeads.filter(l => l.status === 'approved'), color: 'bg-blue-500' },
       { id: 'outbound', label: 'Outbound', leads: outreachLeads.filter(l => l.status === 'sent'), color: 'bg-slate-400' },
       { id: 'replied', label: 'Replied', leads: outreachLeads.filter(l => l.status === 'responded'), color: 'bg-emerald-500' },
-      // 'Won' is an archived-only status and is excluded from the live pipeline
+      // 'Won' / 'Stale' / 'Lost' are archived-only statuses; include an Archived column
+      { id: 'archived', label: 'Archived', leads: archivedLeads || [], color: 'bg-slate-500' },
     ];
 
     return (
@@ -745,6 +746,23 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
             <LayoutGrid size={16} /> Pipeline
           </button>
         </div>
+        {viewMode === 'pipeline' && (
+          <div className="ml-4 hidden md:flex items-center gap-2" aria-hidden>
+            <style>{`
+              @keyframes slideRight {
+                0% { transform: translateX(0); opacity: 0; }
+                30% { opacity: 1; }
+                100% { transform: translateX(14px); opacity: 0; }
+              }
+              .scroll-hint { display: inline-flex; align-items: center; justify-content: center; }
+              .scroll-hint svg { color: rgba(148,163,184,0.9); animation: slideRight 1.2s ease-in-out infinite; }
+            `}</style>
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Scroll</div>
+            <div className="scroll-hint">
+              <ChevronRight size={18} />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex border border-slate-200 dark:border-slate-800 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden bg-white dark:bg-slate-950 shadow-xl shadow-slate-200/50 dark:shadow-black/50 min-h-[500px] md:h-[680px] relative ring-1 ring-slate-100/50 dark:ring-slate-800/50">
