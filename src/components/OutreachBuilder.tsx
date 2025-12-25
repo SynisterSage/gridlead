@@ -793,17 +793,20 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         
         {/* Scroll hint placed just left of the List/Pipeline toggle to avoid overlapping pipeline cards */}
         {viewMode === 'pipeline' && (
-          <div className="hidden md:flex items-center gap-2 mr-1 pointer-events-none">
+          <div className="hidden md:flex items-center gap-2 mr-3 pointer-events-none" aria-hidden="true">
             <style>{`
-              @keyframes slideRight {
+              @keyframes scrollHint {
                 0% { transform: translateX(0); opacity: 0; }
-                30% { opacity: 1; }
-                100% { transform: translateX(14px); opacity: 0; }
+                20% { opacity: 1; }
+                100% { transform: translateX(12px); opacity: 0; }
               }
-              .pipeline-scroll svg { color: rgba(148,163,184,0.9); animation: slideRight 1.2s ease-in-out infinite; }
+              .pipeline-scroll svg { animation: scrollHint 1.2s ease-in-out infinite; }
             `}</style>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Scroll</div>
-            <div className="pipeline-scroll"><ChevronRight size={18} /></div>
+
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 dark:bg-slate-800/30 border border-slate-200/5 dark:border-slate-700/30 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest shadow-sm">
+              <span className="select-none">Scroll</span>
+              <span className="pipeline-scroll text-slate-400 dark:text-slate-500"><ChevronRight size={16} /></span>
+            </div>
           </div>
         )}
 
