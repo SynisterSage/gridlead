@@ -586,23 +586,20 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const LeadCard = ({ lead }: { lead: Lead }) => (
     <div
       onClick={() => { setSelectedLeadId(lead.id); setMobileView('detail'); }}
-      className={`flex items-stretch gap-4 p-4 md:p-5 cursor-pointer border-b border-slate-50 dark:border-slate-800/50 transition-all ${
+      className={`p-5 md:p-6 cursor-pointer border-b border-slate-50 dark:border-slate-800/50 transition-all ${
         selectedLeadId === lead.id ? 'bg-white dark:bg-slate-900 shadow-sm z-10' : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/20'
       }`}
+      style={{ overflow: 'hidden' }}
     >
-      {/* Active indicator: green for active (not archived), transparent for archived */}
-      <div className={`w-1 rounded-r ${archivedIds.has(lead.id) ? 'bg-transparent' : 'bg-emerald-500'}`} />
-      <div className="flex-1">
-        <div className="flex justify-between items-center mb-1">
-          <h3 className={`font-bold text-xs md:text-sm truncate pr-2 ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}`}>{lead.name}</h3>
-          <div className={`text-[10px] md:text-[11px] font-mono font-extrabold ${getRatingColorClass(lead.rating)}`}>
-            {lead.rating.toFixed(1)}
-          </div>
+      <div className="flex justify-between items-center mb-1 min-w-0">
+        <h3 className={`font-bold text-xs md:text-sm truncate pr-2 ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}`}>{lead.name}</h3>
+        <div className={`text-[10px] md:text-[11px] font-mono font-extrabold ${getRatingColorClass(lead.rating)}`}>
+          {lead.rating.toFixed(1)}
         </div>
-        <div className="flex items-center justify-between">
-          <p className={`text-[8px] md:text-[10px] uppercase tracking-widest truncate ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-400 dark:text-slate-600'}`}>{lead.category}</p>
-          {getStatusBadge(lead)}
-        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <p className={`text-[8px] md:text-[10px] uppercase tracking-widest truncate ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-400 dark:text-slate-600'}`}>{lead.category}</p>
+        {getStatusBadge(lead)}
       </div>
     </div>
   );
@@ -633,7 +630,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         ) : (
           <div className="flex w-full h-full">
             {/* Sidebar Column */}
-            <div className={`${mobileView === 'detail' ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-slate-100 dark:border-slate-800 flex-col bg-slate-50/20 dark:bg-slate-900/20 shrink-0`}>
+            <div className={`${mobileView === 'detail' ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r border-slate-100 dark:border-slate-800 flex-col bg-slate-50/20 dark:bg-slate-900/20 shrink-0 overflow-x-hidden`}>
               <div className="p-5 md:p-6 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 space-y-4">
                 <div className="relative">
                   <SearchIcon size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600" />
@@ -655,20 +652,19 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                     >
                       <span className="inline-flex items-center gap-2">
                         <span>{f.replace('drafts', 'Drafts').replace('outbound', 'Outbound').replace('replied', 'Replied').replace('archived', 'Archived')}</span>
-                        {filterCounts[f] > 0 && (
-                          <span className="text-[10px] font-bold bg-slate-900 text-white rounded-full px-2 py-0.5">{filterCounts[f]}</span>
-                        )}
-                      </span>
-                    </button>
-                  ))}
-                    </div>
-
-                  {/* Left fade to hint horizontal scroll */}
-                  <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 hidden sm:block z-10">
-                    <div className="h-full w-full bg-gradient-to-r from-white/90 to-transparent dark:from-slate-900/90 dark:to-transparent" />
-                  </div>
-
-                  {/* Right fade to hint horizontal scroll */}
+                        <div className={`w-1 rounded-r ${archivedIds.has(lead.id) ? 'bg-transparent' : 'bg-emerald-500'}`} />
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center mb-1 min-w-0">
+                            <h3 className={`font-bold text-xs md:text-sm truncate pr-2 ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}`}>{lead.name}</h3>
+                            <div className={`text-[10px] md:text-[11px] font-mono font-extrabold ${getRatingColorClass(lead.rating)}`}>
+                              {lead.rating.toFixed(1)}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className={`text-[8px] md:text-[10px] uppercase tracking-widest truncate ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-400 dark:text-slate-600'}`}>{lead.category}</p>
+                            {getStatusBadge(lead)}
+                          </div>
+                        </div>
                   <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 hidden sm:block z-10">
                     <div className="h-full w-full bg-gradient-to-l from-white/90 to-transparent dark:from-slate-900/90 dark:to-transparent" />
                   </div>
