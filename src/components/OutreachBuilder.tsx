@@ -675,8 +675,22 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     ];
 
     return (
-      <div className="flex-1 overflow-hidden h-full bg-slate-50/10 dark:bg-slate-900/20">
+      <div className="flex-1 overflow-hidden h-full bg-slate-50/10 dark:bg-slate-900/20 relative">
         <div className="h-full kanban-mask">
+          {/* Scroll hint positioned over the pipeline area (top-right) */}
+          <div className="hidden md:flex items-center gap-2 absolute top-6 right-8 z-40 pointer-events-none">
+            <style>{`
+              @keyframes slideRight {
+                0% { transform: translateX(0); opacity: 0; }
+                30% { opacity: 1; }
+                100% { transform: translateX(14px); opacity: 0; }
+              }
+              .pipeline-scroll svg { color: rgba(148,163,184,0.9); animation: slideRight 1.2s ease-in-out infinite; }
+            `}</style>
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Scroll</div>
+            <div className="pipeline-scroll"><ChevronRight size={18} /></div>
+          </div>
+
           <div className="overflow-x-auto h-full flex p-10 gap-8 custom-scrollbar kanban-scroll">
             {columns.map(col => (
               <div key={col.id} className="w-80 shrink-0 flex flex-col gap-6">
@@ -743,23 +757,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           <p className="text-slate-500 dark:text-slate-400 text-sm md:text-lg font-medium">Manage threads and close high-value deals.</p>
         </div>
         
-        {viewMode === 'pipeline' && (
-          <div className="mr-4 hidden md:flex items-center gap-2" aria-hidden>
-            <style>{`
-              @keyframes slideRight {
-                0% { transform: translateX(0); opacity: 0; }
-                30% { opacity: 1; }
-                100% { transform: translateX(14px); opacity: 0; }
-              }
-              .scroll-hint { display: inline-flex; align-items: center; justify-content: center; }
-              .scroll-hint svg { color: rgba(148,163,184,0.9); animation: slideRight 1.2s ease-in-out infinite; }
-            `}</style>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Scroll</div>
-            <div className="scroll-hint">
-              <ChevronRight size={18} />
-            </div>
-          </div>
-        )}
+        {/* pipeline scroll hint moved into PipelineView for better placement */}
 
         <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl w-fit border border-slate-200 dark:border-slate-800 shadow-inner">
           <button onClick={() => setViewMode('list')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}>
@@ -945,10 +943,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                                 <Mail size={14} className="text-blue-500" /> Thread Timeline
-                                {isFetchingMessages && (
-                                  <div className="ml-3 w-4 h-4 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-transparent animate-spin" aria-hidden />
-                                )}
-                              </div>
+                            </div>
                           </div>
 
                           {isFetchingMessages ? (
