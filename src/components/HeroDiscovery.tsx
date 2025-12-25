@@ -77,12 +77,32 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
       .sort((a, b) => (b.potentialScore || 0) - (a.potentialScore || 0));
   }, [results, minRating]);
 
-  const DiscoverySkeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
-    <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col transition-all relative overflow-hidden ${className}`}>
-      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mb-4 animate-pulse" />
-      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/6 mb-3 animate-pulse" />
-      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded mb-3 animate-pulse" />
-      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mt-auto animate-pulse" />
+  const DiscoverySkeleton: React.FC = () => (
+    <div className="p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 animate-pulse">
+      <div className="space-y-3">
+        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
+
+        <div className="flex items-center gap-2 px-3 py-2 bg-blue-50/30 dark:bg-blue-900/10 rounded-xl border border-blue-50 dark:border-blue-900/30">
+          <div className="h-3 w-3 bg-blue-200 dark:bg-blue-800 rounded" />
+          <div className="h-3 bg-blue-200 dark:bg-blue-800 rounded w-24" />
+        </div>
+
+        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded" />
+        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-5/6" />
+
+        <div className="space-y-1">
+          <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded w-1/2" />
+          <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded w-full" />
+          <div className="h-1.5 w-full bg-slate-50 dark:bg-slate-950 rounded-full overflow-hidden border border-slate-100/50 dark:border-slate-800 shadow-inner">
+            <div className="h-full bg-slate-900 dark:bg-white" style={{ width: '40%' }} />
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="h-12 rounded-xl bg-slate-200 dark:bg-slate-700" />
+        </div>
+      </div>
     </div>
   );
 
@@ -184,17 +204,14 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pt-2">
           {loading ? (
+            // Responsive skeleton: 3 on mobile, up to 6 on larger screens
             Array.from({ length: 6 }).map((_, i) => (
-              <DiscoverySkeleton key={i} />
+              <div key={i} className={`${i >= 3 ? 'hidden md:block' : ''}`}>
+                <DiscoverySkeleton />
+              </div>
             ))
           ) : (
-            filteredResults.length === 0 ? (
-              <div className="py-20 text-center opacity-20 col-span-full">
-                <Search size={40} className="mx-auto mb-2" />
-                <p className="text-[9px] font-black uppercase tracking-widest">Search to surface opportunities</p>
-              </div>
-            ) : (
-              filteredResults.map((item, i) => (
+            filteredResults.map((item, i) => (
               <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
                 {item.potentialScore >= 80 && item.website && (
                   <div className="absolute top-4 right-4 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 text-[7px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest shadow-sm">
@@ -258,6 +275,13 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
               </div>
             ))
           )}
+            {/* Empty state when a search has not yet returned results */}
+            {!loading && filteredResults.length === 0 && (
+                <div className="col-span-1 sm:col-span-2 lg:col-span-3 py-20 text-center opacity-20">
+                    <Search size={36} className="mx-auto mb-2" />
+                    <p className="text-[9px] font-black uppercase tracking-widest">Start a scan to surface opportunities</p>
+                </div>
+            )}
         </div>
       </div>
     </div>
