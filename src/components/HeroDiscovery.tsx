@@ -215,7 +215,7 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
             ))
           ) : (
             filteredResults.map((item, i) => (
-              <div key={i} className="group bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:-translate-y-1 hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all relative overflow-visible animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
+              <div key={i} className="group bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:-translate-y-1 hover:border-slate-200 dark:hover:border-slate-700 hover:shadow-2xl transition-all relative overflow-visible animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
                 {/* hover glow — clipped by an inner rounded mask so it doesn't bleed outside the card */}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
                   <div className="w-full h-full rounded-[2rem] overflow-hidden relative">
