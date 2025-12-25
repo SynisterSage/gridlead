@@ -781,17 +781,16 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                         </div>
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-4 min-w-0">
-                            <a href={`https://${currentLead.website}`} target="_blank" className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 text-[10px] md:text-[11px] font-bold underline underline-offset-4 truncate max-w-[240px]">
-                              {currentLead.website} <ExternalLink size={10} />
-                            </a>
-                            <span className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest truncate">• {currentLead.category}</span>
-                          </div>
-                          {(currentLead.archivedAt || currentLead.sentAt || currentLead.status === 'responded') && (currentLead.email || recipientEmail) && (
-                            <a href={`mailto:${currentLead.email || recipientEmail}`} className="inline-flex items-center gap-2 bg-slate-50/8 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-full px-3 py-1 text-[12px] font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors max-w-[260px]">
-                              <Mail size={14} />
-                              <span className="truncate">{currentLead.email || recipientEmail}</span>
-                            </a>
-                          )}
+                              <a href={`https://${currentLead.website}`} target="_blank" className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 text-[10px] md:text-[11px] font-bold underline underline-offset-4 truncate max-w-[240px]">
+                                {currentLead.website} <ExternalLink size={10} />
+                              </a>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest truncate max-w-[140px]">• {currentLead.category}</span>
+                                {(currentLead.email || recipientEmail) && (
+                                  <span className="text-[9px] md:text-[10px] font-bold text-slate-400 dark:text-slate-600 truncate max-w-[140px]">• {currentLead.email || recipientEmail}</span>
+                                )}
+                              </div>
+                            </div>
                         </div>
                       </div>
                       
