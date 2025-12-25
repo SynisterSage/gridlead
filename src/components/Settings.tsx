@@ -315,16 +315,26 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   };
 
   const handleGlobalSignOut = async () => {
-    await supabase.auth.signOut({ scope: 'global' });
+    // Use robust logout flow to clear caches/service workers and redirect
+    try {
+      const { robustLogout } = await import('../lib/auth');
+      await robustLogout({ redirectTo: '/' });
+    } catch (e) {
+      await supabase.auth.signOut({ scope: 'global' });
+      window.location.replace('/');
+    }
     if (onLogout) onLogout();
-    // Hard redirect to landing to avoid blank UI while auth state resets
-    window.location.replace('/');
   };
 
   const handleLogoutClick = async () => {
-    await supabase.auth.signOut();
+    try {
+      const { robustLogout } = await import('../lib/auth');
+      await robustLogout({ redirectTo: '/' });
+    } catch (e) {
+      await supabase.auth.signOut();
+      window.location.replace('/');
+    }
     if (onLogout) onLogout();
-    window.location.replace('/');
   };
 
   const formatDate = (iso?: string) => {

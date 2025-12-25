@@ -14,6 +14,7 @@ import { AppView, Lead, Profile, NotificationItem } from './types';
 import { MOCK_LEADS } from './constants';
 import { ThemeProvider } from './ThemeContext';
 import { supabase } from './lib/supabaseClient';
+import { robustLogout, logAuthState } from './lib/auth';
 import { getPlanLimits, isOverLeadLimit } from './lib/planLimits';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -554,7 +555,9 @@ const AppContent: React.FC = () => {
       setAuthLoading(false);
     };
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // Log auth state transitions for debugging logout races
+      logAuthState(event, newSession);
       setSession(newSession);
       if (!newSession) {
         setActiveView(AppView.DASHBOARD);
@@ -574,11 +577,9 @@ const AppContent: React.FC = () => {
   };
 
   const handleOnboardingCancel = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
-    setProfile(null);
+    // Use robustLogout to ensure client state and service workers are cleared
     setShowOnboarding(false);
-    setActiveView(AppView.DASHBOARD);
+    await robustLogout({ redirectTo: '/' });
   };
 
   const handleOnboardingComplete = () => {
@@ -687,11 +688,11 @@ const AppContent: React.FC = () => {
   const handleLogout = () => {
     setIsLoggingOut(true);
     setTimeout(async () => {
-      await supabase.auth.signOut();
+      await robustLogout({ redirectTo: '/' });
       setSession(null);
       setShowOnboarding(false);
       setIsLoggingOut(false);
-    }, 800);
+    }, 400);
   };
 
   const addLead = async (newLead: Lead) => {
