@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle2, X, Info } from 'lucide-react';
 
 interface Plan {
   id: string;
@@ -77,61 +77,115 @@ const PlanCard: React.FC<{ plan: Plan; selected: boolean; onSelect: () => void }
 const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm }) => {
   const [selected, setSelected] = useState<string>('studio');
   const [stage, setStage] = useState<'select' | 'confirm' | 'success'>('select');
+  const [closing, setClosing] = useState(false);
 
-  if (!visible) return null;
+  useEffect(() => {
+    // Reset state when opened
+    if (visible) {
+      setClosing(false);
+      setStage('select');
+      setSelected('studio');
+    }
+  }, [visible]);
+
+  if (!visible && !closing) return null;
 
   const plan = PLANS.find(p => p.id === selected) || PLANS[1];
 
+  const startClose = (delay = 300) => {
+    setClosing(true);
+    setTimeout(() => {
+      setClosing(false);
+      onClose();
+    }, delay);
+  };
+
+  const handleConfirm = () => {
+    // mock confirm then close
+    setStage('success');
+    onConfirm?.(plan.id);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <aside className="ml-auto w-full max-w-xl bg-white dark:bg-slate-900 p-6 md:p-10 shadow-2xl transform transition-transform duration-300 animate-in slide-in-from-right-3" role="dialog" aria-modal="true">
+      <div className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${closing ? 'opacity-0' : 'opacity-100'}`} onClick={() => startClose()} />
+      <aside
+        className={`ml-auto w-full max-w-[940px] bg-white dark:bg-slate-900 p-4 md:p-6 shadow-2xl transform transition-transform duration-300 ${closing ? 'translate-x-full' : 'translate-x-0'}`}
+        role="dialog"
+        aria-modal="true"
+      >
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-xl font-extrabold">Upgrade plan</h3>
             <p className="text-sm text-slate-500">Pick a plan and proceed to checkout (mock).</p>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-900">Close</button>
+          <button onClick={() => startClose()} className="text-slate-500 hover:text-slate-900 p-2 rounded-md">
+            <X />
+          </button>
+        </div>
+
+        <div className="mt-4 max-h-[75vh] overflow-hidden rounded-lg">
+          {stage === 'select' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {PLANS.map(p => (
+                <div key={p.id} className="relative">
+                  <PlanCard plan={p} selected={p.id === selected} onSelect={() => setSelected(p.id)} />
+                  {p.badge && (
+                    <div className="absolute top-3 right-3">
+                      <div className={`px-2 py-0.5 text-[10px] font-bold rounded ${p.featured ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-800'}`}>{p.badge}</div>
+                      {p.badge.toLowerCase().includes('development') || p.badge.toLowerCase().includes('in development') ? (
+                        <div className="relative mt-1">
+                          <div className="group">
+                            <button aria-label="In development info" className="w-5 h-5 rounded-full bg-slate-800/60 dark:bg-slate-700 flex items-center justify-center text-[10px] text-slate-300 hover:bg-slate-800 transition-colors">
+                              ?
+                            </button>
+                            <div className="absolute right-0 bottom-full mb-3 w-44 p-3 bg-slate-900 text-white rounded-[1rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
+                              <div className="text-[10px] font-black uppercase tracking-widest mb-2">In development</div>
+                              <p className="text-[11px] text-slate-200">This plan or feature is still in development and may be unavailable. Use the mock flow to preview behavior.</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="p-4 md:p-6 overflow-auto">
+            {stage === 'confirm' && (
+              <div>
+                <h4 className="text-lg font-extrabold mb-2">Confirm {plan.title}</h4>
+                <p className="text-sm text-slate-500 mb-6">This is a mock confirmation. No real payment will be processed. When you're ready to enable real payments we'll swap the CTA to call your backend to create a Stripe Checkout session.</p>
+                <div className="mb-6">
+                  <div className="flex items-center justify-between text-sm text-slate-700 mb-2"><span>Plan</span><span className="font-bold">{plan.title}</span></div>
+                  <div className="flex items-center justify-between text-sm text-slate-700"><span>Price</span><span className="font-bold">{plan.price}{plan.per}</span></div>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border">Back</button>
+                  <button onClick={handleConfirm} className="px-4 py-2 rounded-xl bg-[#0f172a] text-white font-bold">Confirm (mock)</button>
+                </div>
+              </div>
+            )}
+
+            {stage === 'success' && (
+              <div className="mt-6 text-center">
+                <div className="w-20 h-20 rounded-full mx-auto bg-emerald-500 flex items-center justify-center text-white mb-4">
+                  <CheckCircle2 size={28} />
+                </div>
+                <h4 className="text-lg font-extrabold">Mock purchase complete</h4>
+                <p className="text-sm text-slate-500">The UI now reflects a successful mock upgrade. When you connect Stripe we'll replace this flow with a real checkout redirect.</p>
+                <div className="mt-6">
+                  <button onClick={() => startClose(220)} className="px-6 py-3 rounded-xl bg-white border">Done</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {stage === 'select' && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {PLANS.map(p => (
-              <PlanCard key={p.id} plan={p} selected={p.id === selected} onSelect={() => setSelected(p.id)} />
-            ))}
-          </div>
-        )}
-
-        {stage === 'confirm' && (
-          <div className="mt-6">
-            <h4 className="text-lg font-extrabold mb-2">Confirm {plan.title}</h4>
-            <p className="text-sm text-slate-500 mb-6">This is a mock confirmation. No real payment will be processed. When you're ready to enable real payments we'll swap the CTA to call your backend to create a Stripe Checkout session.</p>
-            <div className="mb-6">
-              <div className="flex items-center justify-between text-sm text-slate-700 mb-2"><span>Plan</span><span className="font-bold">{plan.title}</span></div>
-              <div className="flex items-center justify-between text-sm text-slate-700"><span>Price</span><span className="font-bold">{plan.price}{plan.per}</span></div>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border">Back</button>
-              <button onClick={() => { setStage('success'); onConfirm?.(plan.id); }} className="px-4 py-2 rounded-xl bg-[#0f172a] text-white font-bold">Confirm (mock)</button>
-            </div>
-          </div>
-        )}
-
-        {stage === 'success' && (
-          <div className="mt-6 text-center">
-            <div className="w-20 h-20 rounded-full mx-auto bg-emerald-500 flex items-center justify-center text-white mb-4">
-              <CheckCircle2 size={28} />
-            </div>
-            <h4 className="text-lg font-extrabold">Mock purchase complete</h4>
-            <p className="text-sm text-slate-500">The UI now reflects a successful mock upgrade. When you connect Stripe we'll replace this flow with a real checkout redirect.</p>
-            <div className="mt-6">
-              <button onClick={onClose} className="px-6 py-3 rounded-xl bg-white border">Done</button>
-            </div>
-          </div>
-        )}
-
-        {stage === 'select' && (
-          <div className="mt-6 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between">
             <div className="text-sm text-slate-500">Selected: <span className="font-bold">{plan.title}</span></div>
             <div className="flex items-center gap-3">
               <button onClick={() => setStage('confirm')} className="px-4 py-2 rounded-xl bg-[#0f172a] text-white font-bold">Proceed to Checkout (mock)</button>
