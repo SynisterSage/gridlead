@@ -83,6 +83,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   }, [leads, archivedLeads, archivedIds]);
   const [replyBody, setReplyBody] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+  const [isFetchingMessages, setIsFetchingMessages] = useState(false);
 
   const stripHtml = (html?: string | null) => {
     if (!html) return '';
@@ -101,6 +102,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   };
 
   const fetchMessages = async (leadId: string) => {
+    setIsFetchingMessages(true);
     // First fetch the email_threads for this lead. RLS on email_messages is written
     // to check ownership via the thread -> lead relationship, so explicitly
     // resolving thread ids for the lead makes the messages query simpler and
@@ -144,6 +146,9 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       }
     } catch (err) {
       console.error('fetchMessages unexpected error', err);
+    }
+    finally {
+      setIsFetchingMessages(false);
     }
   };
 
@@ -939,53 +944,62 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                              <Mail size={14} className="text-blue-500" /> Thread Timeline
-                            </div>
+                                <Mail size={14} className="text-blue-500" /> Thread Timeline
+                                {isFetchingMessages && (
+                                  <div className="ml-3 w-4 h-4 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-transparent animate-spin" aria-hidden />
+                                )}
+                              </div>
                           </div>
 
-                          {orderedMessages.length === 0 && (
-                            <div className="p-8 border border-slate-100 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-sm">
-                              No thread messages yet. Send or poll to see updates.
+                          {isFetchingMessages ? (
+                            <div className="space-y-4">
+                              {[1,2,3].map(i => (
+                                <div key={i} className="p-6 rounded-3xl border border-slate-800 bg-slate-800/60 animate-pulse">
+                                  <div className="h-4 bg-slate-700 rounded w-1/3 mb-4" />
+                                  <div className="h-3 bg-slate-700 rounded w-1/6 mb-3" />
+                                  <div className="h-12 bg-slate-700 rounded" />
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {orderedMessages.map(msg => (
+                                <div
+                                  key={msg.id}
+                                  className={`p-6 rounded-3xl border shadow-sm ${
+                                    msg.direction === 'sent'
+                                      ? 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800'
+                                      : 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                                      {msg.direction === 'sent' ? (
+                                        <>
+                                          <Mail size={12} className="text-blue-500" /> Outbound
+                                        </>
+                                      ) : (
+                                        <>
+                                          <MessageSquare size={12} className="text-emerald-500" /> Incoming
+                                        </>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] font-mono text-slate-400">
+                                      {new Date(msg.sent_at).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  {msg.subject && (
+                                    <h4 className="text-base font-extrabold text-[#0f172a] dark:text-white mb-2 leading-tight">
+                                      {msg.subject}
+                                    </h4>
+                                  )}
+                                  <p className="text-[14px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                                    {trimQuoted(stripHtml(msg.body_html) || msg.snippet || '—')}
+                                  </p>
+                                </div>
+                              ))}
                             </div>
                           )}
-
-                          <div className="space-y-4">
-                            {orderedMessages.map(msg => (
-                              <div
-                                key={msg.id}
-                                className={`p-6 rounded-3xl border shadow-sm ${
-                                  msg.direction === 'sent'
-                                    ? 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800'
-                                    : 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                                    {msg.direction === 'sent' ? (
-                                      <>
-                                        <Mail size={12} className="text-blue-500" /> Outbound
-                                      </>
-                                    ) : (
-                                      <>
-                                        <MessageSquare size={12} className="text-emerald-500" /> Incoming
-                                      </>
-                                    )}
-                                  </div>
-                                  <span className="text-[10px] font-mono text-slate-400">
-                                    {new Date(msg.sent_at).toLocaleString()}
-                                  </span>
-                                </div>
-                                {msg.subject && (
-                                  <h4 className="text-base font-extrabold text-[#0f172a] dark:text-white mb-2 leading-tight">
-                                    {msg.subject}
-                                  </h4>
-                                )}
-                                <p className="text-[14px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
-                                  {trimQuoted(stripHtml(msg.body_html) || msg.snippet || '—')}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
 
                           <div className="sticky bottom-0 left-0 right-0 mt-6">
                             <div className="bg-white/95 dark:bg-slate-950/95 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-6 sm:p-8 pb-12 sm:pb-14">
