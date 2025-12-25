@@ -79,14 +79,18 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
 
   const DiscoverySkeleton: React.FC = () => (
     <div className="relative p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 animate-pulse overflow-visible">
-      {/* badge placeholders (left + icon-only right) */}
-      <div className="absolute top-6 left-6 w-10 h-6 rounded-md bg-[#0f172a] dark:bg-white/10" />
+      {/* icon-only right placeholder */}
       <div className="absolute top-6 right-6 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center" />
 
-      {/* add small top padding so badge doesn't visually overlap title placeholder */}
-      <div className="space-y-3 pt-3">
-        <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
-        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
+      {/* render an inline pill next to the title to avoid absolute overlap artifacts */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-6 rounded-md bg-[#0f172a] dark:bg-white/10 flex-shrink-0" />
+          <div className="flex-1">
+            <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mt-2" />
+          </div>
+        </div>
 
         <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-100/50 dark:border-slate-800" />
         <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-100/50 dark:border-slate-800" />
