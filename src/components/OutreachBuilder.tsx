@@ -466,6 +466,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     // quota/usage tracking remains intact. Do NOT call the parent delete
     // handler which would remove it from the backend and affect usage.
     if ((currentLead as any).archivedAt) {
+      // Optimistic UI update: remove locally first for immediate UX
+      const previous = archivedLeads;
       setArchivedLeads(prev => prev.filter(p => p.id !== currentLead.id));
       setSoftDeletedArchiveIds(prev => {
         const s = new Set(prev);
@@ -475,15 +477,39 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       setArchivedCount(c => Math.max(0, c - 1));
       // Clear selection to avoid showing stale UI
       setSelectedLeadId(null);
+
       // Persist the "hidden" state server-side so the row remains for quota
-      // tracking but is hidden from UI across sessions/devices.
+      // tracking but is hidden from UI across sessions/devices. If the RPC
+      // fails, revert the optimistic UI changes and show an error.
       try {
-        await supabase.rpc('hide_lead', { p_lead_id: currentLead.id, p_hidden: true });
-      } catch (err) {
+        const { data, error } = await supabase.rpc('hide_lead', { p_lead_id: currentLead.id, p_hidden: true });
+        if (error) {
+          console.error('hide_lead rpc returned error', error);
+          // revert optimistic change
+          setArchivedLeads(previous);
+          setSoftDeletedArchiveIds(prev => {
+            const s = new Set(prev);
+            s.delete(currentLead.id);
+            return s;
+          });
+          setArchivedCount(previous.length);
+          alert('Failed to hide archived lead: ' + (error.message || JSON.stringify(error)));
+          return;
+        }
+        // success: reconcile by re-fetching authoritative archived rows
+        try { void fetchArchivedLeads(); void fetchArchivedCount(); } catch (e) { /* ignore */ }
+      } catch (err: any) {
         console.error('hide_lead rpc failed', err);
+        // revert optimistic change
+        setArchivedLeads(previous);
+        setSoftDeletedArchiveIds(prev => {
+          const s = new Set(prev);
+          s.delete(currentLead.id);
+          return s;
+        });
+        setArchivedCount(previous.length);
+        alert('Failed to hide archived lead: ' + (err?.message || String(err)));
       }
-      // Refresh archived list to reconcile server state
-      try { void fetchArchivedLeads(); void fetchArchivedCount(); } catch (e) { /* ignore */ }
       return;
     }
 
