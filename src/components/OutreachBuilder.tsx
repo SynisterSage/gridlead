@@ -791,24 +791,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           <p className="text-slate-500 dark:text-slate-400 text-sm md:text-lg font-medium">Manage threads and close high-value deals.</p>
         </div>
         
-        {/* Scroll hint placed just left of the List/Pipeline toggle to avoid overlapping pipeline cards */}
-        {viewMode === 'pipeline' && (
-          <div className="hidden md:flex items-center gap-2 mr-3 pointer-events-none" aria-hidden="true">
-            <style>{`
-              @keyframes scrollHint {
-                0% { transform: translateX(0); opacity: 0; }
-                20% { opacity: 1; }
-                100% { transform: translateX(12px); opacity: 0; }
-              }
-              .pipeline-scroll svg { animation: scrollHint 1.2s ease-in-out infinite; }
-            `}</style>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 dark:bg-slate-800/30 border border-slate-200/5 dark:border-slate-700/30 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest shadow-sm">
-              <span className="select-none">Scroll</span>
-              <span className="pipeline-scroll text-slate-400 dark:text-slate-500"><ChevronRight size={16} /></span>
-            </div>
-          </div>
-        )}
+        {/* pipeline scroll hint removed per UX request */}
 
         <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl w-fit border border-slate-200 dark:border-slate-800 shadow-inner">
           <button
