@@ -61,15 +61,23 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       replied: 0,
       archived: archivedLeads.length || 0,
     };
-    // Count non-archived leads for active filters
+
+    // Use a unique set of IDs across both sources so deletions in archivedLeads
+    // immediately affect the "all" badge even if the parent `leads` prop
+    // hasn't reconciled yet.
+    const uniqueIds = new Set<string>();
+    leads.forEach(l => uniqueIds.add(l.id));
+    archivedLeads.forEach(a => uniqueIds.add(a.id));
+    counts.all = uniqueIds.size;
+
+    // For other badges (drafts/outbound/replied) only consider active (non-archived)
     leads.forEach(l => {
       const isArchived = archivedIds.has(l.id);
-      if (!isArchived) counts.all += 1;
       if (!isArchived && l.status === 'approved') counts.drafts += 1;
       if (!isArchived && l.status === 'sent') counts.outbound += 1;
       if (!isArchived && l.status === 'responded') counts.replied += 1;
     });
-    // 'all' should include archived as well? keep as non-archived to match active list behavior
+
     return counts;
   }, [leads, archivedLeads, archivedIds]);
   const [replyBody, setReplyBody] = useState('');
