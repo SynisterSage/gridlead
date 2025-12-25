@@ -520,9 +520,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       <button disabled className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent cursor-not-allowed">
                         Manage subscription
                       </button>
-                      <button onClick={handleSendTestPush} className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-700 dark:text-slate-200 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                        Send test push
-                      </button>
+                      {/* Removed Send test push button — not needed in Billing & Plan UI */}
                     </div>
                   </div>
                 </div>
