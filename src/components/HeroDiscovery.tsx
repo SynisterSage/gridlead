@@ -223,7 +223,7 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
                       <button aria-label="Target opportunity" className="w-8 h-8 rounded-full bg-blue-50/30 dark:bg-blue-900/10 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
                         <Lightbulb size={14} />
                       </button>
-                      <div className="absolute bottom-full right-0 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
+                      <div className="absolute bottom-full right-0 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 group-focus-within:translate-y-0 z-50 ring-1 ring-white/10">
                         <div className="flex items-center gap-2 mb-2 text-blue-400">
                           <Lightbulb size={12} />
                           <span className="text-[9px] font-black uppercase tracking-widest">Target opportunity</span>
@@ -237,7 +237,7 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
 
                 <div className="space-y-2.5">
                   <div>
-                    <h4 className="font-extrabold text-slate-900 dark:text-white truncate tracking-tight text-sm md:text-base">{item.name}</h4>
+                    <h4 className="font-extrabold text-slate-900 dark:text-white truncate tracking-tight text-sm md:text-base pr-12 md:pr-14">{item.name}</h4>
                     <p className="text-[8px] md:text-[9px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest mt-1">{item.category}</p>
                   </div>
 
@@ -255,12 +255,20 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
                     
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center text-[8px] md:text-[9px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest px-1">
-                        <span className="flex items-center gap-1 relative group/needscore">
+                        <span className="flex items-center gap-2 relative group/needscore">
                           Need Score
-                          <span className="text-slate-300 dark:text-slate-600 cursor-help">?</span>
-                          <div className="absolute top-full left-0 mt-2 w-64 p-3 bg-slate-900 dark:bg-slate-800 text-white rounded-xl shadow-2xl opacity-0 invisible group-hover/needscore:opacity-100 group-hover/needscore:visible transition-all duration-200 text-[9px] font-medium leading-relaxed z-10 pointer-events-none">
-                            Heuristic only: +25 no website, rating &lt;3 (+18), rating 3-3.9 (+10), rating ≥4 (-15), local service niches (+5), missing address (-5). Deep Audit refines scores in Review.
-                          </div>
+                          <span className="relative">
+                            <button aria-label="Need score info" className="w-5 h-5 rounded-full bg-slate-800/60 dark:bg-slate-700 flex items-center justify-center text-[10px] text-slate-300 hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-1">
+                              ?
+                            </button>
+                            <div className="absolute bottom-full left-0 mb-3 w-56 p-4 bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover/needscore:opacity-100 group-hover/needscore:visible group-focus-within/needscore:opacity-100 group-focus-within/needscore:visible transition-all duration-300 transform translate-y-2 group-hover/needscore:translate-y-0 group-focus-within/needscore:translate-y-0 z-50 ring-1 ring-white/10">
+                              <div className="flex items-center gap-2 mb-2 text-slate-200">
+                                <span className="text-[9px] font-black uppercase tracking-widest">Need score</span>
+                              </div>
+                              <p className="text-[10px] font-medium leading-relaxed opacity-80">Heuristic only: +25 no website, rating &lt;3 (+18), rating 3-3.9 (+10), rating ≥4 (-15), local service niches (+5), missing address (-5). Deep Audit refines scores in Review.</p>
+                              <div className="absolute top-full left-4 -mt-1 w-2 h-2 bg-slate-800 rotate-45" />
+                            </div>
+                          </span>
                         </span>
                         <span className="text-slate-900 dark:text-white font-mono">{item.potentialScore}%</span>
                       </div>
