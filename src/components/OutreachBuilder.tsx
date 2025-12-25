@@ -298,6 +298,25 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     } catch (err) { console.error(err); } finally { setIsGenerating(false); }
   };
 
+  const handleGenerateReply = async () => {
+    if (!currentLead) return;
+    setIsGenerating(true);
+    try {
+      const canUse = getPlanLimits(profile?.plan).canUseGemini;
+      if (!canUse) {
+        alert('Gemini-powered outreach is available for Studio and Agency+ plans. Upgrade in Settings to use this feature.');
+        return;
+      }
+      const draft = await generateOutreachEmail(currentLead);
+      // Populate the quick-reply composer with the AI-generated body
+      setReplyBody(draft.body || '');
+    } catch (err) {
+      console.error('generate reply failed', err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!currentLead) return;
     if (!recipientEmail) {
@@ -806,15 +825,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                               Restore
                             </button>
                           )}
-                        {!['sent', 'responded'].includes(currentLead.status) && (
-                          <button 
-                            onClick={handleGenerate} 
-                            disabled={isGenerating}
-                            className="flex-[2] lg:flex-none h-11 px-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#0f172a] dark:text-white rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-3 shadow-md"
-                          >
-                            {isGenerating ? <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-900 dark:border-t-white rounded-full animate-spin" /> : <><Sparkles size={16} fill="currentColor" /> AI Craft</>}
-                          </button>
-                        )}
+
                         {(!currentLead.archivedAt && currentLead.status === 'won') && (
                           <div className="px-8 h-11 bg-amber-500 text-white rounded-xl text-[10px] font-bold flex items-center gap-3 shadow-lg">
                             <Trophy size={18} /> Closed Won
@@ -909,7 +920,14 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                                   placeholder="Type a quick reply..."
                                   className="w-full h-24 sm:h-28 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
                                 />
-                                <div className="flex justify-end">
+                                <div className="flex justify-end items-center gap-3">
+                                  <button
+                                    onClick={handleGenerateReply}
+                                    disabled={isGenerating}
+                                    className="px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#0f172a] dark:text-white hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-2"
+                                  >
+                                    {isGenerating ? <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-900 dark:border-t-white rounded-full animate-spin" /> : <><Sparkles size={14} /> AI</>}
+                                  </button>
                                   <button
                                     onClick={handleReply}
                                     disabled={isReplying || !replyBody}
@@ -953,12 +971,19 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   {/* Footer Action Area */}
                       {(!currentLead.archivedAt && !['sent', 'responded'].includes(currentLead.status)) && (
                         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent pointer-events-none z-20">
-                          <div className="max-w-4xl mx-auto pointer-events-auto">
+                          <div className="max-w-4xl mx-auto pointer-events-auto flex gap-4">
                             <button 
                               onClick={handleSend} disabled={isSending || !subject || !body}
-                              className="w-full h-16 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-4 hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-2xl active:scale-95 ring-4 ring-slate-900/5 dark:ring-white/5"
+                              className="flex-1 h-16 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-4 hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-2xl active:scale-95 ring-4 ring-slate-900/5 dark:ring-white/5"
                             >
                               {isSending ? "Dispatching..." : <><Send size={20} /> Initiate Thread</>}
+                            </button>
+                            <button
+                              onClick={handleGenerate}
+                              disabled={isGenerating}
+                              className="h-12 w-36 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#0f172a] dark:text-white rounded-xl text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all"
+                            >
+                              {isGenerating ? <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-900 dark:border-t-white rounded-full animate-spin" /> : <><Sparkles size={14} /> AI Craft</>}
                             </button>
                           </div>
                         </div>
