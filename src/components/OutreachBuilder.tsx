@@ -158,7 +158,9 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         .from('leads')
         .select('*')
         .eq('user_id', profile.id)
+        // Only fetch archived rows that are NOT hidden from the UI.
         .not('archived_at', 'is', null)
+        .eq('hidden_from_ui', false)
         .order('archived_at', { ascending: false });
       if (error) {
         console.error('fetchArchivedLeads error', error);
@@ -206,7 +208,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         .from('leads')
         .select('id', { count: 'exact', head: false })
         .eq('user_id', profile.id)
-        .not('archived_at', 'is', null);
+        .not('archived_at', 'is', null)
+        .eq('hidden_from_ui', false);
       if (!error) {
         const adjusted = Math.max(0, (count || 0) - softDeletedArchiveIds.size);
         setArchivedCount(adjusted);
