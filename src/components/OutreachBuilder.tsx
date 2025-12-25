@@ -454,20 +454,26 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
 
   const handleDeleteCurrentLead = async () => {
     if (!currentLead) return;
-    // Optimistically remove from archived list if archived
+    // If this is an archived lead, only remove it from the frontend list so
+    // quota/usage tracking remains intact. Do NOT call the parent delete
+    // handler which would remove it from the backend and affect usage.
     if ((currentLead as any).archivedAt) {
       setArchivedLeads(prev => prev.filter(p => p.id !== currentLead.id));
       setArchivedCount(c => Math.max(0, c - 1));
+      // Clear selection to avoid showing stale UI
+      setSelectedLeadId(null);
+      // Refresh archived list to reconcile any server-side state if needed
+      try { void fetchArchivedLeads(); void fetchArchivedCount(); } catch (e) { /* ignore */ }
+      return;
     }
-    // Clear selection to avoid showing stale UI
+
+    // Non-archived leads: perform full delete (calls parent handler)
     setSelectedLeadId(null);
     try {
-      // Call parent handler (may be async)
       await onDeleteLead(currentLead.id);
     } catch (err) {
       console.error('delete lead failed', err);
     } finally {
-      // Refresh archived list from server to reconcile state
       try { void fetchArchivedLeads(); void fetchArchivedCount(); } catch (e) { /* ignore */ }
     }
   };
