@@ -306,6 +306,13 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     }
     setIsSending(true);
     try {
+      // If this lead is archived, optimistically move it back to active
+      if ((currentLead as any).archivedAt) {
+        setArchivedLeads(prev => prev.filter(p => p.id !== currentLead.id));
+        setArchivedCount(c => Math.max(0, c - 1));
+        // Optimistically mark as sent and un-archive locally via parent
+        try { onUpdateLead(currentLead.id, { status: 'sent', archivedAt: null, sentAt: Date.now(), email: recipientEmail }); } catch (e) { /* ignore */ }
+      }
       const fn = await supabase.functions.invoke('gmail-send', {
         body: {
           leadId: currentLead.id,
@@ -361,6 +368,12 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     }
     setIsReplying(true);
     try {
+      // If this archived lead is being replied to, optimistically un-archive
+      if ((currentLead as any).archivedAt) {
+        setArchivedLeads(prev => prev.filter(p => p.id !== currentLead.id));
+        setArchivedCount(c => Math.max(0, c - 1));
+        try { onUpdateLead(currentLead.id, { status: 'responded', archivedAt: null }); } catch (e) { /* ignore */ }
+      }
       const subjectLine = lastSent?.subject || currentLead.draftSubject || subject || '';
       const threadId = activeGmailThreadId || lastInbound?.gmail_thread_id || lastSent?.gmail_thread_id || null;
       const replyMsgIdHeader = lastInbound?.message_id_header || lastSent?.message_id_header || null;
@@ -919,18 +932,18 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   </div>
 
                   {/* Footer Action Area */}
-                      {!['sent', 'responded'].includes(currentLead.status) && (
-                    <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent pointer-events-none z-20">
-                      <div className="max-w-4xl mx-auto pointer-events-auto">
-                        <button 
-                          onClick={handleSend} disabled={isSending || !subject || !body}
-                          className="w-full h-16 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-4 hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-2xl active:scale-95 ring-4 ring-slate-900/5 dark:ring-white/5"
-                        >
-                          {isSending ? "Dispatching..." : <><Send size={20} /> Initiate Thread</>}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                      {(!currentLead.archivedAt && !['sent', 'responded'].includes(currentLead.status)) && (
+                        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent pointer-events-none z-20">
+                          <div className="max-w-4xl mx-auto pointer-events-auto">
+                            <button 
+                              onClick={handleSend} disabled={isSending || !subject || !body}
+                              className="w-full h-16 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-4 hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-2xl active:scale-95 ring-4 ring-slate-900/5 dark:ring-white/5"
+                            >
+                              {isSending ? "Dispatching..." : <><Send size={20} /> Initiate Thread</>}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-20 opacity-30">
