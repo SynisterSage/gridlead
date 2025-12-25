@@ -77,6 +77,15 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
       .sort((a, b) => (b.potentialScore || 0) - (a.potentialScore || 0));
   }, [results, minRating]);
 
+  const DiscoverySkeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
+    <div className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col transition-all relative overflow-hidden ${className}`}>
+      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3 mb-4 animate-pulse" />
+      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/6 mb-3 animate-pulse" />
+      <div className="h-12 bg-slate-200 dark:bg-slate-700 rounded mb-3 animate-pulse" />
+      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mt-auto animate-pulse" />
+    </div>
+  );
+
   // Auto-fill ZIP via browser geolocation + public reverse geocode (no key) for convenience.
   useEffect(() => {
     if (hasAutoLocated || location) return;
@@ -175,11 +184,17 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pt-2">
           {loading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-64 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-[2rem] animate-pulse" />
+            Array.from({ length: 6 }).map((_, i) => (
+              <DiscoverySkeleton key={i} />
             ))
           ) : (
-            filteredResults.map((item, i) => (
+            filteredResults.length === 0 ? (
+              <div className="py-20 text-center opacity-20 col-span-full">
+                <Search size={40} className="mx-auto mb-2" />
+                <p className="text-[9px] font-black uppercase tracking-widest">Search to surface opportunities</p>
+              </div>
+            ) : (
+              filteredResults.map((item, i) => (
               <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
                 {item.potentialScore >= 80 && item.website && (
                   <div className="absolute top-4 right-4 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 text-[7px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest shadow-sm">
