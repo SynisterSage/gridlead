@@ -51,6 +51,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const [manualPollLoading, setManualPollLoading] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [archivedLeads, setArchivedLeads] = useState<Lead[]>([]);
+  const [softDeletedArchiveIds, setSoftDeletedArchiveIds] = useState<Set<string>>(new Set());
   const archivedIds = useMemo(() => new Set(archivedLeads.map(a => a.id)), [archivedLeads]);
   const [archivedCount, setArchivedCount] = useState<number>(0);
   const filterCounts = useMemo(() => {
@@ -190,8 +191,9 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         },
         notes: row.notes || '',
       })) as Lead[];
-      setArchivedLeads(mapped);
-      setArchivedCount(mapped.length);
+      const visible = mapped.filter(r => !softDeletedArchiveIds.has(r.id));
+      setArchivedLeads(visible);
+      setArchivedCount(visible.length);
     } catch (err) {
       console.error('fetchArchivedLeads unexpected', err);
     }
@@ -205,7 +207,10 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
         .select('id', { count: 'exact', head: false })
         .eq('user_id', profile.id)
         .not('archived_at', 'is', null);
-      if (!error) setArchivedCount(count || 0);
+      if (!error) {
+        const adjusted = Math.max(0, (count || 0) - softDeletedArchiveIds.size);
+        setArchivedCount(adjusted);
+      }
     } catch (err) {
       console.warn('fetchArchivedCount error', err);
     }
@@ -213,7 +218,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
 
   useEffect(() => {
     void fetchArchivedCount();
-  }, [profile?.id]);
+  }, [profile?.id, Array.from(softDeletedArchiveIds).join(',')]);
 
   const ensureLeadEmail = async (leadId: string) => {
     if (recipientEmail) return;
@@ -263,7 +268,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   // sidebar section regardless of the active filter.
   useEffect(() => {
     void fetchArchivedLeads();
-  }, [profile?.id, leads.length]);
+  }, [profile?.id, leads.length, Array.from(softDeletedArchiveIds).join(',')]);
 
   useEffect(() => {
     if (!selectedLeadId && outreachLeads.length > 0) {
@@ -459,6 +464,11 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     // handler which would remove it from the backend and affect usage.
     if ((currentLead as any).archivedAt) {
       setArchivedLeads(prev => prev.filter(p => p.id !== currentLead.id));
+      setSoftDeletedArchiveIds(prev => {
+        const s = new Set(prev);
+        s.add(currentLead.id);
+        return s;
+      });
       setArchivedCount(c => Math.max(0, c - 1));
       // Clear selection to avoid showing stale UI
       setSelectedLeadId(null);
@@ -483,6 +493,13 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     // Optimistically remove from archived list
     setArchivedLeads(prev => prev.filter(p => p.id !== currentLead.id));
     setArchivedCount(c => Math.max(0, c - 1));
+    // If this was soft-deleted locally, remove it from that set so it can
+    // reappear when restored.
+    setSoftDeletedArchiveIds(prev => {
+      const s = new Set(prev);
+      s.delete(currentLead.id);
+      return s;
+    });
     try {
       // Restore to active by clearing archivedAt and setting status to 'sent'
       await onUpdateLead(currentLead.id, { archivedAt: null, status: 'sent' });
