@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Globe, Lightbulb, MapPin, Loader2 } from 'lucide-react';
+import { Search, Globe, Lightbulb, MapPin, Loader2, Info } from 'lucide-react';
 import { Lead } from '../types';
 import { runDiscover, stageLeadPayloadFromResult, DiscoverResult } from '../services/discovery';
 
@@ -80,10 +80,11 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
   const DiscoverySkeleton: React.FC = () => (
     <div className="relative p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 animate-pulse overflow-visible">
       {/* badge placeholders (left + icon-only right) */}
-      <div className="absolute top-6 left-6 w-8 h-5 rounded-md bg-[#0f172a] dark:bg-white/10" />
+      <div className="absolute top-6 left-6 w-10 h-6 rounded-md bg-[#0f172a] dark:bg-white/10" />
       <div className="absolute top-6 right-6 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center" />
 
-      <div className="space-y-3">
+      {/* add small top padding so badge doesn't visually overlap title placeholder */}
+      <div className="space-y-3 pt-3">
         <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
         <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
 
@@ -270,8 +271,9 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
                             </button>
                             <div className="absolute bottom-full left-0 mb-3 w-56 p-4 bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover/needscore:opacity-100 group-hover/needscore:visible group-focus-within/needscore:opacity-100 group-focus-within/needscore:visible transition-all duration-300 transform translate-y-2 group-hover/needscore:translate-y-0 group-focus-within/needscore:translate-y-0 z-50 ring-1 ring-white/10">
                               <div className="flex items-center gap-2 mb-2 text-slate-200">
-                                <span className="text-[9px] font-black uppercase tracking-widest">Need score</span>
-                              </div>
+                                  <Info size={12} className="text-slate-200" />
+                                  <span className="text-[9px] font-black uppercase tracking-widest">Need score</span>
+                                </div>
                               <p className="text-[10px] font-medium leading-relaxed opacity-80">Heuristic only: +25 no website, rating &lt;3 (+18), rating 3-3.9 (+10), rating ≥4 (-15), local service niches (+5), missing address (-5). Deep Audit refines scores in Review.</p>
                               <div className="absolute top-full left-4 -mt-1 w-2 h-2 bg-slate-800 rotate-45" />
                             </div>
