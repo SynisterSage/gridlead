@@ -34,6 +34,7 @@ import { supabase } from '../lib/supabaseClient';
 import { startGmailOAuth } from '../services/gmailAuth';
 import { subscribePush, saveSubscription, deleteSubscription } from '../lib/pushNotifications';
 import { AppView } from '../types';
+import UpgradeModal from './UpgradeModal';
 
 type SettingsTab = 'profile' | 'integrations' | 'security' | 'notifications';
 
@@ -513,20 +514,29 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                     ) : (
                       <div className="text-[10px] font-bold text-slate-500">Unlimited seats</div>
                     )}
-                    <div className="mt-4 flex gap-3">
-                      <button onClick={() => setShowUpgradeModal(true)} className="px-4 py-2 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all">
-                        Upgrade
-                      </button>
-                      <button disabled className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent cursor-not-allowed">
-                        Manage subscription
-                      </button>
-                      {/* Removed Send test push button — not needed in Billing & Plan UI */}
-                    </div>
+                            <div className="mt-4 flex gap-3">
+                              <button onClick={() => setShowUpgradeModal(true)} className="px-4 py-2 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all">
+                                Upgrade
+                              </button>
+                              <button disabled className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent cursor-not-allowed">
+                                Manage subscription
+                              </button>
+                            </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          {showUpgradeModal && (
+            <UpgradeModal
+              visible={showUpgradeModal}
+              onClose={() => setShowUpgradeModal(false)}
+              onConfirm={(planId) => {
+                setNotification(`Mock upgrade to ${planId} complete.`);
+                setShowUpgradeModal(false);
+              }}
+            />
+          )}
         );
       case 'integrations':
         return (
