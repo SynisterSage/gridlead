@@ -472,7 +472,14 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       setArchivedCount(c => Math.max(0, c - 1));
       // Clear selection to avoid showing stale UI
       setSelectedLeadId(null);
-      // Refresh archived list to reconcile any server-side state if needed
+      // Persist the "hidden" state server-side so the row remains for quota
+      // tracking but is hidden from UI across sessions/devices.
+      try {
+        await supabase.rpc('hide_lead', { p_lead_id: currentLead.id, p_hidden: true });
+      } catch (err) {
+        console.error('hide_lead rpc failed', err);
+      }
+      // Refresh archived list to reconcile server state
       try { void fetchArchivedLeads(); void fetchArchivedCount(); } catch (e) { /* ignore */ }
       return;
     }
@@ -500,6 +507,13 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       s.delete(currentLead.id);
       return s;
     });
+    // Ensure the hidden flag is cleared server-side so the lead reappears
+    // for the user across sessions/devices.
+    try {
+      await supabase.rpc('hide_lead', { p_lead_id: currentLead.id, p_hidden: false });
+    } catch (err) {
+      console.error('unhide rpc failed', err);
+    }
     try {
       // Restore to active by clearing archivedAt and setting status to 'sent'
       await onUpdateLead(currentLead.id, { archivedAt: null, status: 'sent' });
