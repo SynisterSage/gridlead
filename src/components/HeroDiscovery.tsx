@@ -78,10 +78,11 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
   }, [results, minRating]);
 
   const DiscoverySkeleton: React.FC = () => (
-    <div className="relative p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 animate-pulse">
+    <div className="relative p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 animate-pulse overflow-visible">
       {/* badge placeholders (left + icon-only right) */}
       <div className="absolute top-6 left-6 w-8 h-5 rounded-md bg-[#0f172a] dark:bg-white/10" />
       <div className="absolute top-6 right-6 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center" />
+
       <div className="space-y-3">
         <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
         <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
@@ -209,7 +210,7 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
             ))
           ) : (
             filteredResults.map((item, i) => (
-              <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
+              <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all relative overflow-visible animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
                 {item.potentialScore >= 80 && item.website && (
                   <div className="absolute top-6 left-6 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 text-[7px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest shadow-sm">
                     High Value
@@ -222,11 +223,13 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
                       <button aria-label="Target opportunity" className="w-8 h-8 rounded-full bg-blue-50/30 dark:bg-blue-900/10 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
                         <Lightbulb size={14} />
                       </button>
-                      <div className="absolute -top-10 right-1 hidden group-hover:block z-50">
-                        <div className="whitespace-nowrap px-3 py-1 rounded-md bg-slate-900 text-white text-[11px] font-medium shadow-lg dark:bg-white dark:text-slate-900">
-                          Target opportunity
+                      <div className="absolute bottom-full right-0 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
+                        <div className="flex items-center gap-2 mb-2 text-blue-400">
+                          <Lightbulb size={12} />
+                          <span className="text-[9px] font-black uppercase tracking-widest">Target opportunity</span>
                         </div>
-                        <div className="absolute left-1/2 transform -translate-x-1/2 top-full w-2 h-2 bg-slate-900 rotate-45 dark:bg-white" />
+                        <p className="text-[10px] font-medium leading-relaxed opacity-80">Flagged by heuristics (e.g. missing website) — review for outreach potential.</p>
+                        <div className="absolute top-full right-4 -mt-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
                       </div>
                     </div>
                   </div>
