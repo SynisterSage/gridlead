@@ -810,7 +810,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                 
                 {(activeFilter !== 'archived') && activeThreads.length > 0 && (
                   <>
-                    <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50 mt-4 first:mt-0">
+                    <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50 mt-2 first:mt-0">
                           <span className="text-[9px] font-black text-emerald-400 dark:text-emerald-300 uppercase tracking-widest flex items-center gap-2">
                             <History size={12} className="text-emerald-400" /> Active Threads
                           </span>
@@ -824,7 +824,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                               if (!archivedLeads || archivedLeads.length === 0) return null;
                               return (
                                 <>
-                                  <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50 mt-4 first:mt-0">
+                                  <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50 mt-2 first:mt-0">
                                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
                                       <History size={12} /> Archived Threads
                                     </span>
@@ -918,14 +918,6 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                             <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                               <Mail size={14} className="text-blue-500" /> Thread Timeline
                             </div>
-                            <button
-                              onClick={handleManualPoll}
-                              disabled={manualPollLoading}
-                              className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all"
-                            >
-                              {manualPollLoading ? 'Checking...' : 'Check replies'}
-                              <ChevronRight size={12} />
-                            </button>
                           </div>
 
                           {orderedMessages.length === 0 && (
