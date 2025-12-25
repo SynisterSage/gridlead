@@ -84,6 +84,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
   const [replyBody, setReplyBody] = useState('');
   const [isReplying, setIsReplying] = useState(false);
   const [isFetchingMessages, setIsFetchingMessages] = useState(false);
+  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
+  const [isDeletingArchived, setIsDeletingArchived] = useState(false);
 
   const stripHtml = (html?: string | null) => {
     if (!html) return '';
@@ -529,6 +531,22 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     }
   };
 
+  // Confirmation flow: call this from the modal to reuse the same deletion
+  // logic that currently lives in `handleDeleteCurrentLead`. This wrapper
+  // ensures we can show a loading state inside the modal and close it when
+  // the work completes.
+  const confirmDeleteArchived = async () => {
+    setIsDeletingArchived(true);
+    try {
+      await handleDeleteCurrentLead();
+    } catch (err) {
+      console.error('confirmDeleteArchived failed', err);
+    } finally {
+      setIsDeletingArchived(false);
+      setShowConfirmDeleteModal(false);
+    }
+  };
+
   const handleRestoreCurrentLead = async () => {
     if (!currentLead) return;
     // Optimistically remove from archived list
@@ -678,7 +696,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       <div className="flex-1 overflow-hidden h-full bg-slate-50/10 dark:bg-slate-900/20 relative">
         <div className="h-full kanban-mask">
           {/* Scroll hint positioned over the pipeline area (top-right) */}
-          <div className="hidden md:flex items-center gap-2 absolute top-6 right-8 z-40 pointer-events-none">
+          <div className="hidden md:flex items-center gap-2 absolute top-12 right-8 z-40 pointer-events-none">
             <style>{`
               @keyframes slideRight {
                 0% { transform: translateX(0); opacity: 0; }
@@ -914,7 +932,16 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                       </div>
                       
                       <div className="flex gap-3 w-full lg:w-auto">
-                        <button onClick={handleDeleteCurrentLead} className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all">
+                        <button
+                          onClick={() => {
+                            if (currentLead?.archivedAt) {
+                              setShowConfirmDeleteModal(true);
+                            } else {
+                              void handleDeleteCurrentLead();
+                            }
+                          }}
+                          className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all"
+                        >
                           <Trash2 size={18} />
                         </button>
                           {(currentLead && !currentLead.archivedAt && (currentLead.sentAt || ['sent','responded'].includes(currentLead.status))) && (
@@ -941,9 +968,16 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                       { (['sent', 'responded'].includes(currentLead.status) || currentLead.archivedAt) ? (
                         <div className="space-y-6">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                            {isFetchingMessages ? (
+                              <div className="flex items-center gap-3 animate-pulse">
+                                <div className="h-4 w-4 bg-slate-200 dark:bg-slate-700 rounded" />
+                                <div className="h-4 w-40 bg-slate-200 dark:bg-slate-700 rounded" />
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                                 <Mail size={14} className="text-blue-500" /> Thread Timeline
-                            </div>
+                              </div>
+                            )}
                           </div>
 
                           {isFetchingMessages ? (
@@ -1103,6 +1137,34 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     </div>
 
     {/* Floating reply composer for existing threads */}
+    {showConfirmDeleteModal && currentLead && currentLead.archivedAt && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { if (!isDeletingArchived) setShowConfirmDeleteModal(false); }} />
+        <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-lg w-full p-6 z-10">
+          <h3 className="text-lg font-extrabold mb-2">Delete Archived Thread</h3>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+            This will permanently delete the archived thread from your account UI. The row will still count toward your usage quota and cannot be recovered once deleted.
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-500 mb-6">If you only want it hidden from the UI without affecting quota, use the Restore action instead.</p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowConfirmDeleteModal(false)}
+              disabled={isDeletingArchived}
+              className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { void confirmDeleteArchived(); }}
+              disabled={isDeletingArchived}
+              className="px-4 py-2 rounded-xl bg-rose-600 text-white"
+            >
+              {isDeletingArchived ? 'Deleting...' : 'Delete Permanently'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 };
