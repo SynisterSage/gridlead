@@ -78,7 +78,10 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
   }, [results, minRating]);
 
   const DiscoverySkeleton: React.FC = () => (
-    <div className="p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 animate-pulse">
+    <div className="relative p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 animate-pulse">
+      {/* badge placeholders */}
+      <div className="absolute top-4 left-4 h-5 px-2 rounded-md bg-[#0f172a] dark:bg-white/10" />
+      <div className="absolute top-4 right-4 h-5 px-2 rounded-md bg-blue-100 dark:bg-blue-900/20" />
       <div className="space-y-3">
         <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
         <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/3" />
@@ -214,11 +217,18 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
             filteredResults.map((item, i) => (
               <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 md:p-7 rounded-[2rem] md:rounded-[2.5rem] flex flex-col hover:border-[#0f172a] dark:hover:border-white hover:shadow-2xl transition-all relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 ring-1 ring-slate-100/50 dark:ring-slate-800/50">
                 {item.potentialScore >= 80 && item.website && (
-                  <div className="absolute top-4 right-4 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 text-[7px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest shadow-sm">
+                  <div className="absolute top-4 left-4 bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 text-[7px] font-bold px-2 py-0.5 rounded-md uppercase tracking-widest shadow-sm">
                     High Value
                   </div>
                 )}
-                
+
+                {(!item.website || (item.potentialScore >= 65)) && (
+                  <div className="absolute top-4 right-4 bg-blue-50/30 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 text-[9px] font-black px-3 py-1 rounded-xl uppercase tracking-tight shadow-sm flex items-center gap-2">
+                    <Lightbulb size={12} className="text-blue-500 dark:text-blue-400" />
+                    <span>Target Opportunity</span>
+                  </div>
+                )}
+
                 <div className="space-y-2.5">
                   <div>
                     <h4 className="font-extrabold text-slate-900 dark:text-white truncate tracking-tight text-sm md:text-base">{item.name}</h4>
@@ -226,12 +236,7 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
                   </div>
 
                   <div className="space-y-3">
-                    {( !item.website || (item.potentialScore >= 65)) && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50/30 dark:bg-blue-900/10 rounded-xl border border-blue-50 dark:border-blue-900/30">
-                        <Lightbulb size={12} className="text-blue-500 dark:text-blue-400" />
-                        <span className="text-[9px] font-black uppercase tracking-tight text-blue-600 dark:text-blue-400">Target Opportunity</span>
-                      </div>
-                    )}
+                    {/* Target Opportunity badge moved to top-right for consistent card heights */}
 
                     <div className="flex items-center gap-2 text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-100/50 dark:border-slate-800">
                       <Globe size={12} className="shrink-0 text-slate-400 dark:text-slate-600" />
