@@ -1140,26 +1140,26 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     {showConfirmDeleteModal && currentLead && currentLead.archivedAt && (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => { if (!isDeletingArchived) setShowConfirmDeleteModal(false); }} />
-        <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-lg w-full p-6 z-10">
+        <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-lg w-full p-6 z-10 animate-in fade-in zoom-in duration-200 transform-gpu">
           <h3 className="text-lg font-extrabold mb-2">Delete Archived Thread</h3>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-            This will permanently delete the archived thread from your account UI. The row will still count toward your usage quota and cannot be recovered once deleted.
+            Deleting this archived thread will permanently remove it from your account and cannot be recovered. It will still count toward your usage quota.
           </p>
-          <p className="text-sm text-slate-500 dark:text-slate-500 mb-6">If you only want it hidden from the UI without affecting quota, use the Restore action instead.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-500 mb-6">Need more quota? Consider upgrading your plan in Settings.</p>
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setShowConfirmDeleteModal(false)}
               disabled={isDeletingArchived}
-              className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800"
+              className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 active:scale-95 transition transform duration-150 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
             >
               Cancel
             </button>
             <button
               onClick={() => { void confirmDeleteArchived(); }}
               disabled={isDeletingArchived}
-              className="px-4 py-2 rounded-xl bg-rose-600 text-white"
+              className="px-4 py-2 rounded-xl bg-rose-600 text-white shadow-md hover:bg-rose-700 hover:-translate-y-0.5 active:scale-95 transition transform duration-150 focus:outline-none focus:ring-4 focus:ring-rose-600/30"
             >
-              {isDeletingArchived ? 'Deleting...' : 'Delete Permanently'}
+              {isDeletingArchived ? 'Deleting...' : 'Delete permanently'}
             </button>
           </div>
         </div>
