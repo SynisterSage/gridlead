@@ -899,7 +899,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                           </div>
 
                           <div className="sticky bottom-0 left-0 right-0 mt-6">
-                            <div className="bg-white/95 dark:bg-slate-950/95 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-4 sm:p-6">
+                            <div className="bg-white/95 dark:bg-slate-950/95 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg p-6 sm:p-8 pb-12 sm:pb-14">
                               <div className="flex flex-col gap-3">
                                 <div className="flex items-center justify-between">
                                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2">
@@ -970,7 +970,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
 
                   {/* Footer Action Area */}
                       {(!currentLead.archivedAt && !['sent', 'responded'].includes(currentLead.status)) && (
-                        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent pointer-events-none z-20">
+                        <div className="absolute bottom-0 left-0 right-0 pt-8 pb-10 px-6 md:pt-10 md:pb-12 md:px-8 bg-gradient-to-t from-white dark:from-slate-900 via-white dark:via-slate-900 to-transparent pointer-events-none z-20">
                           <div className="max-w-4xl mx-auto pointer-events-auto flex gap-4">
                             <button 
                               onClick={handleSend} disabled={isSending || !subject || !body}
@@ -981,7 +981,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                             <button
                               onClick={handleGenerate}
                               disabled={isGenerating}
-                              className="h-12 w-36 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#0f172a] dark:text-white rounded-xl text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all"
+                              className="h-16 w-44 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[#0f172a] dark:text-white rounded-xl text-[12px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 transition-all"
                             >
                               {isGenerating ? <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-900 dark:border-t-white rounded-full animate-spin" /> : <><Sparkles size={14} /> AI Craft</>}
                             </button>
