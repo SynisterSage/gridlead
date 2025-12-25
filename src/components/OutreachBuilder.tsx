@@ -445,6 +445,21 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     }
   };
 
+  const handleRestoreCurrentLead = async () => {
+    if (!currentLead) return;
+    // Optimistically remove from archived list
+    setArchivedLeads(prev => prev.filter(p => p.id !== currentLead.id));
+    setArchivedCount(c => Math.max(0, c - 1));
+    try {
+      // Restore to active by clearing archivedAt and setting status to 'sent'
+      await onUpdateLead(currentLead.id, { archivedAt: null, status: 'sent' });
+    } catch (err) {
+      console.error('restore lead failed', err);
+    } finally {
+      try { void fetchArchivedLeads(); void fetchArchivedCount(); } catch (e) { /* ignore */ }
+    }
+  };
+
   // Outcome menu component (inline) - keeps appearance compact and calls onUpdateLead
   const OutcomeMenu: React.FC<{ lead: Lead; onUpdateLead: (id: string, updates: Partial<Lead>) => void }> = ({ lead, onUpdateLead }) => {
     const [open, setOpen] = useState(false);
@@ -691,7 +706,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
               <div className="flex-1 overflow-y-auto custom-scrollbar">
                 {opportunities.length > 0 && (activeFilter !== 'archived') && (activeFilter === 'all' || activeFilter === 'drafts') && (
                   <>
-                    <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800">
+                    <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50">
                       <span className="text-[9px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2">
                         <Zap size={12} fill="currentColor" /> New Opportunities
                       </span>
@@ -702,7 +717,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                 
                 {(activeFilter !== 'archived') && activeThreads.length > 0 && (
                   <>
-                    <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4 first:mt-0">
+                    <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50 mt-4 first:mt-0">
                           <span className="text-[9px] font-black text-emerald-400 dark:text-emerald-300 uppercase tracking-widest flex items-center gap-2">
                             <History size={12} className="text-emerald-400" /> Active Threads
                           </span>
@@ -716,7 +731,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                               if (!archivedLeads || archivedLeads.length === 0) return null;
                               return (
                                 <>
-                                  <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-50 dark:border-slate-800 mt-4 first:mt-0">
+                                  <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50 mt-4 first:mt-0">
                                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
                                       <History size={12} /> Archived Threads
                                     </span>
@@ -784,9 +799,14 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                         <button onClick={handleDeleteCurrentLead} className="flex-1 lg:flex-none px-6 h-11 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-600 rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-500 transition-all">
                           <Trash2 size={18} />
                         </button>
-                        {(currentLead && !currentLead.archivedAt && (currentLead.sentAt || ['sent','responded'].includes(currentLead.status))) && (
+                          {(currentLead && !currentLead.archivedAt && (currentLead.sentAt || ['sent','responded'].includes(currentLead.status))) && (
                           <OutcomeMenu lead={currentLead} onUpdateLead={onUpdateLead} />
                         )}
+                          {currentLead?.archivedAt && (
+                            <button onClick={handleRestoreCurrentLead} className="flex-1 lg:flex-none px-6 h-11 bg-emerald-500 text-white rounded-xl text-[10px] md:text-[11px] font-bold hover:bg-emerald-600 transition-all">
+                              Restore
+                            </button>
+                          )}
                         {!['sent', 'responded'].includes(currentLead.status) && (
                           <button 
                             onClick={handleGenerate} 
