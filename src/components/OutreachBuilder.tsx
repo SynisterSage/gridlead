@@ -547,6 +547,20 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
     }
   };
 
+  const navigateToSettingsProfile = () => {
+    try {
+      // Signal Settings to open the Profile tab after navigation
+      localStorage.setItem('gridlead_return_view', 'settings');
+      localStorage.setItem('gridlead_settings_tab', 'profile');
+      // Perform a hard navigation to root so App will read the return_view
+      // and open Settings. This is fast and avoids showing an underlined link.
+      window.location.href = '/';
+    } catch (err) {
+      // Fallback: try SPA-style navigation
+      try { window.location.assign('/'); } catch (e) { /* ignore */ }
+    }
+  };
+
   const handleRestoreCurrentLead = async () => {
     if (!currentLead) return;
     // Optimistically remove from archived list
@@ -1145,19 +1159,27 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
             Deleting this archived thread will permanently remove it from your account and cannot be recovered. It will still count toward your usage quota.
           </p>
-          <p className="text-sm text-slate-500 dark:text-slate-500 mb-6">Need more quota? Consider upgrading your plan in Settings.</p>
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <p className="text-sm text-slate-500 dark:text-slate-500">Need more quota? Consider upgrading your plan in Settings.</p>
+            <button
+              onClick={() => navigateToSettingsProfile()}
+              className="ml-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-[13px] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-150 active:scale-95 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+            >
+              <ExternalLink size={14} /> Open Settings
+            </button>
+          </div>
           <div className="flex justify-end gap-3">
             <button
               onClick={() => setShowConfirmDeleteModal(false)}
               disabled={isDeletingArchived}
-              className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 shadow-sm hover:-translate-y-0.5 active:scale-95 transition transform duration-150 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              className="px-4 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors duration-150 active:scale-95 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
             >
               Cancel
             </button>
             <button
               onClick={() => { void confirmDeleteArchived(); }}
               disabled={isDeletingArchived}
-              className="px-4 py-2 rounded-xl bg-rose-600 text-white shadow-md hover:bg-rose-700 hover:-translate-y-0.5 active:scale-95 transition transform duration-150 focus:outline-none focus:ring-4 focus:ring-rose-600/30"
+              className="px-4 py-2 rounded-xl bg-rose-600 text-white hover:bg-rose-700 transition-colors duration-150 active:scale-95 focus:outline-none focus:ring-4 focus:ring-rose-600/30"
             >
               {isDeletingArchived ? 'Deleting...' : 'Delete permanently'}
             </button>
