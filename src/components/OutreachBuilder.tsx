@@ -640,7 +640,7 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
       <div className="flex items-center justify-between gap-4 min-w-0">
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-center mb-1">
-            <h3 className={`font-bold text-xs md:text-sm truncate pr-2 ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}`}>{lead.name}</h3>
+            <h3 className={`font-bold text-xs md:text-sm truncate pr-2 max-w-[140px] sm:max-w-[180px] md:max-w-[220px] ${archivedIds.has(lead.id) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-900 dark:text-white'}`}>{lead.name}</h3>
             <div className={`text-[10px] md:text-[11px] font-mono font-extrabold ${getRatingColorClass(lead.rating)}`}>
               {lead.rating.toFixed(1)}
             </div>
@@ -792,11 +792,11 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                           <ArrowLeft size={14} /> Back to List
                         </button>
                         <div className="flex items-baseline gap-4 mb-2">
-                          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight truncate leading-tight">{currentLead.name}</h2>
+                          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight truncate leading-tight max-w-[420px] md:max-w-[640px]">{currentLead.name}</h2>
                           <div className={`text-lg font-mono font-extrabold shrink-0 ${getRatingColorClass(currentLead.rating)}`}>
                             {currentLead.rating.toFixed(1)}
                           </div>
-                          {!currentLead.archivedAt && getStatusBadge(currentLead)}
+                          {getStatusBadge(currentLead)}
                         </div>
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-4 min-w-0">
