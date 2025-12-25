@@ -819,21 +819,24 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   </>
                 )}
                             {(() => {
-                              const archivedVisible = activeFilter === 'all' || activeFilter === 'archived';
-                              if (!archivedVisible) return null;
-                              if (!archivedLeads || archivedLeads.length === 0) return null;
-                              return (
-                                <>
-                                  <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50 mt-2 first:mt-0">
-                                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
-                                      <History size={12} /> Archived Threads
-                                    </span>
-                                  </div>
-                                  {archivedLeads.map(lead => (
-                                    <LeadCard key={lead.id} lead={lead} />
-                                  ))}
-                                </>
-                              );
+                                const archivedVisible = activeFilter === 'all' || activeFilter === 'archived';
+                                if (!archivedVisible) return null;
+                                if (!archivedLeads || archivedLeads.length === 0) return null;
+                                // When searching, only show archived leads that match the query
+                                const archivedFiltered = archivedLeads.filter(l => l.name.toLowerCase().includes(searchQuery.toLowerCase()));
+                                if (archivedFiltered.length === 0) return null;
+                                return (
+                                  <>
+                                    <div className="px-6 py-2 bg-slate-50/50 dark:bg-slate-900/50 mt-2 first:mt-0">
+                                      <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center gap-2">
+                                        <History size={12} /> Archived Threads
+                                      </span>
+                                    </div>
+                                    {archivedFiltered.map(lead => (
+                                      <LeadCard key={lead.id} lead={lead} />
+                                    ))}
+                                  </>
+                                );
                             })()}
                 
                 {filtered.length === 0 && (
