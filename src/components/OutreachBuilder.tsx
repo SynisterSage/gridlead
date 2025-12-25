@@ -683,11 +683,11 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
                   <span className="text-[10px] font-bold text-slate-300 dark:text-slate-700">{col.leads.length}</span>
                 </div>
                 <div className="flex-1 space-y-4 overflow-y-auto scrollbar-hide">
-                  {col.leads.map(lead => (
+                    {col.leads.map(lead => (
                     <div 
                       key={lead.id} 
                       onClick={() => { setSelectedLeadId(lead.id); setViewMode('list'); setMobileView('detail'); }}
-                      className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer"
+                      className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transform transition-all duration-200 cursor-pointer"
                     >
                       <div className="flex justify-between items-start mb-1">
                         <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate pr-2">{lead.name}</p>
@@ -738,16 +738,8 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
           <p className="text-slate-500 dark:text-slate-400 text-sm md:text-lg font-medium">Manage threads and close high-value deals.</p>
         </div>
         
-        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl w-fit border border-slate-200 dark:border-slate-800 shadow-inner">
-          <button onClick={() => setViewMode('list')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}>
-            <List size={16} /> List
-          </button>
-          <button onClick={() => setViewMode('pipeline')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${viewMode === 'pipeline' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}>
-            <LayoutGrid size={16} /> Pipeline
-          </button>
-        </div>
         {viewMode === 'pipeline' && (
-          <div className="ml-4 hidden md:flex items-center gap-2" aria-hidden>
+          <div className="mr-4 hidden md:flex items-center gap-2" aria-hidden>
             <style>{`
               @keyframes slideRight {
                 0% { transform: translateX(0); opacity: 0; }
@@ -763,6 +755,16 @@ const OutreachBuilder: React.FC<OutreachBuilderProps> = ({ leads, onUpdateLead, 
             </div>
           </div>
         )}
+
+        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl w-fit border border-slate-200 dark:border-slate-800 shadow-inner">
+          <button onClick={() => setViewMode('list')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}>
+            <List size={16} /> List
+          </button>
+          <button onClick={() => setViewMode('pipeline')} className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all ${viewMode === 'pipeline' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 dark:text-slate-500'}`}>
+            <LayoutGrid size={16} /> Pipeline
+          </button>
+        </div>
+        
       </div>
 
       <div className="flex border border-slate-200 dark:border-slate-800 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden bg-white dark:bg-slate-950 shadow-xl shadow-slate-200/50 dark:shadow-black/50 min-h-[500px] md:h-[680px] relative ring-1 ring-slate-100/50 dark:ring-slate-800/50">
