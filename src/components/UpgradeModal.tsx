@@ -106,7 +106,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
 
 const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm, currentPlan }) => {
   const [selected, setSelected] = useState<string | null>(null);
-  const [stage, setStage] = useState<'select' | 'confirm' | 'success'>('select');
+  const [stage, setStage] = useState<'select' | 'confirm' | 'waitlist' | 'success'>('select');
 
   // mounted: whether to render the modal at all
   const [mounted, setMounted] = useState<boolean>(false);
@@ -152,6 +152,13 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   if (!mounted) return null;
 
   const plan = PLANS.find(p => p.id === selected) || PLANS[1];
+
+  // waitlist form state (mock)
+  const [waitName, setWaitName] = useState<string>('');
+  const [waitCompany, setWaitCompany] = useState<string>('');
+  const [waitEmail, setWaitEmail] = useState<string>('');
+  const [waitNote, setWaitNote] = useState<string>('');
+  const [waitSubmitting, setWaitSubmitting] = useState<boolean>(false);
 
   const startClose = (delay = 300) => {
     // animate out locally then call onClose after the animation
@@ -199,8 +206,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                       active={p.id === activePlan}
                       onAction={() => {
                         if (p.id === 'agency') {
-                          // agency goes to waitlist (external)
-                          window.location.href = '/waitlist';
+                          // open in-modal waitlist mock
+                          setSelected(p.id);
+                          setStage('waitlist');
                           return;
                         }
                         // choose a plan within the modal and move to confirm stage
@@ -254,6 +262,38 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 <div className="flex gap-3">
                   <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border">Back</button>
                   <button onClick={handleConfirm} className="px-4 py-2 rounded-xl bg-[#0f172a] text-white font-bold">Confirm (mock)</button>
+                </div>
+              </div>
+            )}
+
+            {stage === 'waitlist' && (
+              <div>
+                <h4 className="text-lg font-extrabold mb-2">Join the Agency+ waitlist</h4>
+                <p className="text-sm text-slate-500 mb-4">This is a mock waitlist sign-up. We'll keep you posted when Agency+ becomes available.</p>
+                <div className="grid grid-cols-1 gap-3 mb-4">
+                  <input value={waitName} onChange={(e) => setWaitName(e.target.value)} placeholder="Full name (optional)" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+                  <input value={waitCompany} onChange={(e) => setWaitCompany(e.target.value)} placeholder="Company (optional)" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+                  <input value={waitEmail} onChange={(e) => setWaitEmail(e.target.value)} placeholder="Email (required)" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
+                  <textarea value={waitNote} onChange={(e) => setWaitNote(e.target.value)} placeholder="Notes (optional)" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white resize-none h-28" />
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border">Back</button>
+                  <button
+                    onClick={async () => {
+                      if (!waitEmail) return;
+                      setWaitSubmitting(true);
+                      // mock submit delay
+                      setTimeout(() => {
+                        setWaitSubmitting(false);
+                        setStage('success');
+                        onConfirm?.(plan.id);
+                      }, 700);
+                    }}
+                    disabled={!waitEmail || waitSubmitting}
+                    className={`px-4 py-2 rounded-xl font-bold ${!waitEmail ? 'opacity-60 cursor-not-allowed' : 'bg-[#0f172a] text-white'}`}
+                  >
+                    {waitSubmitting ? 'Joining...' : 'Join waitlist'}
+                  </button>
                 </div>
               </div>
             )}
