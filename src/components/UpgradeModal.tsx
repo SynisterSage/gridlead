@@ -48,22 +48,18 @@ const PLANS: Plan[] = [
   }
 ];
 
-const PlanCard: React.FC<{ plan: Plan; selected: boolean; onSelect: () => void }> = ({ plan, selected, onSelect }) => {
+const PlanCard: React.FC<{ plan: Plan; selected: boolean; onSelect: () => void; onShowTooltip?: (id: string | null) => void }> = ({ plan, selected, onSelect, onShowTooltip }) => {
   const isOutlined = !selected && !plan.featured;
   return (
-    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-transform duration-300 ${plan.featured || selected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${isOutlined ? 'border border-slate-700' : ''} ${selected ? 'ring-2 ring-emerald-400' : ''}`}>
+    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-transform duration-300 ${plan.featured || selected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${isOutlined ? 'border border-slate-700' : ''} ${selected ? 'border-2 border-slate-500/40 shadow-xl' : ''}`}>
+      {/* subtle hover gradient */}
+      <div className="absolute inset-0 rounded-[1.5rem] pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-b from-emerald-400/6 to-transparent mix-blend-overlay" />
       {plan.badge && (
         <div className="absolute -top-3 right-5 flex items-center gap-2">
           <div className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${plan.featured ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-800'}`}>{plan.badge}</div>
           {plan.badge.toLowerCase().includes('development') && (
-            <div className="relative">
-              <div className="group">
-                <button aria-label="In development info" className="w-6 h-6 rounded-full bg-slate-800/60 dark:bg-slate-700 flex items-center justify-center text-[12px] text-slate-300 hover:bg-slate-800 transition-colors">?</button>
-                <div className="absolute right-0 bottom-full mb-3 w-48 p-3 bg-slate-900 text-white rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
-                  <div className="text-[10px] font-black uppercase tracking-widest mb-2">In development</div>
-                  <p className="text-[11px] text-slate-200">This plan or feature is still in development and may be unavailable. Use the mock flow to preview behavior.</p>
-                </div>
-              </div>
+            <div>
+              <button aria-label="In development info" onMouseEnter={() => onShowTooltip?.(plan.id)} onMouseLeave={() => onShowTooltip?.(null)} className="w-6 h-6 rounded-full bg-slate-800/60 dark:bg-slate-700 flex items-center justify-center text-[12px] text-slate-300 hover:bg-slate-800 transition-colors">?</button>
             </div>
           )}
         </div>
@@ -83,13 +79,8 @@ const PlanCard: React.FC<{ plan: Plan; selected: boolean; onSelect: () => void }
     </ul>
     <div className="mt-4">
       <button onClick={onSelect} className={`w-full py-3 rounded-xl font-bold ${plan.featured || selected ? 'bg-emerald-500 text-white' : 'bg-transparent text-white border border-slate-700'}`}>
-        {selected ? 'Selected' : plan.featured ? 'Selected' : `Choose ${plan.title}`}
+        {plan.id === 'agency' ? 'Join waitlist' : (selected ? 'Selected' : `Choose ${plan.title}`)}
       </button>
-      {plan.id === 'agency' && (
-        <div className="mt-3 text-center">
-          <a href="/waitlist" className="text-sm text-slate-400 underline">Join waitlist</a>
-        </div>
-      )}
     </div>
   </div>
   );
@@ -103,6 +94,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [mounted, setMounted] = useState<boolean>(false);
   // openState: controls the translate/opacity for enter/exit animation
   const [openState, setOpenState] = useState<boolean>(false);
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -161,17 +153,25 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
             {stage === 'select' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {PLANS.map(p => (
-                  <div key={p.id} className="relative">
+                  <div key={p.id} className="relative" onClick={() => { if (p.id !== 'agency') setSelected(p.id); }}>
                     <PlanCard plan={p} selected={p.id === selected} onSelect={() => {
                       if (p.id === 'agency') {
-                        // agency goes to waitlist as requested
                         window.location.href = '/waitlist';
                         return;
                       }
-                      setSelected(p.id);
-                    }} />
+                      // navigate to mock checkout for non-agency choices
+                      window.location.href = '/mock-checkout';
+                    }} onShowTooltip={(id) => setHoveredTooltip(id)} />
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Render tooltip outside scrollable grid to avoid clipping */}
+            {hoveredTooltip === 'agency' && (
+              <div className="absolute right-6 top-16 w-56 p-3 bg-slate-900 text-white rounded-lg shadow-2xl z-50 ring-1 ring-white/10">
+                <div className="text-[10px] font-black uppercase tracking-widest mb-2">In development</div>
+                <p className="text-[12px] text-slate-200">This plan or feature is still in development and may be unavailable. Use the mock flow to preview behavior.</p>
               </div>
             )}
 
@@ -205,14 +205,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
           </div>
         </div>
 
-        {stage === 'select' && (
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-sm text-slate-500">Selected: <span className="font-bold">{plan.title}</span></div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => setStage('confirm')} className="px-4 py-2 rounded-xl bg-[#0f172a] text-white font-bold">Proceed to Checkout (mock)</button>
-            </div>
-          </div>
-        )}
+        {/* removed bottom text and proceed button — choose buttons now navigate to mock pages */}
       </aside>
     </div>
   );
