@@ -294,7 +294,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                  <div className="col-span-1 md:col-span-2 p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-4">
+                  <div className="col-span-1 md:col-span-2 p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">What you get</span>
                       {plan.badge && (
@@ -303,41 +303,14 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         </span>
                       )}
                     </div>
-                    {(() => {
-                      const starter = PLANS.find(p => p.id === 'starter');
-                      const uniqueBullets = plan.bullets.filter(b => !(starter?.bullets || []).includes(b));
-                      const sharedBullets = plan.bullets.filter(b => (starter?.bullets || []).includes(b));
-                      return (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="space-y-2">
-                            <div className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest">
-                              New in {plan.title}
-                            </div>
-                            <ul className="space-y-2">
-                              {(uniqueBullets.length ? uniqueBullets : plan.bullets).slice(0, 4).map((b, i) => (
-                                <li key={i} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300 group/item">
-                                  <CheckCircle2 size={16} className="text-emerald-500" />
-                                  <span className="transition-transform duration-150 group-hover/item:translate-x-0.5">{b}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="inline-flex items-center gap-2 px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">
-                              Still includes
-                            </div>
-                            <ul className="space-y-2">
-                              {(sharedBullets.length ? sharedBullets : starter?.bullets || []).slice(0, 4).map((b, i) => (
-                                <li key={i} className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400 group/item">
-                                  <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" />
-                                  <span className="transition-transform duration-150 group-hover/item:translate-x-0.5">{b}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    <ul className="space-y-2">
+                      {plan.bullets.slice(0, 6).map((b, i) => (
+                        <li key={i} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300">
+                          <CheckCircle2 size={16} className="text-emerald-400" />
+                          <span>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
                   <div className="p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 space-y-3 shadow-sm">
