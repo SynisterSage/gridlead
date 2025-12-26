@@ -650,22 +650,23 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Unlimited seats</div>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-3 pt-3 md:pt-4 md:flex-row md:items-center">
-                    <button
-                      onClick={() => setShowUpgradeModal(true)}
-                      className="w-full md:flex-1 px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
-                    >
-                      Upgrade
-                    </button>
-                    <button
-                      onClick={handleOpenPortal}
-                      disabled={portalLoading}
-                      className="w-full md:flex-1 px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-60"
-                    >
-                      {portalLoading ? 'Opening…' : 'Manage subscription'}
-                    </button>
-                  </div>
                 </div>
+              </div>
+
+              <div className="pt-4 flex flex-col md:flex-row gap-3">
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="w-full md:w-1/2 px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm"
+                >
+                  Upgrade
+                </button>
+                <button
+                  onClick={handleOpenPortal}
+                  disabled={portalLoading}
+                  className="w-full md:w-1/2 px-4 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-60"
+                >
+                  {portalLoading ? 'Opening…' : 'Manage subscription'}
+                </button>
               </div>
             </div>
           </div>
