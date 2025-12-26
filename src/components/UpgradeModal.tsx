@@ -235,24 +235,22 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     anchor: NonNullable<typeof tooltipAnchor>
   ): { style: React.CSSProperties; placement: 'top' | 'bottom' } => {
     const width = 288; // tailwind w-72
-    const padding = 12;
+    const assumedHeight = 150;
+    const gutter = 12;
     const center = anchor.left + anchor.width / 2;
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const clampedLeft = Math.max(padding + width / 2, Math.min(vw - padding - width / 2, center));
+    const placement: 'top' | 'bottom' =
+      anchor.bottom + assumedHeight + gutter > vh && anchor.top > assumedHeight + gutter ? 'top' : 'bottom';
 
-    const preferTop = anchor.top > 160; // enough room above for the bubble
-    const placement: 'top' | 'bottom' = preferTop ? 'top' : 'bottom';
-    const top = placement === 'top' ? anchor.top - 12 : anchor.bottom + 12;
-
-    // keep tooltip within viewport vertically (best-effort without measuring height)
-    const safeTop = Math.max(padding, Math.min(vh - padding, top));
+    const left = Math.max(width / 2 + gutter, Math.min(vw - width / 2 - gutter, center));
+    const top = placement === 'top' ? anchor.top - gutter : anchor.bottom + gutter;
 
     return {
       placement,
       style: {
-        left: clampedLeft,
-        top: safeTop,
+        left,
+        top,
         transform: placement === 'top' ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
       },
     };
