@@ -329,6 +329,27 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                   </div>
                 </div>
 
+                {/* Comparison vs Starter */}
+                {plan.id !== 'starter' && (
+                  <div className="p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 space-y-3 shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Why upgrade from Starter</span>
+                    </div>
+                    <ul className="space-y-2">
+                      {(() => {
+                        const starter = PLANS.find(p => p.id === 'starter');
+                        const uniqueBullets = plan.bullets.filter(b => !(starter?.bullets || []).includes(b)).slice(0, 4);
+                        return uniqueBullets.length ? uniqueBullets : plan.bullets.slice(0, 4);
+                      })().map((b, i) => (
+                        <li key={i} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300">
+                          <CheckCircle2 size={16} className="text-blue-500" />
+                          <span>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-3">
                   <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                     Back
