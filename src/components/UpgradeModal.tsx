@@ -431,8 +431,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
           </button>
         </div>
         {toastMsg && (
-          <div className={`fixed right-6 top-6 z-[200] ${toastHiding ? 'animate-out fade-out duration-200' : 'animate-in slide-in-from-top-4 duration-300'} will-change-transform`}>
-            <div className={`${toastKind === 'success' ? 'bg-emerald-500' : 'bg-rose-500'} text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold transition-all duration-300`}>
+          <div className={`fixed right-6 top-6 z-[200] transition-all duration-300 ${toastHiding ? 'translate-y-2 opacity-0' : 'translate-y-0 opacity-100'} will-change-transform`}>
+            <div className={`${toastKind === 'success' ? 'bg-emerald-500' : 'bg-rose-500'} text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold`}>
               {toastMsg}
             </div>
           </div>
