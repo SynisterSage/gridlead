@@ -61,7 +61,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
   // toggle border width). We toggle only the border color and shadow.
   const borderColorClass = isOutlined ? 'border-slate-700' : showHover ? 'border-slate-500/40' : 'border-transparent';
   return (
-    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 h-full flex flex-col transition-colors duration-300 overflow-hidden border ${borderColorClass} ${showSelected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${showHover ? 'shadow-xl' : ''} ${isActive && !showSelected ? 'ring-1 ring-emerald-300/20 dark:ring-emerald-400/10 bg-emerald-50/5' : ''}` }>
+    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 h-full flex flex-col transition-colors duration-300 overflow-hidden border ${borderColorClass} ${showSelected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-white dark:bg-transparent text-slate-700 dark:text-slate-300'} ${showHover ? 'shadow-xl' : ''} ${isActive && !showSelected ? 'ring-1 ring-emerald-300/20 dark:ring-emerald-400/10 bg-emerald-50/5' : ''}` }>
       {/* decorative blurs like LandingPage — placed inside and clipped by overflow-hidden */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-sky-500/10 blur-3xl opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100" />
       <div className="absolute -bottom-12 -left-6 w-28 h-28 bg-emerald-400/10 blur-3xl opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100" />
@@ -87,7 +87,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
     </div>
     <ul className="flex-1 space-y-3 mb-4">
       {plan.bullets.map((b, i) => (
-        <li key={i} className="flex items-center gap-3 text-sm text-slate-500"><CheckCircle2 size={16} className="text-emerald-400" /> {b}</li>
+        <li key={i} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-500"><CheckCircle2 size={16} className="text-emerald-400" /> {b}</li>
       ))}
     </ul>
       <div className="mt-4">
@@ -95,7 +95,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
         onClick={onAction}
         disabled={isActive && !showSelected}
         aria-current={isActive && !showSelected ? true : undefined}
-        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isActive && !showSelected ? 'bg-transparent text-emerald-600 border border-emerald-200 cursor-default' : plan.id === 'agency' ? 'bg-transparent text-white border border-slate-700 hover:bg-slate-800/20' : 'bg-transparent text-white border border-slate-700 hover:bg-slate-800/20'}`}
+        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isActive && !showSelected ? 'bg-transparent text-emerald-700 border border-emerald-200 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
       >
         {plan.id === 'agency' ? 'Join waitlist' : isActive && !showSelected ? 'Active' : `Choose ${plan.title}`}
       </button>
