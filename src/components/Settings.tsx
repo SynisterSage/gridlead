@@ -168,13 +168,18 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   }, [showUpgradeModal]);
 
   const waitlistPending = (currentProfile?.agency_waitlist_status || '').toLowerCase() === 'pending';
-  const effectivePlanStatus = waitlistPending ? 'pending' : (planStatusOverride ?? currentProfile?.plan_status ?? 'inactive');
-  const planStatusLower = (effectivePlanStatus || '').toLowerCase();
+  const agencyApproved = !!currentProfile?.agency_approved;
+  const effectivePlanStatusRaw = waitlistPending ? 'pending' : (planStatusOverride ?? currentProfile?.plan_status ?? 'inactive');
+  const planStatusLower = (effectivePlanStatusRaw || '').toLowerCase();
   const planIncludesAgency = (currentProfile?.plan || '').toLowerCase().includes('agency');
   const safePlan =
     planStatusLower === 'canceled'
       ? 'starter'
       : currentProfile?.plan;
+  const displayPlanStatus =
+    planStatusLower === 'pending' ? 'Pending review' :
+    agencyApproved ? 'Approved' :
+    effectivePlanStatusRaw;
   const planLimits = getPlanLimits(safePlan);
   const leadLimit = planLimits.leadLimit;
   const leadsUsed = currentProfile?.leads_used_this_month ?? 0;
@@ -185,9 +190,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const cancelAtPeriodEnd = currentProfile?.cancel_at_period_end ?? false;
   const planStatusLabel = cancelAtPeriodEnd && planStatusLower === 'active'
     ? 'Active'
-    : planStatusLower === 'pending'
-    ? 'Pending review'
-    : effectivePlanStatus;
+    : displayPlanStatus;
   useEffect(() => {
     if (cancelAtPeriodEnd) {
       const seen = localStorage.getItem('gl_cancel_disclosure_seen');
@@ -630,7 +633,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border inline-flex items-center gap-1 ${
                         cancelAtPeriodEnd || planStatusLower === 'incomplete' || planStatusLower === 'pending'
                           ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800'
-                          : planStatusLower === 'active'
+                          : planStatusLower === 'active' || agencyApproved
                           ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/40'
                           : planStatusLower === 'canceled'
                           ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-900/40'

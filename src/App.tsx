@@ -78,6 +78,7 @@ const AppContent: React.FC = () => {
   };
   const [notifPrefs, setNotifPrefs] = useState(notifDefaults);
   const goalNotifiedRef = React.useRef(false);
+  const lastAgencyStatusRef = React.useRef<string | null>(null);
 
   const hasNotification = useCallback(
     (type: NotificationItem['type'], predicate?: (n: NotificationItem) => boolean) => {
@@ -977,6 +978,36 @@ const AppContent: React.FC = () => {
       }
     }
   }, [session, needsOnboarding]);
+
+  // Fire a notification when Agency+ waitlist is approved
+  useEffect(() => {
+    const currentStatus = profile?.agency_waitlist_status || null;
+    const approved = !!profile?.agency_approved || (currentStatus || '').toLowerCase() === 'approved';
+    const prev = lastAgencyStatusRef.current;
+    if (approved && prev !== 'approved') {
+      lastAgencyStatusRef.current = 'approved';
+      void (async () => {
+        try {
+          if (!session) return;
+          // Avoid dupes per session
+          const cacheKey = `gl_notif_agency_approved_${session.user.id}`;
+          if (localStorage.getItem(cacheKey) === '1') return;
+          await supabase.from('notifications').insert({
+            user_id: session.user.id,
+            type: 'info',
+            title: 'Agency+ approved',
+            body: 'Your Agency+ request was approved. You can upgrade now.',
+            meta: { kind: 'agency_approved' },
+          });
+          localStorage.setItem(cacheKey, '1');
+        } catch (e) {
+          console.warn('Failed to insert agency approval notification', e);
+        }
+      })();
+    } else {
+      lastAgencyStatusRef.current = currentStatus;
+    }
+  }, [profile, session, needsOnboarding]);
 
   if (authLoading || authProcessing || profileLoading) {
     return (

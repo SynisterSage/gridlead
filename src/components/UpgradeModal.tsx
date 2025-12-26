@@ -68,7 +68,7 @@ const mapPlanToId = (raw?: any): string | null => {
   return null;
 };
 
-const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; activeStatus?: string | null; highlight?: boolean; onAction: () => void; isDowngradeTarget?: boolean; agencyApproved?: boolean; waitlistPending?: boolean; }> = ({ plan, selected, hovered, active, activeStatus, highlight, onAction, isDowngradeTarget, agencyApproved, waitlistPending }) => {
+const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; activeStatus?: string | null; highlight?: boolean; onAction: () => void; isDowngradeTarget?: boolean; agencyApproved?: boolean; waitlistPending?: boolean; waitlistApproved?: boolean; }> = ({ plan, selected, hovered, active, activeStatus, highlight, onAction, isDowngradeTarget, agencyApproved, waitlistPending, waitlistApproved }) => {
   const isActive = !!active;
   const isPending = activeStatus === 'pending';
   // Outline non-selected, non-active cards — include featured (Studio) so it
@@ -131,7 +131,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
     {plan.id === 'agency'
       ? (waitlistPending
           ? 'Request received'
-          : agencyApproved
+          : (agencyApproved || waitlistApproved)
           ? 'Upgrade to Agency+'
           : 'Join waitlist')
       : isActive && !showSelected
@@ -200,16 +200,18 @@ const PaymentStep: React.FC<{
   };
 
   return (
-    <div className="space-y-3">
-      <PaymentElement />
+    <div className="space-y-4">
+      <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-3 md:p-4">
+        <PaymentElement />
+      </div>
       <button
         onClick={handlePay}
         disabled={paying || !stripe}
-        className="w-full mt-2 px-5 py-2.5 rounded-xl bg-[#0f172a] text-white font-bold text-sm shadow-sm hover:bg-slate-800 transition-all disabled:opacity-60"
+        className="w-full px-5 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all disabled:opacity-60"
       >
         {paying ? 'Processing…' : `Pay and upgrade to ${planTitle}`}
       </button>
-      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed text-center">
         Payments are processed securely by Stripe. We never see or store your card details.
       </p>
     </div>
@@ -245,6 +247,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistCompany, setWaitlistCompany] = useState('');
   const [waitlistUseCase, setWaitlistUseCase] = useState('scale');
+  const [waitlistUseCaseMode, setWaitlistUseCaseMode] = useState<'preset' | 'custom'>('preset');
+  const [waitlistUseCaseCustom, setWaitlistUseCaseCustom] = useState('');
   const [waitlistName, setWaitlistName] = useState('');
   const [waitlistAvatar, setWaitlistAvatar] = useState<string | null>(null);
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
@@ -364,13 +368,13 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
   // Auto-start subscription when landing on confirm stage without a client secret
   useEffect(() => {
-    if (stage === 'confirm' && !clientSecret && plan.id === 'studio' && visible) {
+    if (stage === 'confirm' && !clientSecret && (plan.id === 'studio' || plan.id === 'agency') && visible) {
       setConfirmLoading(true);
       setConfirmError(null);
       setInlineError(null);
       setToastMsg(null);
       void (async () => {
-        const { clientSecret: cs, error } = await startSubscription(plan.id as 'studio');
+        const { clientSecret: cs, error } = await startSubscription(plan.id as 'studio' | 'agency');
         setConfirmLoading(false);
         if (error || !cs) {
           setConfirmError(error || 'Unable to start subscription.');
@@ -454,24 +458,28 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 <button
                   onClick={() => {
                     setStage('select');
-                  setClientSecret(null);
-                  setConfirmError(null);
-                  setInlineError(null);
-                  setSelected(null);
-                }}
-                className="p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
-                aria-label="Back"
-              >
-                <ChevronLeft size={18} />
-              </button>
-            )}
+                    setClientSecret(null);
+                    setConfirmError(null);
+                    setInlineError(null);
+                    setSelected(null);
+                  }}
+                  className="p-2 rounded-md text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  aria-label="Back"
+                >
+                  <ChevronLeft size={20} className="transition-transform duration-150 group-hover:-translate-x-0.5" />
+                </button>
+              )}
             <div>
               <h3 className="text-xl font-extrabold">Upgrade plan</h3>
               <p className="text-sm text-slate-500">Pick a plan and proceed to checkout.</p>
             </div>
           </div>
-          <button onClick={() => startClose()} className="text-slate-500 hover:text-slate-900 p-2 rounded-md">
-            <X />
+          <button
+            onClick={() => startClose()}
+            className="p-2 rounded-md text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            aria-label="Close"
+          >
+            <X size={20} />
           </button>
         </div>
         {toastMsg && (
@@ -487,9 +495,15 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
         {stage === 'select' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
                 {agencyWaitlistStatus === 'pending' && (
-                  <div className="md:col-span-3 p-4 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-sm font-semibold flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+                  <div className="md:col-span-3 p-4 rounded-xl bg-sky-900/20 border border-sky-700 text-sky-100 text-sm font-semibold flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
                     Request received — your Agency+ access is in review. We’ll notify you once approved.
+                  </div>
+                )}
+                {agencyWaitlistStatus === 'approved' && (
+                  <div className="md:col-span-3 p-4 rounded-xl bg-emerald-900/20 border border-emerald-700 text-emerald-100 text-sm font-semibold flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    Approved — upgrade to Agency+ when you’re ready.
                   </div>
                 )}
                 {PLANS.map(p => {
@@ -504,6 +518,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         activeStatus={agencyWaitlistStatus === 'pending' ? 'pending' : activePlanStatus}
                         agencyApproved={agencyApproved}
                         waitlistPending={agencyWaitlistStatus === 'pending'}
+                        waitlistApproved={agencyWaitlistStatus === 'approved'}
                         isDowngradeTarget={isDowngradeTarget}
                         highlight={justActivated === p.id}
                         onAction={() => {
@@ -526,6 +541,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                             return;
                           }
                           if (p.id === 'agency') {
+                            if (agencyApproved || agencyWaitlistStatus === 'approved') {
+                              setSelected(p.id);
+                              setStage('confirm');
+                              return;
+                            }
                             setSelected(p.id);
                             setStage('waitlist');
                             return;
@@ -546,11 +566,17 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
                       <span>Checkout</span>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Confirm {plan.title}</h4>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
-                        Secure, in-app payment. We’ll start your subscription as soon as your payment method is confirmed.
-                      </p>
+                      <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+                        <span>Secure, in-app payment. We’ll start your subscription as soon as your payment method is confirmed.</span>
+                        <div className="relative group">
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold cursor-help">?</span>
+                          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 p-3 bg-slate-900 text-white rounded-xl text-[11px] leading-relaxed shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 border border-slate-800">
+                            Payments are processed by Stripe. Card details never touch our servers.
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -589,8 +615,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         <span className="text-slate-500">Price</span>
                         <span className="font-bold text-slate-900 dark:text-white">{plan.price}{plan.per}</span>
                       </div>
-                      <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 px-3 py-2 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Card will be charged by Stripe each month. Manage or cancel anytime from Settings → Billing.
+                      <div className="rounded-xl bg-slate-100 dark:bg-slate-800/70 px-3 py-2 text-[11px] text-slate-600 dark:text-slate-200 leading-relaxed border border-slate-200 dark:border-slate-700 flex items-start gap-2">
+                        <span className="mt-0.5 text-slate-500 dark:text-slate-300">ℹ️</span>
+                        <span>Card will be charged by Stripe each month. Manage or cancel anytime from Settings → Billing.</span>
                       </div>
                     </div>
                   </div>
@@ -701,27 +728,51 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
                       />
                     </div>
-                  </div>
+                    </div>
 
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">What do you want most?</label>
-                    <select
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
-                      value={waitlistUseCase}
-                      onChange={(e) => setWaitlistUseCase(e.target.value)}
-                    >
-                      <option value="scale">Scale outreach with AI playbooks</option>
-                      <option value="deliverability">Better deliverability guardrails</option>
-                      <option value="reporting">Deeper reporting & analytics</option>
-                      <option value="other">Other (tell us later)</option>
-                    </select>
+                    {waitlistUseCaseMode === 'preset' ? (
+                      <select
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 pr-10 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
+                        style={{ backgroundPosition: 'calc(100% - 12px) center' }}
+                        value={waitlistUseCase}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === 'other') {
+                            setWaitlistUseCaseMode('custom');
+                            setWaitlistUseCaseCustom('');
+                          } else {
+                            setWaitlistUseCase(val);
+                          }
+                        }}
+                      >
+                        <option value="scale">Scale outreach with AI playbooks</option>
+                        <option value="deliverability">Better deliverability guardrails</option>
+                        <option value="reporting">Deeper reporting & analytics</option>
+                        <option value="other">Other (type it)</option>
+                      </select>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setWaitlistUseCaseMode('preset')}
+                          className="p-2 rounded-lg text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                          aria-label="Back to presets"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <input
+                          value={waitlistUseCaseCustom}
+                          onChange={(e) => setWaitlistUseCaseCustom(e.target.value)}
+                          placeholder="Tell us what you need most"
+                          className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                    Back
-                  </button>
                   <button
                     disabled={!waitlistEmail || waitlistSubmitting || agencyWaitlistStatus === 'pending'}
                     onClick={async () => {
@@ -734,13 +785,17 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         if (!uid || !email) {
                           throw new Error('Missing user session. Please re-login.');
                         }
+                        const useCaseValue = waitlistUseCaseMode === 'custom' && waitlistUseCaseCustom
+                          ? waitlistUseCaseCustom
+                          : waitlistUseCase;
+
                         const { error: waitlistErr } = await supabase
                           .from('agency_waitlist')
                           .upsert({
                             user_id: uid,
                             email,
                             company: waitlistCompany || null,
-                            use_case: waitlistUseCase,
+                            use_case: useCaseValue,
                             status: 'pending',
                           }, { onConflict: 'user_id' });
                         if (waitlistErr) throw waitlistErr;
@@ -758,7 +813,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         setAgencyWaitlistStatus('pending');
                         setToastKind('success');
                         setToastMsg('Request received. We’ll notify you when Agency+ is approved.');
-                        setStage('success');
+                        setStage('select');
+                        setSelected(null);
                         onConfirm?.('agency_pending');
                       } catch (err: any) {
                         setInlineError(err?.message || 'Unable to submit waitlist request.');
@@ -785,10 +841,10 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 <div className="w-20 h-20 rounded-full mx-auto bg-emerald-500 flex items-center justify-center text-white mb-4 animate-in zoom-in">
                   <CheckCircle2 size={28} />
                 </div>
-                {selected === 'agency' || activePlan === 'agency' ? (
+                {selected === 'agency' || agencyWaitlistStatus === 'pending' ? (
                   <>
-                    <h4 className="text-lg font-extrabold">You're on the waitlist</h4>
-                    <p className="text-sm text-slate-500">Thanks — we’ll review your request and notify you when Agency+ is approved.</p>
+                    <h4 className="text-lg font-extrabold">Request received</h4>
+                    <p className="text-sm text-slate-500">We’ll review your request and notify you when Agency+ is approved.</p>
                   </>
                 ) : (
                   <>
