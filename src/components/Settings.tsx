@@ -151,6 +151,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       setShowUpgradeModal(true);
     }
     upgradeHydratedRef.current = true;
+    const onFocus = () => void fetchProfile();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []);
   useEffect(() => {
     if (!upgradeHydratedRef.current) return;
@@ -422,6 +425,10 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       setNotification(error || 'Unable to open billing portal.');
       return;
     }
+    // ensure we return to settings with upgrade modal open
+    localStorage.setItem('gridlead_return_view', 'settings');
+    localStorage.setItem(SETTINGS_TAB_KEY, 'profile');
+    sessionStorage.setItem('gl_upgrade_modal_open', '1');
     window.location.href = url;
   };
 
