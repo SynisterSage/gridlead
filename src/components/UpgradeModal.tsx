@@ -200,6 +200,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const hydratedRef = React.useRef(false);
 
   // mounted: whether to render the modal at all
   const [mounted, setMounted] = useState<boolean>(false);
@@ -250,6 +251,21 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       setStage('select');
       setSelected(null);
       void fetchProfileOnce();
+      if (!hydratedRef.current) {
+        try {
+          const raw = sessionStorage.getItem('gl_upgrade_modal_state');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.selected) setSelected(parsed.selected);
+            if (parsed.stage) setStage(parsed.stage);
+            if (parsed.clientSecret) setClientSecret(parsed.clientSecret);
+          }
+        } catch (e) {
+          // ignore corrupted state
+        } finally {
+          hydratedRef.current = true;
+        }
+      }
       window.addEventListener('focus', onFocus);
       requestAnimationFrame(() => requestAnimationFrame(() => setOpenState(true)));
     } else {
@@ -272,6 +288,19 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     }
   }, [currentPlan]);
 
+  useEffect(() => {
+    if (visible) {
+      try {
+        sessionStorage.setItem(
+          'gl_upgrade_modal_state',
+          JSON.stringify({ selected, stage, clientSecret }),
+        );
+      } catch (e) {
+        // ignore storage failures
+      }
+    }
+  }, [visible, selected, stage, clientSecret]);
+
   if (!mounted) return null;
 
   // the plan (used in confirm flow)
@@ -280,6 +309,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const startClose = (delay = 300) => {
     // animate out locally then call onClose after the animation
     setOpenState(false);
+    sessionStorage.removeItem('gl_upgrade_modal_state');
     setTimeout(() => {
       setMounted(false);
       onClose();
