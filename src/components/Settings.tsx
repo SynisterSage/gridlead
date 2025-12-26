@@ -481,20 +481,20 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <h4 className="text-base font-extrabold text-[#0f172a] dark:text-white">Billing & Plan</h4>
-                  <p className="text-[10px] md:text-[11px] text-slate-500 dark:text-slate-400">Usage overview and upgrade options.</p>
+                  <p className="text-[10px] md:text-[11px] text-slate-500 dark:text-slate-400">Usage and seats at a glance.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                     {getPlanLimits(profile?.plan).label}
                   </span>
-                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/40">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/40">
                     {profile?.plan_status ?? 'inactive'}
                   </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 space-y-4">
+                <div className="md:col-span-2 space-y-3">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
                     <span>Leads usage</span>
                     {leadLimit ? <span className="text-slate-400">{leadsPct}%</span> : <span className="text-slate-400">Unlimited</span>}
@@ -514,7 +514,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   )}
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
                     <span>Sender seats</span>
                     {seatLimit ? <span className="text-slate-400">{seatsPct}%</span> : <span className="text-slate-400">Unlimited</span>}
