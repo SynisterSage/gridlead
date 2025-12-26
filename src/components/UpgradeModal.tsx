@@ -118,6 +118,10 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
   // active plan from props (the user's actual plan)
   const [activePlan, setActivePlan] = useState<string | null>(null);
+  // waitlist form state (mock)
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistCompany, setWaitlistCompany] = useState('');
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -152,13 +156,6 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   if (!mounted) return null;
 
   const plan = PLANS.find(p => p.id === selected) || PLANS[1];
-
-  // waitlist form state (mock)
-  const [waitName, setWaitName] = useState<string>('');
-  const [waitCompany, setWaitCompany] = useState<string>('');
-  const [waitEmail, setWaitEmail] = useState<string>('');
-  const [waitNote, setWaitNote] = useState<string>('');
-  const [waitSubmitting, setWaitSubmitting] = useState<boolean>(false);
 
   const startClose = (delay = 300) => {
     // animate out locally then call onClose after the animation
@@ -206,7 +203,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                       active={p.id === activePlan}
                       onAction={() => {
                         if (p.id === 'agency') {
-                          // open in-modal waitlist mock
+                          // open in-modal waitlist mock flow
                           setSelected(p.id);
                           setStage('waitlist');
                           return;
@@ -268,32 +265,25 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
             {stage === 'waitlist' && (
               <div>
-                <h4 className="text-lg font-extrabold mb-2">Join the Agency+ waitlist</h4>
-                <p className="text-sm text-slate-500 mb-4">This is a mock waitlist sign-up. We'll keep you posted when Agency+ becomes available.</p>
-                <div className="grid grid-cols-1 gap-3 mb-4">
-                  <input value={waitName} onChange={(e) => setWaitName(e.target.value)} placeholder="Full name (optional)" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
-                  <input value={waitCompany} onChange={(e) => setWaitCompany(e.target.value)} placeholder="Company (optional)" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
-                  <input value={waitEmail} onChange={(e) => setWaitEmail(e.target.value)} placeholder="Email (required)" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" />
-                  <textarea value={waitNote} onChange={(e) => setWaitNote(e.target.value)} placeholder="Notes (optional)" className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white resize-none h-28" />
+                <h4 className="text-lg font-extrabold mb-2">Join the {plan.title} waitlist</h4>
+                <p className="text-sm text-slate-500 mb-6">Agency+ is currently in development. Join the waitlist to be notified when we open invites. This is a mock flow — no data is sent to a server.</p>
+                <div className="space-y-4 mb-6 max-w-xl">
+                  <label className="text-xs font-bold text-slate-500">Work email</label>
+                  <input value={waitlistEmail} onChange={(e) => setWaitlistEmail(e.target.value)} placeholder="you@company.com" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none" />
+                  <label className="text-xs font-bold text-slate-500">Company (optional)</label>
+                  <input value={waitlistCompany} onChange={(e) => setWaitlistCompany(e.target.value)} placeholder="Your company" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none" />
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border">Back</button>
-                  <button
-                    onClick={async () => {
-                      if (!waitEmail) return;
-                      setWaitSubmitting(true);
-                      // mock submit delay
-                      setTimeout(() => {
-                        setWaitSubmitting(false);
-                        setStage('success');
-                        onConfirm?.(plan.id);
-                      }, 700);
-                    }}
-                    disabled={!waitEmail || waitSubmitting}
-                    className={`px-4 py-2 rounded-xl font-bold ${!waitEmail ? 'opacity-60 cursor-not-allowed' : 'bg-[#0f172a] text-white'}`}
-                  >
-                    {waitSubmitting ? 'Joining...' : 'Join waitlist'}
-                  </button>
+                  <button disabled={!waitlistEmail || waitlistSubmitting} onClick={async () => {
+                    setWaitlistSubmitting(true);
+                    // mock submit delay
+                    setTimeout(() => {
+                      setWaitlistSubmitting(false);
+                      setStage('success');
+                      onConfirm?.(plan.id);
+                    }, 700);
+                  }} className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold disabled:opacity-60">Join waitlist</button>
                 </div>
               </div>
             )}
@@ -303,8 +293,17 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 <div className="w-20 h-20 rounded-full mx-auto bg-emerald-500 flex items-center justify-center text-white mb-4">
                   <CheckCircle2 size={28} />
                 </div>
-                <h4 className="text-lg font-extrabold">Mock purchase complete</h4>
-                <p className="text-sm text-slate-500">The UI now reflects a successful mock upgrade. When you connect Stripe we'll replace this flow with a real checkout redirect.</p>
+                {selected === 'agency' ? (
+                  <>
+                    <h4 className="text-lg font-extrabold">You're on the waitlist</h4>
+                    <p className="text-sm text-slate-500">Thanks — we'll notify you when Agency+ opens. This is a mock success state.</p>
+                  </>
+                ) : (
+                  <>
+                    <h4 className="text-lg font-extrabold">Mock purchase complete</h4>
+                    <p className="text-sm text-slate-500">The UI now reflects a successful mock upgrade. When you connect Stripe we'll replace this flow with a real checkout redirect.</p>
+                  </>
+                )}
                 <div className="mt-6">
                   <button onClick={() => startClose(220)} className="px-6 py-3 rounded-xl bg-white border">Done</button>
                 </div>
