@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, X, Info, Mail, Briefcase } from 'lucide-react';
+import { CheckCircle2, X, Info, Mail, Briefcase, ChevronLeft } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { startSubscription } from '../services/billing';
 import { loadStripe } from '@stripe/stripe-js';
@@ -145,6 +145,7 @@ const PaymentStep: React.FC<{
   const stripe = useStripe();
   const elements = useElements();
   const [paying, setPaying] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   if (!stripe || !elements) {
     return (
@@ -167,6 +168,7 @@ const PaymentStep: React.FC<{
     });
     setPaying(false);
     if (error) {
+      setFieldError(error.message || 'Payment failed');
       onError(error.message || 'Payment failed');
       return;
     }
@@ -190,6 +192,11 @@ const PaymentStep: React.FC<{
       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
         Payments are processed securely by Stripe. We never see or store your card details.
       </p>
+      {fieldError && (
+        <p className="text-[11px] text-rose-500">
+          {fieldError}
+        </p>
+      )}
     </div>
   );
 };
@@ -201,6 +208,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [stage, setStage] = useState<'select' | 'confirm' | 'waitlist' | 'success'>('select');
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [inlineError, setInlineError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const hydratedRef = React.useRef(false);
 
@@ -364,9 +372,25 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
         aria-modal="true"
       >
         <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-xl font-extrabold">Upgrade plan</h3>
-            <p className="text-sm text-slate-500">Pick a plan and proceed to checkout (mock).</p>
+          <div className="flex items-center gap-2">
+            {stage !== 'select' && (
+              <button
+                onClick={() => {
+                  setStage('select');
+                  setClientSecret(null);
+                  setConfirmError(null);
+                  setInlineError(null);
+                }}
+                className="p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
+                aria-label="Back"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            )}
+            <div>
+              <h3 className="text-xl font-extrabold">Upgrade plan</h3>
+              <p className="text-sm text-slate-500">Pick a plan and proceed to checkout.</p>
+            </div>
           </div>
           <button onClick={() => startClose()} className="text-slate-500 hover:text-slate-900 p-2 rounded-md">
             <X />
@@ -374,12 +398,12 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
         </div>
 
         <div className="mt-4 rounded-lg">
-          <div className="p-4 md:p-6 overflow-auto max-h-[calc(100vh-160px)] pb-24"> 
-            {stage === 'select' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-                {PLANS.map(p => (
-                  <div key={p.id} className="relative h-full" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
-                    <PlanCard
+      <div className="p-4 md:p-6 overflow-auto max-h-[calc(100vh-160px)] pb-24"> 
+        {stage === 'select' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+            {PLANS.map(p => (
+              <div key={p.id} className="relative h-full" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
+                <PlanCard
                       plan={p}
                       selected={p.id === selected}
                       hovered={p.id === hoveredPlan}
@@ -440,23 +464,23 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                     </ul>
                   </div>
 
-                  <div className="p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 space-y-3 shadow-sm">
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Plan summary</span>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Plan</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{plan.title}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-500">Price</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{plan.price}{plan.per}</span>
-                    </div>
-                    <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 px-3 py-2 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                      Ready for Stripe: replace the CTA below with a call to your checkout/session endpoint.
+                    <div className="p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/60 space-y-3 shadow-sm">
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Plan summary</span>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Plan</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{plan.title}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Price</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{plan.price}{plan.per}</span>
+                      </div>
+                      <div className="rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 px-3 py-2 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Card will be charged by Stripe each month. Manage or cancel anytime from Settings → Billing.
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-4">
+                  <div className="space-y-4">
                   {clientSecret && stripePromise ? (
                     <Elements stripe={stripePromise} options={{ clientSecret }}>
                       <PaymentStep
