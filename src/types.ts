@@ -76,6 +76,8 @@ export interface Profile {
   cancel_at_period_end?: boolean | null;
   current_period_end?: string | null;
   agency_approved?: boolean | null;
+  agency_waitlist_status?: string | null;
+  agency_waitlist_requested_at?: string | null;
 }
 
 export type NotificationType =

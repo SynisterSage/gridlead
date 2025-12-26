@@ -68,7 +68,7 @@ const mapPlanToId = (raw?: any): string | null => {
   return null;
 };
 
-const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; activeStatus?: string | null; highlight?: boolean; onAction: () => void; isDowngradeTarget?: boolean; agencyApproved?: boolean; }> = ({ plan, selected, hovered, active, activeStatus, highlight, onAction, isDowngradeTarget, agencyApproved }) => {
+const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; activeStatus?: string | null; highlight?: boolean; onAction: () => void; isDowngradeTarget?: boolean; agencyApproved?: boolean; waitlistPending?: boolean; }> = ({ plan, selected, hovered, active, activeStatus, highlight, onAction, isDowngradeTarget, agencyApproved, waitlistPending }) => {
   const isActive = !!active;
   const isPending = activeStatus === 'pending';
   // Outline non-selected, non-active cards — include featured (Studio) so it
@@ -126,15 +126,13 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
     onClick={onAction}
     disabled={isActive && !showSelected && isPending && !agencyApproved}
     aria-current={isActive && !showSelected ? true : undefined}
-    className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isActive && !showSelected && isPending ? 'bg-transparent text-amber-600 border border-amber-200 cursor-default' : isActive && !showSelected ? 'bg-transparent text-emerald-700 border border-emerald-200 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
-  >
+        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isPending && waitlistPending ? 'bg-transparent text-sky-700 border border-sky-200 cursor-default' : isActive && !showSelected ? 'bg-transparent text-emerald-700 border border-emerald-200 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
+      >
     {plan.id === 'agency'
-      ? (isPending && isActive && !agencyApproved
+      ? (waitlistPending
           ? 'Request received'
           : agencyApproved
           ? 'Upgrade to Agency+'
-          : isActive && !showSelected
-          ? 'Waitlisted'
           : 'Join waitlist')
       : isActive && !showSelected
       ? 'Active'
@@ -242,6 +240,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [activePlan, setActivePlan] = useState<string | null>(null);
   const [activePlanStatus, setActivePlanStatus] = useState<string | null>(null);
   const [agencyApproved, setAgencyApproved] = useState<boolean>(false);
+  const [agencyWaitlistStatus, setAgencyWaitlistStatus] = useState<string | null>(null);
   // waitlist form state
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistCompany, setWaitlistCompany] = useState('');
@@ -258,7 +257,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       if (uid) {
         const { data: profileRow, error } = await supabase
           .from('profiles')
-          .select('plan,plan_status,agency_approved,agency_name,display_name')
+          .select('plan,plan_status,agency_approved,agency_name,display_name,agency_waitlist_status')
           .eq('id', uid)
           .maybeSingle();
         if (!error && profileRow) {
@@ -266,6 +265,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
           setActivePlan(mapped);
           setActivePlanStatus(profileRow.plan_status ?? null);
           setAgencyApproved(!!profileRow.agency_approved);
+          setAgencyWaitlistStatus(profileRow.agency_waitlist_status ?? null);
           const email = sessionData.session?.user?.email;
           if (email && !waitlistEmail) setWaitlistEmail(email);
           if (profileRow.agency_name && !waitlistCompany) setWaitlistCompany(profileRow.agency_name);
@@ -486,9 +486,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       <div className="p-4 md:p-6 overflow-y-auto overflow-x-visible max-h-[calc(100vh-140px)] pb-48 pt-1"> 
         {stage === 'select' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-                {activePlan === 'agency' && activePlanStatus === 'pending' && (
-                  <div className="md:col-span-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                {agencyWaitlistStatus === 'pending' && (
+                  <div className="md:col-span-3 p-4 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-sm font-semibold flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
                     Request received — your Agency+ access is in review. We’ll notify you once approved.
                   </div>
                 )}
@@ -501,8 +501,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         selected={p.id === selected}
                         hovered={p.id === hoveredPlan}
                         active={p.id === activePlan}
-                        activeStatus={activePlanStatus}
+                        activeStatus={agencyWaitlistStatus === 'pending' ? 'pending' : activePlanStatus}
                         agencyApproved={agencyApproved}
+                        waitlistPending={agencyWaitlistStatus === 'pending'}
                         isDowngradeTarget={isDowngradeTarget}
                         highlight={justActivated === p.id}
                         onAction={() => {
@@ -722,7 +723,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                     Back
                   </button>
                   <button
-                    disabled={!waitlistEmail || waitlistSubmitting || (activePlan === 'agency' && activePlanStatus === 'pending')}
+                    disabled={!waitlistEmail || waitlistSubmitting || agencyWaitlistStatus === 'pending'}
                     onClick={async () => {
                       setInlineError(null);
                       setWaitlistSubmitting(true);
@@ -747,19 +748,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         const { error: profErr } = await supabase
                           .from('profiles')
                           .update({
-                            plan: 'agency_waitlist',
-                            plan_status: 'pending',
+                            agency_waitlist_status: 'pending',
+                            agency_waitlist_requested_at: new Date().toISOString(),
                             cancel_at_period_end: false,
                           })
                           .eq('id', uid);
                         if (profErr) throw profErr;
 
-                        setActivePlan('agency');
-                        setActivePlanStatus('pending');
+                        setAgencyWaitlistStatus('pending');
                         setToastKind('success');
                         setToastMsg('Request received. We’ll notify you when Agency+ is approved.');
                         setStage('success');
-                        onConfirm?.('agency_waitlist');
+                        onConfirm?.('agency_pending');
                       } catch (err: any) {
                         setInlineError(err?.message || 'Unable to submit waitlist request.');
                         setToastKind('error');

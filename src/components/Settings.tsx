@@ -167,9 +167,14 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     }
   }, [showUpgradeModal]);
 
-  const effectivePlanStatus = planStatusOverride ?? currentProfile?.plan_status ?? 'inactive';
+  const waitlistPending = (currentProfile?.agency_waitlist_status || '').toLowerCase() === 'pending';
+  const effectivePlanStatus = waitlistPending ? 'pending' : (planStatusOverride ?? currentProfile?.plan_status ?? 'inactive');
   const planStatusLower = (effectivePlanStatus || '').toLowerCase();
-  const safePlan = planStatusLower === 'canceled' ? 'starter' : currentProfile?.plan;
+  const planIncludesAgency = (currentProfile?.plan || '').toLowerCase().includes('agency');
+  const safePlan =
+    planStatusLower === 'canceled'
+      ? 'starter'
+      : currentProfile?.plan;
   const planLimits = getPlanLimits(safePlan);
   const leadLimit = planLimits.leadLimit;
   const leadsUsed = currentProfile?.leads_used_this_month ?? 0;
@@ -180,6 +185,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const cancelAtPeriodEnd = currentProfile?.cancel_at_period_end ?? false;
   const planStatusLabel = cancelAtPeriodEnd && planStatusLower === 'active'
     ? 'Active'
+    : planStatusLower === 'pending'
+    ? 'Pending review'
     : effectivePlanStatus;
   useEffect(() => {
     if (cancelAtPeriodEnd) {
@@ -621,7 +628,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   <div className="relative group">
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border inline-flex items-center gap-1 ${
-                        cancelAtPeriodEnd || planStatusLower === 'incomplete'
+                        cancelAtPeriodEnd || planStatusLower === 'incomplete' || planStatusLower === 'pending'
                           ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800'
                           : planStatusLower === 'active'
                           ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/40'
@@ -646,7 +653,13 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                 <div className="md:col-span-2 space-y-3">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
                     <span>Leads usage</span>
-                    {leadLimit ? <span className="text-slate-400">{leadsPct}%</span> : <span className="text-slate-400">Unlimited</span>}
+                    {leadLimit ? (
+                      <span className="text-slate-400">{leadsPct}%</span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-900/30 text-emerald-200 border border-emerald-800/60">
+                        Unlimited
+                      </span>
+                    )}
                   </div>
                   {leadLimit ? (
                     <>
@@ -659,14 +672,20 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{(currentProfile?.leads_used_this_month ?? 0)} / {getPlanLimits(currentProfile?.plan).leadLimit} leads this month</div>
                     </>
                   ) : (
-                    <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Unlimited leads</div>
+                    <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">Included in your plan</div>
                   )}
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
                     <span>Sender seats</span>
-                    {seatLimit ? <span className="text-slate-400">{seatsPct}%</span> : <span className="text-slate-400">Unlimited</span>}
+                    {seatLimit ? (
+                      <span className="text-slate-400">{seatsPct}%</span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-900/30 text-emerald-200 border border-emerald-800/60">
+                        Unlimited
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-2">
                     {seatLimit ? (
@@ -680,7 +699,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                         <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{(currentProfile?.sender_seats_used ?? 0)} / {seatLimit} seats used</div>
                       </>
                     ) : (
-                      <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Unlimited seats</div>
+                      <div className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">Included in your plan</div>
                     )}
                   </div>
                 </div>
