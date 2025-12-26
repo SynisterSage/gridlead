@@ -367,6 +367,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
   // the plan (used in confirm flow)
   const plan = PLANS.find(p => p.id === selected) || PLANS[1];
+  const [skipPayment, setSkipPayment] = useState(false);
 
   // Prefill waitlist email when entering waitlist stage
   useEffect(() => {
@@ -380,24 +381,43 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
   // Auto-start subscription when landing on confirm stage without a client secret
   useEffect(() => {
-    if (stage === 'confirm' && !clientSecret && (plan.id === 'studio' || plan.id === 'agency') && visible) {
+    if (stage === 'confirm' && !clientSecret && !skipPayment && (plan.id === 'studio' || plan.id === 'agency') && visible) {
       setConfirmLoading(true);
       setConfirmError(null);
       setInlineError(null);
       setToastMsg(null);
       void (async () => {
-        const { clientSecret: cs, error } = await startSubscription(plan.id as 'studio' | 'agency');
+        const { clientSecret: cs, error, alreadyPaid } = await startSubscription(plan.id as 'studio' | 'agency');
         setConfirmLoading(false);
-        if (error || !cs) {
+        if (error) {
           setConfirmError(error || 'Unable to start subscription.');
           setToastMsg(error || 'Unable to start subscription.');
+          return;
+        }
+        if (alreadyPaid) {
+          setToastKind('success');
+          setToastMsg(`Upgraded to ${plan.title}.`);
+          setStage('select');
+          setSelected(null);
+          setClientSecret(null);
+          setActivePlan(plan.id);
+          setActivePlanStatus('active');
+          setJustActivated(plan.id);
+          lastPurchaseRef.current = { plan: plan.id, ts: Date.now() };
+          void refreshProfile();
+          onConfirm?.(plan.id);
+          return;
+        }
+        if (!cs) {
+          setConfirmError('Unable to start subscription.');
+          setToastMsg('Unable to start subscription.');
           return;
         }
         setClientSecret(cs);
       })();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, plan.id, visible]);
+  }, [stage, plan.id, visible, skipPayment]);
 
   // Reset selection/errors when returning to selection stage
   useEffect(() => {
