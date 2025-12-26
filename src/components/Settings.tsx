@@ -174,6 +174,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const cancelAtPeriodEnd = currentProfile?.cancel_at_period_end ?? false;
   const effectivePlanStatus = planStatusOverride ?? currentProfile?.plan_status ?? 'inactive';
   const planStatusLower = (effectivePlanStatus || '').toLowerCase();
+  const planStatusLabel = cancelAtPeriodEnd && planStatusLower === 'active'
+    ? 'Active • cancels at period end'
+    : effectivePlanStatus;
   let leadBarColor = 'bg-emerald-500';
   if (leadLimit) {
     if (leadsPct >= 100) leadBarColor = 'bg-rose-500';
