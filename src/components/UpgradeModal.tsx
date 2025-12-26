@@ -310,8 +310,6 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     }
   }, [visible, selected, stage, clientSecret]);
 
-  if (!mounted) return null;
-
   // the plan (used in confirm flow)
   const plan = PLANS.find(p => p.id === selected) || PLANS[1];
 
@@ -332,6 +330,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, plan.id, visible]);
+
+  if (!mounted) return null;
 
   const startClose = (delay = 300) => {
     // animate out locally then call onClose after the animation
