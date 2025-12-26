@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle2, X, Info, Mail, Briefcase } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { startSubscription } from '../services/billing';
-import { loadStripe, Stripe | null } from '@stripe/stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 interface Plan {
