@@ -55,7 +55,10 @@ const PlanCard: React.FC<{ plan: Plan; active?: boolean; hovered?: boolean; onAc
   const showActive = !!active;
   const showHover = !!hovered;
   return (
-    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-transform duration-300 ${plan.featured || showActive ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${isOutlined ? 'border border-slate-700' : ''} ${showHover ? 'border-2 border-slate-500/40 shadow-xl scale-[1.01]' : ''}`}>
+    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-transform duration-300 ${plan.featured || showActive ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${isOutlined ? 'border border-slate-700' : ''} ${showHover ? 'border-2 border-slate-500/40 shadow-xl scale-[1.01]' : ''} group-hover:-translate-y-1` }>
+      {/* decorative blurs like LandingPage */}
+      <div className="absolute -top-12 -right-12 w-32 h-32 bg-sky-500/10 blur-3xl opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="absolute -bottom-12 -left-6 w-28 h-28 bg-emerald-400/10 blur-3xl opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100" />
       {/* subtle hover gradient */}
       <div className="absolute inset-0 rounded-[1.5rem] pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-b from-emerald-400/6 to-transparent mix-blend-overlay" />
       {plan.badge && (
@@ -82,7 +85,10 @@ const PlanCard: React.FC<{ plan: Plan; active?: boolean; hovered?: boolean; onAc
       ))}
     </ul>
       <div className="mt-4">
-      <button onClick={onAction} className={`w-full py-3 rounded-xl font-bold transition-colors ${plan.featured || showActive ? 'bg-emerald-500 text-white' : 'bg-transparent text-white border border-slate-700 hover:bg-slate-800/30'}`}>
+      <button
+        onClick={onAction}
+        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${plan.featured || showActive ? 'bg-emerald-500 text-white' : 'bg-transparent text-white border border-slate-700 hover:bg-slate-800/20'}`}
+      >
         {plan.id === 'agency' ? 'Join waitlist' : `Choose ${plan.title}`}
       </button>
     </div>
@@ -120,6 +126,15 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       return () => clearTimeout(t);
     }
   }, [visible]);
+
+  useEffect(() => {
+    return () => {
+      if (hideTooltipTimer.current) {
+        window.clearTimeout(hideTooltipTimer.current);
+        hideTooltipTimer.current = null;
+      }
+    };
+  }, []);
 
   // sync active plan from props on mount/update
   useEffect(() => {
@@ -163,22 +178,25 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
           </button>
         </div>
 
-        <div className="mt-4 max-h-[75vh] rounded-lg">
-          <div className="p-4 md:p-6 overflow-auto max-h-[72vh]">
+        <div className="mt-4 rounded-lg">
+          <div className="p-4 md:p-6 overflow-auto max-h-[calc(100vh-160px)] pb-24"> 
             {stage === 'select' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {PLANS.map(p => (
                   <div key={p.id} className="relative" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
                     <PlanCard
                       plan={p}
-                      active={p.id === activePlan}
+                      active={p.id === (selected ?? activePlan)}
                       hovered={p.id === hoveredPlan}
                       onAction={() => {
                         if (p.id === 'agency') {
+                          // agency goes to waitlist (external)
                           window.location.href = '/waitlist';
                           return;
                         }
-                        window.location.href = '/mock-checkout';
+                        // choose a plan within the modal and move to confirm stage
+                        setSelected(p.id);
+                        setStage('confirm');
                       }}
                       onShowTooltip={(id) => {
                         if (hideTooltipTimer.current) {
