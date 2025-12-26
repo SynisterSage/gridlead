@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
         const planIdMeta = (invoice.metadata as any)?.plan_id || invoice.lines?.data?.[0]?.metadata?.plan_id || null;
         const userIdMeta = (invoice.metadata as any)?.user_id || null;
         if (subscriptionId) {
-          await updateFromSubscription(subscriptionId, customerId, priceId, planIdMeta, userIdMeta);
+          await updateFromSubscription(subscriptionId, customerId, priceId, planIdMeta, userIdMeta, "active");
         }
         break;
       }
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
         const userIdMeta = (pi.metadata as any)?.user_id || null;
         if (subscriptionId) {
           const priceId = (pi.metadata as any)?.price_id || null;
-          await updateFromSubscription(subscriptionId, customerId, priceId, planIdMeta, userIdMeta);
+          await updateFromSubscription(subscriptionId, customerId, priceId, planIdMeta, userIdMeta, "active");
         }
         break;
       }
@@ -109,9 +109,10 @@ async function upsertProfile(
   priceId: string | null,
   planIdMeta: string | null,
   src: Stripe.Checkout.Session | Stripe.Subscription,
+  statusOverride?: string,
 ) {
   if (!userId) return;
-  const derivedStatus = deriveStatus(src);
+  const derivedStatus = statusOverride || deriveStatus(src);
   const isCanceled = derivedStatus === "canceled";
   const plan = isCanceled ? "starter" : (mapPriceToPlan(priceId) || mapPlanId(planIdMeta));
   const currentPeriodEnd = isCanceled ? null : getPeriodEnd(src);
@@ -146,11 +147,12 @@ async function updateFromSubscription(
   priceIdMeta?: string | null,
   planIdMeta?: string | null,
   userIdMeta?: string | null,
+  statusOverride?: string,
 ) {
   const sub = await stripe.subscriptions.retrieve(subscriptionId);
   const userId = userIdMeta || (sub.metadata as any)?.user_id || null;
   const priceId = priceIdMeta || sub.items.data[0]?.price?.id || null;
-  await upsertProfile(userId, sub.id, customerId || (sub.customer as string), priceId, planIdMeta || (sub.metadata as any)?.plan_id || null, sub);
+  await upsertProfile(userId, sub.id, customerId || (sub.customer as string), priceId, planIdMeta || (sub.metadata as any)?.plan_id || null, sub, statusOverride);
 }
 
 function mapPlanId(planId: string | null | undefined): string | null {

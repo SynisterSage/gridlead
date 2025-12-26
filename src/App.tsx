@@ -80,6 +80,7 @@ const AppContent: React.FC = () => {
   const goalNotifiedRef = React.useRef(false);
   const lastAgencyStatusRef = React.useRef<string | null>(null);
   const profileChannelRef = React.useRef<RealtimeChannel | null>(null);
+  const agencyNotifSentRef = React.useRef<boolean>(false);
 
   const hasNotification = useCallback(
     (type: NotificationItem['type'], predicate?: (n: NotificationItem) => boolean) => {
@@ -1019,8 +1020,9 @@ const AppContent: React.FC = () => {
     const currentStatus = profile?.agency_waitlist_status || null;
     const approved = !!profile?.agency_approved || (currentStatus || '').toLowerCase() === 'approved';
     const prev = lastAgencyStatusRef.current;
-    if (approved && prev !== 'approved') {
+    if (approved && prev !== 'approved' && !agencyNotifSentRef.current) {
       lastAgencyStatusRef.current = 'approved';
+      agencyNotifSentRef.current = true;
       void (async () => {
         try {
           if (!session) return;
@@ -1042,7 +1044,7 @@ const AppContent: React.FC = () => {
             meta: { kind: 'agency_approved' },
           };
           setNotifications(prev => {
-            if (prev.some(n => n.meta?.kind === 'agency_approved' && !n.read_at)) return prev;
+            if (prev.some(n => n.meta?.kind === 'agency_approved')) return prev;
             return [newNotif, ...prev].slice(0, 100);
           });
           if (error) console.warn('Notification insert error', error);

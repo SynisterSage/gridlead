@@ -204,7 +204,7 @@ const PaymentStep: React.FC<{
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-3 md:p-4">
+      <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-3 md:p-4 [&_.Label]:text-slate-600 [&_.Label]:dark:text-slate-300">
         <PaymentElement />
       </div>
       <button
@@ -510,7 +510,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                   </div>
                 )}
                 {PLANS.map(p => {
-                  const isDowngradeTarget = activePlan === 'studio' && p.id === 'starter';
+                  const isDowngradeTarget = activePlan && activePlan !== 'starter' && p.id === 'starter';
                   const isAgencyCard = p.id === 'agency';
                   const cardStatus = isAgencyCard && agencyWaitlistStatus === 'pending'
                     ? 'pending'
@@ -624,9 +624,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         <span className="text-slate-500">Price</span>
                         <span className="font-bold text-slate-900 dark:text-white">{plan.price}{plan.per}</span>
                       </div>
-                      <div className="rounded-xl bg-slate-100 dark:bg-slate-800/70 px-3 py-3 text-[11px] text-slate-600 dark:text-slate-200 leading-relaxed border border-slate-200 dark:border-slate-700 flex items-start gap-2">
-                        <span className="mt-0.5 text-slate-500 dark:text-slate-300">ℹ️</span>
-                        <span>Card will be charged by Stripe each month. Manage or cancel anytime from Settings → Billing.</span>
+                      <div className="flex items-start gap-3 text-[12px] text-slate-600 dark:text-slate-200">
+                        <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          i
+                        </span>
+                        <span className="leading-relaxed">Card will be charged by Stripe each month. Manage or cancel anytime from Settings → Billing.</span>
                       </div>
                     </div>
                   </div>
