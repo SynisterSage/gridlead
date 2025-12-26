@@ -343,6 +343,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       setClientSecret(null);
       setConfirmError(null);
       setInlineError(null);
+      setHoveredPlan(null);
     }
   }, [stage]);
 
@@ -413,15 +414,15 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
           </button>
         </div>
         {toastMsg && (
-          <div className="fixed right-6 top-6 z-[200] animate-in slide-in-from-top-4 duration-300">
-            <div className="bg-rose-500 text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold">
+          <div className="fixed right-6 top-6 z-[200] animate-in slide-in-from-top-4 duration-300 will-change-transform">
+            <div className="bg-rose-500 text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold transition-all duration-300">
               {toastMsg}
             </div>
           </div>
         )}
 
         <div className="mt-4 rounded-lg">
-      <div className="p-4 md:p-6 overflow-y-auto overflow-x-visible max-h-[calc(100vh-140px)] pb-40 pt-1"> 
+      <div className="p-4 md:p-6 overflow-y-auto overflow-x-visible max-h-[calc(100vh-140px)] pb-48 pt-1"> 
         {stage === 'select' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             {PLANS.map(p => (
@@ -505,7 +506,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
                   <div className="space-y-4">
                   {clientSecret && stripePromise ? (
-                    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { rules: { '.Error': { display: 'none' } } } }}>
+                    <Elements
+                      stripe={stripePromise}
+                      options={{
+                        clientSecret,
+                        appearance: {
+                          rules: {
+                            '.Error': { display: 'none' },
+                            '.Input--invalid': { boxShadow: 'none', borderColor: '#e2e8f0' },
+                          },
+                        },
+                      }}
+                    >
                       <PaymentStep
                         clientSecret={clientSecret}
                         planTitle={plan.title}
