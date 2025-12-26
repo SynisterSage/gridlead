@@ -819,6 +819,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                 <UpgradeModal
                   visible={showUpgradeModal}
                   onClose={() => setShowUpgradeModal(false)}
+                  currentPlan={profile?.plan ?? null}
                   onConfirm={(planId) => {
                     setNotification(`Mock upgrade to ${planId} complete.`);
                     setShowUpgradeModal(false);

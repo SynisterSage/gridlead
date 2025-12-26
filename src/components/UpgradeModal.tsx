@@ -16,6 +16,8 @@ interface UpgradeModalProps {
   visible: boolean;
   onClose: () => void;
   onConfirm?: (planId: string) => void;
+  // current active plan id from server (e.g. 'starter' | 'studio' | 'agency')
+  currentPlan?: string | null;
 }
 
 const PLANS: Plan[] = [
@@ -48,10 +50,12 @@ const PLANS: Plan[] = [
   }
 ];
 
-const PlanCard: React.FC<{ plan: Plan; selected: boolean; onSelect: () => void; onShowTooltip?: (id: string | null) => void }> = ({ plan, selected, onSelect, onShowTooltip }) => {
-  const isOutlined = !selected && !plan.featured;
+const PlanCard: React.FC<{ plan: Plan; active?: boolean; hovered?: boolean; onAction: () => void; onShowTooltip?: (id: string | null) => void }> = ({ plan, active, hovered, onAction, onShowTooltip }) => {
+  const isOutlined = !active && !plan.featured;
+  const showActive = !!active;
+  const showHover = !!hovered;
   return (
-    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-transform duration-300 ${plan.featured || selected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${isOutlined ? 'border border-slate-700' : ''} ${selected ? 'border-2 border-slate-500/40 shadow-xl' : ''}`}>
+    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-transform duration-300 ${plan.featured || showActive ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${isOutlined ? 'border border-slate-700' : ''} ${showHover ? 'border-2 border-slate-500/40 shadow-xl scale-[1.01]' : ''}`}>
       {/* subtle hover gradient */}
       <div className="absolute inset-0 rounded-[1.5rem] pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-b from-emerald-400/6 to-transparent mix-blend-overlay" />
       {plan.badge && (
@@ -77,17 +81,17 @@ const PlanCard: React.FC<{ plan: Plan; selected: boolean; onSelect: () => void; 
         <li key={i} className="flex items-center gap-3 text-sm text-slate-500"><CheckCircle2 size={16} className="text-emerald-400" /> {b}</li>
       ))}
     </ul>
-    <div className="mt-4">
-      <button onClick={onSelect} className={`w-full py-3 rounded-xl font-bold ${plan.featured || selected ? 'bg-emerald-500 text-white' : 'bg-transparent text-white border border-slate-700'}`}>
-        {plan.id === 'agency' ? 'Join waitlist' : (selected ? 'Selected' : `Choose ${plan.title}`)}
+      <div className="mt-4">
+      <button onClick={onAction} className={`w-full py-3 rounded-xl font-bold transition-colors ${plan.featured || showActive ? 'bg-emerald-500 text-white' : 'bg-transparent text-white border border-slate-700 hover:bg-slate-800/30'}`}>
+        {plan.id === 'agency' ? 'Join waitlist' : `Choose ${plan.title}`}
       </button>
     </div>
   </div>
   );
 };
 
-const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm }) => {
-  const [selected, setSelected] = useState<string>('studio');
+const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm, currentPlan }) => {
+  const [selected, setSelected] = useState<string | null>(null);
   const [stage, setStage] = useState<'select' | 'confirm' | 'success'>('select');
 
   // mounted: whether to render the modal at all
@@ -95,13 +99,19 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   // openState: controls the translate/opacity for enter/exit animation
   const [openState, setOpenState] = useState<boolean>(false);
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
+  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+  const hideTooltipTimer = React.useRef<number | null>(null);
+
+  // active plan from props (the user's actual plan)
+  const [activePlan, setActivePlan] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
       // mount then trigger enter transition on next frame
       setMounted(true);
       setStage('select');
-      setSelected('studio');
+      // set active selected plan on open from prop
+      setSelected(null);
       requestAnimationFrame(() => requestAnimationFrame(() => setOpenState(true)));
     } else {
       // trigger exit animation then unmount
@@ -110,6 +120,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       return () => clearTimeout(t);
     }
   }, [visible]);
+
+  // sync active plan from props on mount/update
+  useEffect(() => {
+    setActivePlan(currentPlan ?? null);
+  }, [currentPlan]);
 
   if (!mounted) return null;
 
@@ -153,15 +168,30 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
             {stage === 'select' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {PLANS.map(p => (
-                  <div key={p.id} className="relative" onClick={() => { if (p.id !== 'agency') setSelected(p.id); }}>
-                    <PlanCard plan={p} selected={p.id === selected} onSelect={() => {
-                      if (p.id === 'agency') {
-                        window.location.href = '/waitlist';
-                        return;
-                      }
-                      // navigate to mock checkout for non-agency choices
-                      window.location.href = '/mock-checkout';
-                    }} onShowTooltip={(id) => setHoveredTooltip(id)} />
+                  <div key={p.id} className="relative" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
+                    <PlanCard
+                      plan={p}
+                      active={p.id === activePlan}
+                      hovered={p.id === hoveredPlan}
+                      onAction={() => {
+                        if (p.id === 'agency') {
+                          window.location.href = '/waitlist';
+                          return;
+                        }
+                        window.location.href = '/mock-checkout';
+                      }}
+                      onShowTooltip={(id) => {
+                        if (hideTooltipTimer.current) {
+                          window.clearTimeout(hideTooltipTimer.current);
+                          hideTooltipTimer.current = null;
+                        }
+                        if (id) {
+                          setHoveredTooltip(id);
+                        } else {
+                          hideTooltipTimer.current = window.setTimeout(() => setHoveredTooltip(null), 220);
+                        }
+                      }}
+                    />
                   </div>
                 ))}
               </div>
@@ -169,7 +199,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
             {/* Render tooltip outside scrollable grid to avoid clipping */}
             {hoveredTooltip === 'agency' && (
-              <div className="absolute right-6 top-16 w-56 p-3 bg-slate-900 text-white rounded-lg shadow-2xl z-50 ring-1 ring-white/10">
+              <div
+                onMouseEnter={() => {
+                  if (hideTooltipTimer.current) {
+                    window.clearTimeout(hideTooltipTimer.current);
+                    hideTooltipTimer.current = null;
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (hideTooltipTimer.current) window.clearTimeout(hideTooltipTimer.current);
+                  hideTooltipTimer.current = window.setTimeout(() => setHoveredTooltip(null), 220);
+                }}
+                className="absolute right-6 top-16 w-56 p-3 bg-slate-900 text-white rounded-lg shadow-2xl z-50 ring-1 ring-white/10">
                 <div className="text-[10px] font-black uppercase tracking-widest mb-2">In development</div>
                 <p className="text-[12px] text-slate-200">This plan or feature is still in development and may be unavailable. Use the mock flow to preview behavior.</p>
               </div>
