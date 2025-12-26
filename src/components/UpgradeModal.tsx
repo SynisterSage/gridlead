@@ -52,7 +52,9 @@ const PLANS: Plan[] = [
 
 const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; onAction: () => void; onShowTooltip?: (id: string | null) => void }> = ({ plan, selected, hovered, active, onAction, onShowTooltip }) => {
   const isActive = !!active;
-  const isOutlined = !selected && !plan.featured && !isActive;
+  // Outline non-selected, non-active cards — include featured (Studio) so it
+  // displays the same outlined treatment as Agency when not selected.
+  const isOutlined = !selected && !isActive;
   const showSelected = !!selected;
   const showHover = !!hovered;
   return (
