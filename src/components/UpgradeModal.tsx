@@ -289,27 +289,39 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
             )}
 
             {stage === 'waitlist' && (
-              <div>
-                <h4 className="text-lg font-extrabold mb-2">Join the {plan.title} waitlist</h4>
-                <p className="text-sm text-slate-500 mb-6">Agency+ is currently in development. Join the waitlist to be notified when we open invites. This is a mock flow — no data is sent to a server.</p>
-                <div className="space-y-6 mb-6 max-w-xl">
+              <div className="space-y-6 max-w-3xl">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                    <Info size={12} />
+                    <span>Mock waitlist</span>
+                  </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-500 mb-2 block">Work email</label>
+                    <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Join the Agency+ waitlist</h4>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      Agency+ is in development. Add your details to preview the flow and we’ll notify you when invites open.
+                      This is a mock submission—no data is sent to a server.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                  <div className="col-span-1 md:col-span-2 space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Work email</label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <input
                         value={waitlistEmail}
                         onChange={(e) => setWaitlistEmail(e.target.value)}
-                        placeholder="you@company.com"
+                        placeholder="you@agency.com"
                         type="email"
                         aria-label="Work email"
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 mb-2 block">Company (optional)</label>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Company (optional)</label>
                     <div className="relative">
                       <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                       <input
@@ -317,13 +329,29 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         onChange={(e) => setWaitlistCompany(e.target.value)}
                         placeholder="Your company"
                         aria-label="Company (optional)"
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
                       />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">What do you want most?</label>
+                    <select
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
+                      defaultValue="scale"
+                    >
+                      <option value="scale">Scale outreach with AI playbooks</option>
+                      <option value="deliverability">Better deliverability guardrails</option>
+                      <option value="reporting">Deeper reporting & analytics</option>
+                      <option value="other">Other (tell us later)</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="flex gap-3">
-                  <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border">Back</button>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                    Back
+                  </button>
                   <button
                     disabled={!waitlistEmail || waitlistSubmitting}
                     onClick={async () => {
@@ -335,10 +363,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         onConfirm?.(plan.id);
                       }, 700);
                     }}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold disabled:opacity-60"
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-sm hover:bg-emerald-700 transition-all disabled:opacity-60"
                   >
-                    Join waitlist
+                    {waitlistSubmitting ? 'Submitting…' : 'Join waitlist'}
                   </button>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">Mock only — no data is stored.</span>
                 </div>
               </div>
             )}
