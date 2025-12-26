@@ -68,7 +68,7 @@ const mapPlanToId = (raw?: any): string | null => {
   return null;
 };
 
-const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; highlight?: boolean; onAction: () => void }> = ({ plan, selected, hovered, active, highlight, onAction }) => {
+const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; highlight?: boolean; onAction: () => void; isDowngradeTarget?: boolean; }> = ({ plan, selected, hovered, active, highlight, onAction, isDowngradeTarget }) => {
   const isActive = !!active;
   // Outline non-selected, non-active cards — include featured (Studio) so it
   // displays the same outlined treatment as Agency when not selected.
@@ -127,7 +127,13 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
         aria-current={isActive && !showSelected ? true : undefined}
         className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isActive && !showSelected ? 'bg-transparent text-emerald-700 border border-emerald-200 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
       >
-        {plan.id === 'agency' ? (isActive && !showSelected ? 'Waitlisted' : 'Join waitlist') : isActive && !showSelected ? 'Active' : `Choose ${plan.title}`}
+        {plan.id === 'agency'
+          ? (isActive && !showSelected ? 'Waitlisted' : 'Join waitlist')
+          : isActive && !showSelected
+          ? 'Active'
+          : isDowngradeTarget
+          ? 'Switch to Starter'
+          : `Choose ${plan.title}`}
       </button>
     </div>
   </div>
@@ -442,19 +448,20 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       <div className="p-4 md:p-6 overflow-y-auto overflow-x-visible max-h-[calc(100vh-140px)] pb-48 pt-1"> 
         {stage === 'select' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-            {PLANS.map(p => (
-              <div key={p.id} className="relative h-full" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
-                <PlanCard
-                  plan={p}
-                  selected={p.id === selected}
-                  hovered={p.id === hoveredPlan}
-                  active={p.id === activePlan}
-                  highlight={justActivated === p.id}
-                  onAction={() => {
-                    if (p.id === 'agency') {
-                      // open in-modal waitlist mock flow
-                      setSelected(p.id);
-                      setStage('waitlist');
+                {PLANS.map(p => (
+                  <div key={p.id} className="relative h-full" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
+                    <PlanCard
+                      plan={p}
+                      selected={p.id === selected}
+                      hovered={p.id === hoveredPlan}
+                      active={p.id === activePlan}
+                      isDowngradeTarget={activePlan === 'studio' && p.id === 'starter'}
+                      highlight={justActivated === p.id}
+                      onAction={() => {
+                        if (p.id === 'agency') {
+                          // open in-modal waitlist mock flow
+                          setSelected(p.id);
+                          setStage('waitlist');
                           return;
                         }
                         // choose a plan within the modal and move to confirm stage

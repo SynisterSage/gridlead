@@ -165,6 +165,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     }
   }, [showUpgradeModal]);
 
+  const effectivePlanStatus = planStatusOverride ?? currentProfile?.plan_status ?? 'inactive';
+  const planStatusLower = (effectivePlanStatus || '').toLowerCase();
   const safePlan = planStatusLower === 'canceled' ? 'starter' : currentProfile?.plan;
   const planLimits = getPlanLimits(safePlan);
   const leadLimit = planLimits.leadLimit;
@@ -174,8 +176,6 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const seatsUsed = currentProfile?.sender_seats_used ?? 0;
   const seatsPct = seatLimit ? Math.min(100, Math.round((seatsUsed / (seatLimit || 1)) * 100)) : 0;
   const cancelAtPeriodEnd = currentProfile?.cancel_at_period_end ?? false;
-  const effectivePlanStatus = planStatusOverride ?? currentProfile?.plan_status ?? 'inactive';
-  const planStatusLower = (effectivePlanStatus || '').toLowerCase();
   const planStatusLabel = cancelAtPeriodEnd && planStatusLower === 'active'
     ? 'Active'
     : effectivePlanStatus;
