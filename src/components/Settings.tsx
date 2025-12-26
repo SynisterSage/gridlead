@@ -428,10 +428,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       setNotification(error || 'Unable to open billing portal.');
       return;
     }
-    // ensure we return to settings with upgrade modal open
+    // ensure we return to settings (but do not auto-open upgrade modal)
     localStorage.setItem('gridlead_return_view', 'settings');
     localStorage.setItem(SETTINGS_TAB_KEY, 'profile');
-    sessionStorage.setItem('gl_upgrade_modal_open', '1');
     window.location.href = url;
   };
 
