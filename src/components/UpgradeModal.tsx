@@ -298,34 +298,6 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 ))}
               </div>
             )}
-
-            {/* Render tooltip outside scrollable grid to avoid clipping */}
-            {tooltipPlan && tooltipPlan.badge && tooltipPos && (
-              <div
-                onMouseEnter={() => {
-                  if (hideTooltipTimer.current) {
-                    window.clearTimeout(hideTooltipTimer.current);
-                    hideTooltipTimer.current = null;
-                  }
-                }}
-                onMouseLeave={() => {
-                  if (hideTooltipTimer.current) window.clearTimeout(hideTooltipTimer.current);
-                  hideTooltipTimer.current = window.setTimeout(() => {
-                    setHoveredTooltip(null);
-                    setTooltipPos(null);
-                  }, 160);
-                }}
-                style={{ left: tooltipPos.left - 160, top: tooltipPos.top + 10 }}
-                className="fixed w-72 p-3 bg-slate-900 text-white rounded-lg shadow-2xl z-50 ring-1 ring-white/10 transition-all duration-120 opacity-100 transform-gpu"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Info size={14} className="text-emerald-300" />
-                  <div className="text-[10px] font-black uppercase tracking-widest">{tooltipPlan.badge}</div>
-                </div>
-                <p className="text-[12px] text-slate-200">This plan or feature is still in development and may be unavailable. Use the mock flow to preview behavior.</p>
-              </div>
-            )}
-
             {stage === 'confirm' && (
               <div>
                 <h4 className="text-lg font-extrabold mb-2">Confirm {plan.title}</h4>
@@ -418,6 +390,32 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
               </div>
             )}
           </div>
+          {/* Render tooltip outside scrollable grid to avoid clipping */}
+          {tooltipPlan && tooltipPlan.badge && tooltipPos && (
+            <div
+              onMouseEnter={() => {
+                if (hideTooltipTimer.current) {
+                  window.clearTimeout(hideTooltipTimer.current);
+                  hideTooltipTimer.current = null;
+                }
+              }}
+              onMouseLeave={() => {
+                if (hideTooltipTimer.current) window.clearTimeout(hideTooltipTimer.current);
+                hideTooltipTimer.current = window.setTimeout(() => {
+                  setHoveredTooltip(null);
+                  setTooltipPos(null);
+                }, 160);
+              }}
+              style={{ left: tooltipPos.left - 160, top: tooltipPos.top + 10 }}
+              className="fixed w-72 p-3 bg-slate-900 text-white rounded-lg shadow-2xl z-50 ring-1 ring-white/10 transition-all duration-120 opacity-100 transform-gpu"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Info size={14} className="text-emerald-300" />
+                <div className="text-[10px] font-black uppercase tracking-widest">{tooltipPlan.badge}</div>
+              </div>
+              <p className="text-[12px] text-slate-200">This plan or feature is still in development and may be unavailable. Use the mock flow to preview behavior.</p>
+            </div>
+          )}
         </div>
 
         {/* removed bottom text and proceed button — choose buttons now navigate to mock pages */}
