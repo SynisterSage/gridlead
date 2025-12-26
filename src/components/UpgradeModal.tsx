@@ -145,7 +145,6 @@ const PaymentStep: React.FC<{
   const stripe = useStripe();
   const elements = useElements();
   const [paying, setPaying] = useState(false);
-  const [fieldError, setFieldError] = useState<string | null>(null);
 
   if (!stripe || !elements) {
     return (
@@ -168,7 +167,6 @@ const PaymentStep: React.FC<{
     });
     setPaying(false);
     if (error) {
-      setFieldError(error.message || 'Payment failed');
       onError(error.message || 'Payment failed');
       return;
     }
@@ -192,11 +190,6 @@ const PaymentStep: React.FC<{
       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
         Payments are processed securely by Stripe. We never see or store your card details.
       </p>
-      {fieldError && (
-        <p className="text-[11px] text-rose-500">
-          {fieldError}
-        </p>
-      )}
     </div>
   );
 };
@@ -209,6 +202,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [inlineError, setInlineError] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const hydratedRef = React.useRef(false);
 
@@ -326,11 +320,14 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     if (stage === 'confirm' && !clientSecret && plan.id === 'studio' && visible) {
       setConfirmLoading(true);
       setConfirmError(null);
+      setInlineError(null);
+      setToastMsg(null);
       void (async () => {
         const { clientSecret: cs, error } = await startSubscription(plan.id as 'studio');
         setConfirmLoading(false);
         if (error || !cs) {
           setConfirmError(error || 'Unable to start subscription.');
+          setToastMsg(error || 'Unable to start subscription.');
           return;
         }
         setClientSecret(cs);
@@ -360,6 +357,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     // No longer triggered; kept for safety if reused elsewhere
     if (stage !== 'confirm') {
       setStage('confirm');
+      setSelected(null);
     }
   };
 
@@ -396,9 +394,16 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
             <X />
           </button>
         </div>
+        {toastMsg && (
+          <div className="fixed right-6 top-6 z-[200] animate-in slide-in-from-top-4 duration-300">
+            <div className="bg-rose-500 text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold">
+              {toastMsg}
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 rounded-lg">
-      <div className="p-4 md:p-6 overflow-auto max-h-[calc(100vh-160px)] pb-24"> 
+      <div className="p-4 md:p-6 overflow-y-auto overflow-x-visible max-h-[calc(100vh-140px)] pb-28 pt-1"> 
         {stage === 'select' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             {PLANS.map(p => (
@@ -482,7 +487,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
                   <div className="space-y-4">
                   {clientSecret && stripePromise ? (
-                    <Elements stripe={stripePromise} options={{ clientSecret }}>
+                    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { rules: { '.Error': { display: 'none' } } } }}>
                       <PaymentStep
                         clientSecret={clientSecret}
                         planTitle={plan.title}
@@ -490,7 +495,10 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                           setStage('success');
                           onConfirm?.(plan.id);
                         }}
-                        onError={(msg) => setConfirmError(msg)}
+                        onError={(msg) => {
+                          setConfirmError(msg);
+                          setToastMsg(msg);
+                        }}
                       />
                       {confirmError && <p className="text-[11px] text-rose-500 mt-2">{confirmError}</p>}
                     </Elements>
