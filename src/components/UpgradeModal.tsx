@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, X, Info } from 'lucide-react';
+import { CheckCircle2, X, Info, Mail, Briefcase } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 interface Plan {
   id: string;
@@ -130,6 +131,26 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       setStage('select');
       // set active selected plan on open from prop
       setSelected(null);
+      // fetch the latest profile plan from the DB to ensure active state
+      // reflects recent changes (hot-update on open)
+      (async () => {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const uid = sessionData.session?.user?.id;
+          if (uid) {
+            const { data: profileRow, error } = await supabase
+              .from('profiles')
+              .select('plan')
+              .eq('id', uid)
+              .maybeSingle();
+            if (!error && profileRow) {
+              setActivePlan(profileRow.plan ?? null);
+            }
+          }
+        } catch (e) {
+          // ignore fetch errors — fall back to prop-driven currentPlan
+        }
+      })();
       requestAnimationFrame(() => requestAnimationFrame(() => setOpenState(true)));
     } else {
       // trigger exit animation then unmount
@@ -267,23 +288,53 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
               <div>
                 <h4 className="text-lg font-extrabold mb-2">Join the {plan.title} waitlist</h4>
                 <p className="text-sm text-slate-500 mb-6">Agency+ is currently in development. Join the waitlist to be notified when we open invites. This is a mock flow — no data is sent to a server.</p>
-                <div className="space-y-4 mb-6 max-w-xl">
-                  <label className="text-xs font-bold text-slate-500">Work email</label>
-                  <input value={waitlistEmail} onChange={(e) => setWaitlistEmail(e.target.value)} placeholder="you@company.com" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none" />
-                  <label className="text-xs font-bold text-slate-500">Company (optional)</label>
-                  <input value={waitlistCompany} onChange={(e) => setWaitlistCompany(e.target.value)} placeholder="Your company" className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none" />
+                <div className="space-y-6 mb-6 max-w-xl">
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 mb-2 block">Work email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                      <input
+                        value={waitlistEmail}
+                        onChange={(e) => setWaitlistEmail(e.target.value)}
+                        placeholder="you@company.com"
+                        type="email"
+                        aria-label="Work email"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 mb-2 block">Company (optional)</label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                      <input
+                        value={waitlistCompany}
+                        onChange={(e) => setWaitlistCompany(e.target.value)}
+                        placeholder="Your company"
+                        aria-label="Company (optional)"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border">Back</button>
-                  <button disabled={!waitlistEmail || waitlistSubmitting} onClick={async () => {
-                    setWaitlistSubmitting(true);
-                    // mock submit delay
-                    setTimeout(() => {
-                      setWaitlistSubmitting(false);
-                      setStage('success');
-                      onConfirm?.(plan.id);
-                    }, 700);
-                  }} className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold disabled:opacity-60">Join waitlist</button>
+                  <button
+                    disabled={!waitlistEmail || waitlistSubmitting}
+                    onClick={async () => {
+                      setWaitlistSubmitting(true);
+                      // mock submit delay
+                      setTimeout(() => {
+                        setWaitlistSubmitting(false);
+                        setStage('success');
+                        onConfirm?.(plan.id);
+                      }, 700);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold disabled:opacity-60"
+                  >
+                    Join waitlist
+                  </button>
                 </div>
               </div>
             )}
