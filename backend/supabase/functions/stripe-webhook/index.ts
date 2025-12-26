@@ -35,7 +35,8 @@ Deno.serve(async (req) => {
   const rawBody = await req.text();
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+    // Supabase edge runtime requires the async verifier for SubtleCrypto
+    event = await stripe.webhooks.constructEventAsync(rawBody, sig, webhookSecret);
   } catch (err: any) {
     console.error("Webhook signature verify failed", err.message);
     return respondError(`Webhook Error: ${err.message}`, 400);
