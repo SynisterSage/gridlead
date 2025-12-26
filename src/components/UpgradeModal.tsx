@@ -203,6 +203,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastKind, setToastKind] = useState<'success' | 'error'>('error');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const hydratedRef = React.useRef(false);
 
@@ -221,34 +222,33 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
   const [toastHiding, setToastHiding] = useState(false);
 
-  useEffect(() => {
-    let pollId: number | null = null;
-    let unmountTimer: number | null = null;
-
-    const fetchProfileOnce = async () => {
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const uid = sessionData.session?.user?.id;
-        if (uid) {
-          const { data: profileRow, error } = await supabase
-            .from('profiles')
-            .select('plan,plan_status')
-            .eq('id', uid)
-            .maybeSingle();
-          if (!error && profileRow) {
-            const mapped = mapPlanToId(profileRow.plan);
-            setActivePlan(mapped);
-            setActivePlanStatus(profileRow.plan_status ?? null);
-          }
+  const refreshProfile = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id;
+      if (uid) {
+        const { data: profileRow, error } = await supabase
+          .from('profiles')
+          .select('plan,plan_status')
+          .eq('id', uid)
+          .maybeSingle();
+        if (!error && profileRow) {
+          const mapped = mapPlanToId(profileRow.plan);
+          setActivePlan(mapped);
+          setActivePlanStatus(profileRow.plan_status ?? null);
         }
-      } catch (e) {
-        // ignore
       }
-    };
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    let unmountTimer: number | null = null;
 
     const onFocus = () => {
       // re-fetch when window/tab regains focus while modal is open
-      void fetchProfileOnce();
+      void refreshProfile();
     };
 
     if (visible) {
@@ -275,7 +275,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
         setStage('select');
         setSelected(null);
       }
-      void fetchProfileOnce();
+      void refreshProfile();
       window.addEventListener('focus', onFocus);
       requestAnimationFrame(() => requestAnimationFrame(() => setOpenState(true)));
     } else {
@@ -423,7 +423,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
         </div>
         {toastMsg && (
           <div className={`fixed right-6 top-6 z-[200] ${toastHiding ? 'animate-out fade-out duration-200' : 'animate-in slide-in-from-top-4 duration-300'} will-change-transform`}>
-            <div className="bg-rose-500 text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold transition-all duration-300">
+            <div className={`${toastKind === 'success' ? 'bg-emerald-500' : 'bg-rose-500'} text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold transition-all duration-300`}>
               {toastMsg}
             </div>
           </div>
@@ -530,11 +530,16 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         clientSecret={clientSecret}
                         planTitle={plan.title}
                         onSuccess={() => {
-      setStage('success');
-      setToastMsg(`Upgraded to ${plan.title}.`);
-      onConfirm?.(plan.id);
+                          setToastKind('success');
+                          setToastMsg(`Upgraded to ${plan.title}.`);
+                          setStage('select');
+                          setSelected(null);
+                          setClientSecret(null);
+                          void refreshProfile();
+                          onConfirm?.(plan.id);
                         }}
                         onError={(msg) => {
+                          setToastKind('error');
                           setToastMsg(msg);
                         }}
                       />
