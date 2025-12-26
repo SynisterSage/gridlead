@@ -140,7 +140,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
             .eq('id', uid)
             .maybeSingle();
           if (!error && profileRow) {
-            setActivePlan(profileRow.plan ?? null);
+            const normalized = profileRow.plan ? String(profileRow.plan).trim().toLowerCase() : null;
+            setActivePlan(normalized);
             setActivePlanStatus(profileRow.plan_status ?? null);
           }
         }
@@ -149,26 +150,17 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       }
     };
 
+    const onFocus = () => {
+      // re-fetch when window/tab regains focus while modal is open
+      void fetchProfileOnce();
+    };
+
     if (visible) {
       setMounted(true);
       setStage('select');
       setSelected(null);
       void fetchProfileOnce();
-      // poll every 4s while modal is open
-      pollId = window.setInterval(async () => {
-        try {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const uid = sessionData.session?.user?.id;
-          if (!uid) return;
-          const { data: r } = await supabase.from('profiles').select('plan,plan_status').eq('id', uid).maybeSingle();
-          if (r) {
-            setActivePlan(r.plan ?? null);
-            setActivePlanStatus(r.plan_status ?? null);
-          }
-        } catch (e) {
-          // noop
-        }
-      }, 4000);
+      window.addEventListener('focus', onFocus);
       requestAnimationFrame(() => requestAnimationFrame(() => setOpenState(true)));
     } else {
       setOpenState(false);
@@ -179,9 +171,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       if (unmountTimer) {
         window.clearTimeout(unmountTimer);
       }
-      if (pollId) {
-        window.clearInterval(pollId);
-      }
+      window.removeEventListener('focus', onFocus);
     };
   }, [visible]);
 
@@ -197,7 +187,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   // sync active plan from props on mount/update but prefer DB fetches when available
   useEffect(() => {
     if (currentPlan && activePlan === null) {
-      setActivePlan(currentPlan);
+      const normalized = String(currentPlan).trim().toLowerCase();
+      setActivePlan(normalized);
     }
   }, [currentPlan]);
 
