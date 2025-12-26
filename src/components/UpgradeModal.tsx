@@ -135,10 +135,10 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
           ? (
             <span className="flex items-center justify-center gap-1">
               Switch to Starter
-              <span className="relative group/tt inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black">
+              <span className="relative group/tt inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-800/60 text-slate-300 text-[10px] font-black">
                 ?
-                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 p-2 text-[10px] font-medium bg-slate-900 text-white rounded-lg shadow-2xl opacity-0 group-hover/tt:opacity-100 pointer-events-none transition-opacity duration-200">
-                  Downgrade happens at the end of your billing period. You keep access until then.
+                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-52 p-2 text-[10px] font-medium bg-slate-900 text-white rounded-lg shadow-2xl opacity-0 group-hover/tt:opacity-100 pointer-events-none transition-opacity duration-200 ring-1 ring-white/10">
+                  Downgrade via Manage Subscription. It takes effect at the end of your billing period.
                 </span>
               </span>
             </span>
@@ -472,7 +472,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         onAction={() => {
                           if (isDowngradeTarget) {
                             setToastKind('error');
-                            setToastMsg('Downgrades happen at period end via Manage Subscription.');
+                            setToastMsg('Open Manage Subscription to schedule the downgrade at period end.');
                             return;
                           }
                           if (p.id === 'agency') {
