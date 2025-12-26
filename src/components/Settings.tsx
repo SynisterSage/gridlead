@@ -310,6 +310,12 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       } else if (billingStatus === 'portal') {
         setNotification('Returned from billing portal.');
       }
+      if (billingStatus) {
+        params.delete('billing');
+        const newSearch = params.toString();
+        const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : '') + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
+      }
     }
 
     const fetchNotif = async () => {
