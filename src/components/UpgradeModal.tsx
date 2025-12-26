@@ -87,16 +87,18 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
           {plan.id === 'studio' ? (
             <div className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${plan.featured ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-800'}`}>{plan.badge}</div>
           ) : plan.id === 'agency' ? (
-            <button
-              aria-label="Info"
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Agency plan info"
               onMouseEnter={(e) => onShowTooltip?.(plan.id, (e.currentTarget as HTMLElement).getBoundingClientRect())}
               onFocus={(e) => onShowTooltip?.(plan.id, (e.currentTarget as HTMLElement).getBoundingClientRect())}
               onMouseLeave={() => onShowTooltip?.(null, null)}
               onBlur={() => onShowTooltip?.(null, null)}
-              className="w-7 h-7 rounded-full bg-slate-800/60 dark:bg-slate-700 flex items-center justify-center text-[12px] text-slate-300 hover:bg-slate-800 transition-colors"
+              className="w-7 h-7 rounded-full bg-slate-800/60 dark:bg-slate-700 flex items-center justify-center text-[12px] text-slate-300 hover:bg-slate-800 transition-colors cursor-help outline-none focus:ring-2 focus:ring-emerald-400/30"
             >
               ?
-            </button>
+            </div>
           ) : null}
         </div>
       )}
@@ -137,7 +139,14 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [openState, setOpenState] = useState<boolean>(false);
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
-  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null);
+  const [tooltipAnchor, setTooltipAnchor] = useState<{
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const hideTooltipTimer = React.useRef<number | null>(null);
 
   // active plan from props (the user's actual plan)
@@ -222,6 +231,33 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   // tooltip target plan lookup
   const tooltipPlan = hoveredTooltip ? PLANS.find(p => p.id === hoveredTooltip) ?? null : null;
 
+  const computeTooltipLayout = (
+    anchor: NonNullable<typeof tooltipAnchor>
+  ): { style: React.CSSProperties; placement: 'top' | 'bottom' } => {
+    const width = 288; // tailwind w-72
+    const padding = 12;
+    const center = anchor.left + anchor.width / 2;
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+    const clampedLeft = Math.max(padding + width / 2, Math.min(vw - padding - width / 2, center));
+
+    const preferTop = anchor.top > 160; // enough room above for the bubble
+    const placement: 'top' | 'bottom' = preferTop ? 'top' : 'bottom';
+    const top = placement === 'top' ? anchor.top - 12 : anchor.bottom + 12;
+
+    // keep tooltip within viewport vertically (best-effort without measuring height)
+    const safeTop = Math.max(padding, Math.min(vh - padding, top));
+
+    return {
+      placement,
+      style: {
+        left: clampedLeft,
+        top: safeTop,
+        transform: placement === 'top' ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
+      },
+    };
+  };
+
   const startClose = (delay = 300) => {
     // animate out locally then call onClose after the animation
     setOpenState(false);
@@ -284,12 +320,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         }
                         if (id && rect) {
                           setHoveredTooltip(id);
-                          // position tooltip just below the trigger, slightly shifted left
-                          setTooltipPos({ left: rect.left + rect.width / 2, top: rect.bottom });
+                          setTooltipAnchor({
+                            left: rect.left,
+                            right: rect.right,
+                            top: rect.top,
+                            bottom: rect.bottom,
+                            width: rect.width,
+                            height: rect.height,
+                          });
                         } else {
                           hideTooltipTimer.current = window.setTimeout(() => {
                             setHoveredTooltip(null);
-                            setTooltipPos(null);
+                            setTooltipAnchor(null);
                           }, 160);
                         }
                       }}
@@ -390,8 +432,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
               </div>
             )}
           </div>
-          {/* Render tooltip outside scrollable grid to avoid clipping */}
-          {tooltipPlan && tooltipPlan.badge && tooltipPos && (
+          {/* Tooltip (Agency+), rendered outside the scroll container to avoid clipping */}
+          {tooltipPlan && tooltipPlan.badge && tooltipAnchor && (
             <div
               onMouseEnter={() => {
                 if (hideTooltipTimer.current) {
@@ -403,17 +445,24 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 if (hideTooltipTimer.current) window.clearTimeout(hideTooltipTimer.current);
                 hideTooltipTimer.current = window.setTimeout(() => {
                   setHoveredTooltip(null);
-                  setTooltipPos(null);
+                  setTooltipAnchor(null);
                 }, 160);
               }}
-              style={{ left: tooltipPos.left - 160, top: tooltipPos.top + 10 }}
-              className="fixed w-72 p-3 bg-slate-900 text-white rounded-lg shadow-2xl z-50 ring-1 ring-white/10 transition-all duration-120 opacity-100 transform-gpu"
+              style={computeTooltipLayout(tooltipAnchor).style}
+              className="fixed w-72 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl z-[60] ring-1 ring-white/10 transition-all duration-200 opacity-100 transform-gpu"
             >
-              <div className="flex items-center gap-2 mb-2">
-                <Info size={14} className="text-emerald-300" />
-                <div className="text-[10px] font-black uppercase tracking-widest">{tooltipPlan.badge}</div>
+              <div className="flex items-center gap-2 mb-2 text-blue-400">
+                <Info size={12} />
+                <span className="text-[9px] font-black uppercase tracking-widest">{tooltipPlan.badge}</span>
               </div>
-              <p className="text-[12px] text-slate-200">This plan or feature is still in development and may be unavailable. Use the mock flow to preview behavior.</p>
+              <p className="text-[10px] font-medium leading-relaxed opacity-80">
+                This plan or feature is still in development and may be unavailable. Use the mock flow to preview behavior.
+              </p>
+              {computeTooltipLayout(tooltipAnchor).placement === 'top' ? (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
+              ) : (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
+              )}
             </div>
           )}
         </div>
