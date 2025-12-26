@@ -51,6 +51,20 @@ const PLANS: Plan[] = [
   }
 ];
 
+// Normalize various DB plan values to canonical plan IDs used by the UI
+const mapPlanToId = (raw?: any): string | null => {
+  if (!raw && raw !== 0) return null;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return null;
+  // common variants that should map to agency
+  if (s.includes('agency') || s.includes('agency+') || s.includes('agency_waitlist') || s.includes('agency_plus') || s.includes('enterprise')) return 'agency';
+  if (s.includes('studio') || s.includes('pro')) return 'studio';
+  if (s.includes('starter') || s.includes('free') || s.includes('basic')) return 'starter';
+  // fallback if already a canonical id
+  if (['starter', 'studio', 'agency'].includes(s)) return s;
+  return null;
+};
+
 const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; onAction: () => void; onShowTooltip?: (id: string | null) => void }> = ({ plan, selected, hovered, active, onAction, onShowTooltip }) => {
   const isActive = !!active;
   // Outline non-selected, non-active cards — include featured (Studio) so it
@@ -140,8 +154,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
             .eq('id', uid)
             .maybeSingle();
           if (!error && profileRow) {
-            const normalized = profileRow.plan ? String(profileRow.plan).trim().toLowerCase() : null;
-            setActivePlan(normalized);
+            const mapped = mapPlanToId(profileRow.plan);
+            setActivePlan(mapped);
             setActivePlanStatus(profileRow.plan_status ?? null);
           }
         }
@@ -187,8 +201,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   // sync active plan from props on mount/update but prefer DB fetches when available
   useEffect(() => {
     if (currentPlan && activePlan === null) {
-      const normalized = String(currentPlan).trim().toLowerCase();
-      setActivePlan(normalized);
+      setActivePlan(mapPlanToId(currentPlan));
     }
   }, [currentPlan]);
 
