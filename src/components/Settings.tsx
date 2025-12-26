@@ -104,14 +104,17 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
 
   const billingRowRef = React.useRef<HTMLDivElement | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const upgradeHydratedRef = React.useRef(false);
   // Persist upgrade modal open state so tab switches/browser refocus keep it visible
   useEffect(() => {
     const saved = sessionStorage.getItem('gl_upgrade_modal_open');
     if (saved === '1') {
       setShowUpgradeModal(true);
     }
+    upgradeHydratedRef.current = true;
   }, []);
   useEffect(() => {
+    if (!upgradeHydratedRef.current) return;
     sessionStorage.setItem('gl_upgrade_modal_open', showUpgradeModal ? '1' : '0');
     if (!showUpgradeModal) {
       sessionStorage.removeItem('gl_upgrade_modal_state');
