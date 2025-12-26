@@ -75,6 +75,7 @@ export interface Profile {
   stripe_subscription_id?: string | null;
   cancel_at_period_end?: boolean | null;
   current_period_end?: string | null;
+  agency_approved?: boolean | null;
 }
 
 export type NotificationType =

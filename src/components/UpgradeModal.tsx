@@ -68,8 +68,9 @@ const mapPlanToId = (raw?: any): string | null => {
   return null;
 };
 
-const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; highlight?: boolean; onAction: () => void; isDowngradeTarget?: boolean; }> = ({ plan, selected, hovered, active, highlight, onAction, isDowngradeTarget }) => {
+const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; activeStatus?: string | null; highlight?: boolean; onAction: () => void; isDowngradeTarget?: boolean; agencyApproved?: boolean; }> = ({ plan, selected, hovered, active, activeStatus, highlight, onAction, isDowngradeTarget, agencyApproved }) => {
   const isActive = !!active;
+  const isPending = activeStatus === 'pending';
   // Outline non-selected, non-active cards — include featured (Studio) so it
   // displays the same outlined treatment as Agency when not selected.
   const isOutlined = !selected && !isActive;
@@ -120,20 +121,26 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
         <li key={i} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-500"><CheckCircle2 size={16} className="text-emerald-400" /> {b}</li>
       ))}
     </ul>
-      <div className="mt-4">
-      <button
-        onClick={onAction}
-        disabled={isActive && !showSelected}
-        aria-current={isActive && !showSelected ? true : undefined}
-        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isActive && !showSelected ? 'bg-transparent text-emerald-700 border border-emerald-200 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
-      >
-        {plan.id === 'agency'
-          ? (isActive && !showSelected ? 'Waitlisted' : 'Join waitlist')
+  <div className="mt-4">
+  <button
+    onClick={onAction}
+    disabled={isActive && !showSelected && isPending && !agencyApproved}
+    aria-current={isActive && !showSelected ? true : undefined}
+    className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isActive && !showSelected && isPending ? 'bg-transparent text-amber-600 border border-amber-200 cursor-default' : isActive && !showSelected ? 'bg-transparent text-emerald-700 border border-emerald-200 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
+  >
+    {plan.id === 'agency'
+      ? (isPending && isActive && !agencyApproved
+          ? 'Request received'
+          : agencyApproved
+          ? 'Upgrade to Agency+'
           : isActive && !showSelected
-          ? 'Active'
-          : isDowngradeTarget
-          ? (
-            <span className="flex items-center justify-center gap-1">
+          ? 'Waitlisted'
+          : 'Join waitlist')
+      : isActive && !showSelected
+      ? 'Active'
+      : isDowngradeTarget
+      ? (
+        <span className="flex items-center justify-center gap-1">
               Switch to Starter
               <span className="relative group/tt inline-flex items-center justify-center w-4 h-4 rounded-full bg-slate-800/60 text-slate-300 text-[10px] font-black">
                 ?
@@ -234,9 +241,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   // active plan from props (the user's actual plan)
   const [activePlan, setActivePlan] = useState<string | null>(null);
   const [activePlanStatus, setActivePlanStatus] = useState<string | null>(null);
-  // waitlist form state (mock)
+  const [agencyApproved, setAgencyApproved] = useState<boolean>(false);
+  // waitlist form state
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistCompany, setWaitlistCompany] = useState('');
+  const [waitlistUseCase, setWaitlistUseCase] = useState('scale');
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
   const [toastHiding, setToastHiding] = useState(false);
 
@@ -247,13 +256,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       if (uid) {
         const { data: profileRow, error } = await supabase
           .from('profiles')
-          .select('plan,plan_status')
+          .select('plan,plan_status,agency_approved')
           .eq('id', uid)
           .maybeSingle();
         if (!error && profileRow) {
           const mapped = mapPlanToId(profileRow.plan);
           setActivePlan(mapped);
           setActivePlanStatus(profileRow.plan_status ?? null);
+          setAgencyApproved(!!profileRow.agency_approved);
+          const email = sessionData.session?.user?.email;
+          if (email && !waitlistEmail) {
+            setWaitlistEmail(email);
+          }
         }
       }
     } catch (e) {
@@ -333,6 +347,16 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
   // the plan (used in confirm flow)
   const plan = PLANS.find(p => p.id === selected) || PLANS[1];
+
+  // Prefill waitlist email when entering waitlist stage
+  useEffect(() => {
+    if (stage !== 'waitlist' || waitlistEmail) return;
+    void (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const email = sessionData.session?.user?.email;
+      if (email) setWaitlistEmail(email);
+    })();
+  }, [stage, waitlistEmail]);
 
   // Auto-start subscription when landing on confirm stage without a client secret
   useEffect(() => {
@@ -458,6 +482,12 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       <div className="p-4 md:p-6 overflow-y-auto overflow-x-visible max-h-[calc(100vh-140px)] pb-48 pt-1"> 
         {stage === 'select' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+                {activePlan === 'agency' && activePlanStatus === 'pending' && (
+                  <div className="md:col-span-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    Request received — your Agency+ access is in review. We’ll notify you once approved.
+                  </div>
+                )}
                 {PLANS.map(p => {
                   const isDowngradeTarget = activePlan === 'studio' && p.id === 'starter';
                   return (
@@ -467,6 +497,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         selected={p.id === selected}
                         hovered={p.id === hoveredPlan}
                         active={p.id === activePlan}
+                        activeStatus={activePlanStatus}
+                        agencyApproved={agencyApproved}
                         isDowngradeTarget={isDowngradeTarget}
                         highlight={justActivated === p.id}
                         onAction={() => {
@@ -621,13 +653,12 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 <div className="space-y-2">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
                     <Info size={12} />
-                    <span>Mock waitlist</span>
+                    <span>Waitlist</span>
                   </div>
                   <div>
                     <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Join the Agency+ waitlist</h4>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                      Agency+ is in development. Add your details to preview the flow and we’ll notify you when invites open.
-                      This is a mock submission—no data is sent to a server.
+                      Agency+ is in development. Add your details and we’ll notify you when invites open. We’ll review your request and keep you on Studio until approval.
                     </p>
                   </div>
                 </div>
@@ -666,7 +697,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                     <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">What do you want most?</label>
                     <select
                       className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
-                      defaultValue="scale"
+                      value={waitlistUseCase}
+                      onChange={(e) => setWaitlistUseCase(e.target.value)}
                     >
                       <option value="scale">Scale outreach with AI playbooks</option>
                       <option value="deliverability">Better deliverability guardrails</option>
@@ -681,21 +713,60 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                     Back
                   </button>
                   <button
-                    disabled={!waitlistEmail || waitlistSubmitting}
+                    disabled={!waitlistEmail || waitlistSubmitting || (activePlan === 'agency' && activePlanStatus === 'pending')}
                     onClick={async () => {
+                      setInlineError(null);
                       setWaitlistSubmitting(true);
-                      // mock submit delay
-                      setTimeout(() => {
-                        setWaitlistSubmitting(false);
+                      try {
+                        const { data: sessionData } = await supabase.auth.getSession();
+                        const uid = sessionData.session?.user?.id;
+                        const email = waitlistEmail || sessionData.session?.user?.email || '';
+                        if (!uid || !email) {
+                          throw new Error('Missing user session. Please re-login.');
+                        }
+                        const { error: waitlistErr } = await supabase
+                          .from('agency_waitlist')
+                          .upsert({
+                            user_id: uid,
+                            email,
+                            company: waitlistCompany || null,
+                            use_case: waitlistUseCase,
+                            status: 'pending',
+                          }, { onConflict: 'user_id' });
+                        if (waitlistErr) throw waitlistErr;
+
+                        const { error: profErr } = await supabase
+                          .from('profiles')
+                          .update({
+                            plan: 'agency_waitlist',
+                            plan_status: 'pending',
+                            cancel_at_period_end: false,
+                          })
+                          .eq('id', uid);
+                        if (profErr) throw profErr;
+
+                        setActivePlan('agency');
+                        setActivePlanStatus('pending');
+                        setToastKind('success');
+                        setToastMsg('Request received. We’ll notify you when Agency+ is approved.');
                         setStage('success');
-                        onConfirm?.(plan.id);
-                      }, 700);
+                        onConfirm?.('agency_waitlist');
+                      } catch (err: any) {
+                        setInlineError(err?.message || 'Unable to submit waitlist request.');
+                        setToastKind('error');
+                        setToastMsg('Unable to submit waitlist request.');
+                      } finally {
+                        setWaitlistSubmitting(false);
+                      }
                     }}
                     className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-sm hover:bg-emerald-700 transition-all disabled:opacity-60"
                   >
                     {waitlistSubmitting ? 'Submitting…' : 'Join waitlist'}
                   </button>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500">Mock only — no data is stored.</span>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">We’ll keep you on Studio until approval.</span>
+                  {inlineError && (
+                    <span className="text-[11px] text-rose-500 font-semibold">{inlineError}</span>
+                  )}
                 </div>
               </div>
             )}
@@ -705,10 +776,10 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 <div className="w-20 h-20 rounded-full mx-auto bg-emerald-500 flex items-center justify-center text-white mb-4 animate-in zoom-in">
                   <CheckCircle2 size={28} />
                 </div>
-                {selected === 'agency' ? (
+                {selected === 'agency' || activePlan === 'agency' ? (
                   <>
                     <h4 className="text-lg font-extrabold">You're on the waitlist</h4>
-                    <p className="text-sm text-slate-500">Thanks — we'll notify you when Agency+ opens. This is a mock success state.</p>
+                    <p className="text-sm text-slate-500">Thanks — we’ll review your request and notify you when Agency+ is approved.</p>
                   </>
                 ) : (
                   <>
