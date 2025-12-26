@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { 
-  User, 
-  Mail, 
-  Bell, 
-  Shield, 
-  Plus, 
-  Trash2, 
-  CheckCircle2, 
+import {
+  User,
+  Mail,
+  Bell,
+  Shield,
+  Plus,
+  Trash2,
+  CheckCircle2,
   ExternalLink,
   Smartphone,
   Zap,
@@ -26,7 +26,8 @@ import {
   ToggleRight as ToggleOn,
   Moon,
   Sun,
-  Info
+  Info,
+  X,
 } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
 import { getPlanLimits } from '../lib/planLimits';
@@ -348,6 +349,21 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     fetchNotif();
   }, []);
 
+  // Restore view/modal state after returning from Stripe portal
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const returnView = localStorage.getItem('gridlead_return_view');
+    if (returnView === 'settings') {
+      const tab = (localStorage.getItem('gridlead_return_tab') as SettingsTab | null) ?? 'profile';
+      setActiveTab(tab);
+      const reopenUpgrade = localStorage.getItem('gridlead_return_upgrade_open') === '1';
+      if (reopenUpgrade) setShowUpgradeModal(true);
+      localStorage.removeItem('gridlead_return_view');
+      localStorage.removeItem('gridlead_return_tab');
+      localStorage.removeItem('gridlead_return_upgrade_open');
+    }
+  }, []);
+
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), 3000);
@@ -441,9 +457,12 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       setNotification(error || 'Unable to open billing portal.');
       return;
     }
-    // ensure we return to settings (but do not auto-open upgrade modal)
+    // ensure we return to settings and restore modal/tab state
     localStorage.setItem('gridlead_return_view', 'settings');
-    localStorage.setItem(SETTINGS_TAB_KEY, 'profile');
+    localStorage.setItem('gridlead_return_tab', 'profile');
+    const reopenModal = showUpgradeModal ? '1' : '0';
+    localStorage.setItem('gridlead_return_upgrade_open', reopenModal);
+    sessionStorage.setItem('gl_upgrade_modal_open', reopenModal);
     window.location.href = url;
   };
 
@@ -1005,9 +1024,10 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                     setShowCancelDisclosure(false);
                     localStorage.setItem('gl_cancel_disclosure_seen', '1');
                   }}
-                  className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-sm font-semibold"
+                  className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-sm font-semibold p-1 rounded-md"
+                  aria-label="Dismiss downgrade notice"
                 >
-                  Close
+                  <X size={16} />
                 </button>
               </div>
               <button
