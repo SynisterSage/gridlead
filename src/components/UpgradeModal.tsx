@@ -256,6 +256,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [waitlistAvatar, setWaitlistAvatar] = useState<string | null>(null);
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
   const [toastHiding, setToastHiding] = useState(false);
+  const lastPurchaseRef = React.useRef<{ plan: string; ts: number } | null>(null);
 
   const refreshProfile = async () => {
     try {
@@ -269,8 +270,16 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
           .maybeSingle();
         if (!error && profileRow) {
           const mapped = mapPlanToId(profileRow.plan);
-          setActivePlan(mapped);
-          setActivePlanStatus(profileRow.plan_status ?? null);
+          const fetchedStatus = profileRow.plan_status ?? null;
+          // If a recent purchase was made and webhook hasn't updated yet, prefer the purchased plan for a short window
+          const now = Date.now();
+          if (lastPurchaseRef.current && now - lastPurchaseRef.current.ts < 60000) {
+            setActivePlan(lastPurchaseRef.current.plan);
+            setActivePlanStatus('active');
+          } else {
+            setActivePlan(mapped);
+            setActivePlanStatus(fetchedStatus);
+          }
           setAgencyApproved(!!profileRow.agency_approved);
           setAgencyWaitlistStatus(profileRow.agency_waitlist_status ?? null);
           const email = sessionData.session?.user?.email;
@@ -659,6 +668,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                           setActivePlan(plan.id);
                           setActivePlanStatus('active');
                           setJustActivated(plan.id);
+                          lastPurchaseRef.current = { plan: plan.id, ts: Date.now() };
                           void refreshProfile();
                           onConfirm?.(plan.id);
                         }}
