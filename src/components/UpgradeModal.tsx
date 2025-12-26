@@ -65,7 +65,7 @@ const mapPlanToId = (raw?: any): string | null => {
   return null;
 };
 
-const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; onAction: () => void; onShowTooltip?: (id: string | null) => void }> = ({ plan, selected, hovered, active, onAction, onShowTooltip }) => {
+const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; onAction: () => void; onShowTooltip?: (id: string | null, rect?: DOMRect | null) => void }> = ({ plan, selected, hovered, active, onAction, onShowTooltip }) => {
   const isActive = !!active;
   // Outline non-selected, non-active cards — include featured (Studio) so it
   // displays the same outlined treatment as Agency when not selected.
@@ -84,7 +84,20 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
       <div className="absolute inset-0 rounded-[1.5rem] pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-b from-emerald-400/6 to-transparent mix-blend-overlay" />
       {plan.badge && (
         <div className="absolute top-3 right-5 z-10">
-          <button aria-label="Info" onMouseEnter={() => onShowTooltip?.(plan.id)} onMouseLeave={() => onShowTooltip?.(null)} className="w-7 h-7 rounded-full bg-slate-800/60 dark:bg-slate-700 flex items-center justify-center text-[12px] text-slate-300 hover:bg-slate-800 transition-colors">?</button>
+          {plan.id === 'studio' ? (
+            <div className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${plan.featured ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-800'}`}>{plan.badge}</div>
+          ) : plan.id === 'agency' ? (
+            <button
+              aria-label="Info"
+              onMouseEnter={(e) => onShowTooltip?.(plan.id, (e.currentTarget as HTMLElement).getBoundingClientRect())}
+              onFocus={(e) => onShowTooltip?.(plan.id, (e.currentTarget as HTMLElement).getBoundingClientRect())}
+              onMouseLeave={() => onShowTooltip?.(null, null)}
+              onBlur={() => onShowTooltip?.(null, null)}
+              className="w-7 h-7 rounded-full bg-slate-800/60 dark:bg-slate-700 flex items-center justify-center text-[12px] text-slate-300 hover:bg-slate-800 transition-colors"
+            >
+              ?
+            </button>
+          ) : null}
         </div>
       )}
     <div className="mb-4">
@@ -124,6 +137,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [openState, setOpenState] = useState<boolean>(false);
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number } | null>(null);
   const hideTooltipTimer = React.useRef<number | null>(null);
 
   // active plan from props (the user's actual plan)
@@ -263,15 +277,20 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         setSelected(p.id);
                         setStage('confirm');
                       }}
-                      onShowTooltip={(id) => {
+                      onShowTooltip={(id, rect) => {
                         if (hideTooltipTimer.current) {
                           window.clearTimeout(hideTooltipTimer.current);
                           hideTooltipTimer.current = null;
                         }
-                        if (id) {
+                        if (id && rect) {
                           setHoveredTooltip(id);
+                          // position tooltip just below the trigger, slightly shifted left
+                          setTooltipPos({ left: rect.left + rect.width / 2, top: rect.bottom });
                         } else {
-                          hideTooltipTimer.current = window.setTimeout(() => setHoveredTooltip(null), 400);
+                          hideTooltipTimer.current = window.setTimeout(() => {
+                            setHoveredTooltip(null);
+                            setTooltipPos(null);
+                          }, 160);
                         }
                       }}
                     />
@@ -281,7 +300,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
             )}
 
             {/* Render tooltip outside scrollable grid to avoid clipping */}
-            {tooltipPlan && tooltipPlan.badge && (
+            {tooltipPlan && tooltipPlan.badge && tooltipPos && (
               <div
                 onMouseEnter={() => {
                   if (hideTooltipTimer.current) {
@@ -291,9 +310,14 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 }}
                 onMouseLeave={() => {
                   if (hideTooltipTimer.current) window.clearTimeout(hideTooltipTimer.current);
-                  hideTooltipTimer.current = window.setTimeout(() => setHoveredTooltip(null), 400);
+                  hideTooltipTimer.current = window.setTimeout(() => {
+                    setHoveredTooltip(null);
+                    setTooltipPos(null);
+                  }, 160);
                 }}
-                className="absolute right-8 top-20 w-64 p-3 bg-slate-900 text-white rounded-lg shadow-2xl z-50 ring-1 ring-white/10 transition-opacity duration-150 opacity-100">
+                style={{ left: tooltipPos.left - 160, top: tooltipPos.top + 10 }}
+                className="fixed w-72 p-3 bg-slate-900 text-white rounded-lg shadow-2xl z-50 ring-1 ring-white/10 transition-all duration-120 opacity-100 transform-gpu"
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <Info size={14} className="text-emerald-300" />
                   <div className="text-[10px] font-black uppercase tracking-widest">{tooltipPlan.badge}</div>
