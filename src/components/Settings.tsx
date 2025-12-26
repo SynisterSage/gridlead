@@ -51,6 +51,20 @@ interface SettingsProps {
 
 const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEmail, userAvatarUrl, agencyName, authProvider }) => {
   const SETTINGS_TAB_KEY = 'gridlead_settings_tab';
+  const [profileState, setProfileState] = useState<Profile | null>(profile ?? null);
+  useEffect(() => {
+    setProfileState(profile ?? null);
+  }, [profile]);
+  const fetchProfile = async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    if (!uid) return;
+    const { data: profileRow } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle();
+    if (profileRow) {
+      setProfileState(profileRow as Profile);
+    }
+  };
+  const currentProfile = profileState ?? profile ?? null;
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(SETTINGS_TAB_KEY) as SettingsTab | null;
@@ -64,7 +78,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const { theme, toggleTheme } = useTheme();
   const [bio, setBio] = useState(() => localStorage.getItem('gridlead_profile_bio') || '');
   const [bioSaved, setBioSaved] = useState(false);
-  const [displayName, setDisplayName] = useState(userName || profile?.display_name || '');
+  const [displayName, setDisplayName] = useState(userName || currentProfile?.display_name || '');
   const [pwdCurrent, setPwdCurrent] = useState('');
   const [pwdNew, setPwdNew] = useState('');
   const [pwdConfirm, setPwdConfirm] = useState('');
@@ -99,8 +113,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     startGmailOAuth(userId || undefined);
   };
   useEffect(() => {
-    setDisplayName(userName || profile?.display_name || '');
-  }, [userName, profile?.display_name]);
+    setDisplayName(userName || currentProfile?.display_name || '');
+  }, [userName, currentProfile?.display_name]);
 
   const billingRowRef = React.useRef<HTMLDivElement | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -121,12 +135,12 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     }
   }, [showUpgradeModal]);
 
-  const planLimits = getPlanLimits(profile?.plan);
+  const planLimits = getPlanLimits(currentProfile?.plan);
   const leadLimit = planLimits.leadLimit;
-  const leadsUsed = profile?.leads_used_this_month ?? 0;
+  const leadsUsed = currentProfile?.leads_used_this_month ?? 0;
   const leadsPct = leadLimit ? Math.min(100, Math.round((leadsUsed / (leadLimit || 1)) * 100)) : 0;
   const seatLimit = planLimits.senderLimit;
-  const seatsUsed = profile?.sender_seats_used ?? 0;
+  const seatsUsed = currentProfile?.sender_seats_used ?? 0;
   const seatsPct = seatLimit ? Math.min(100, Math.round((seatsUsed / (seatLimit || 1)) * 100)) : 0;
   let leadBarColor = 'bg-emerald-500';
   if (leadLimit) {
@@ -463,11 +477,11 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       onClick={() => billingRowRef.current?.scrollIntoView({ behavior: 'smooth' })}
                       className="px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
                     >
-                      {getPlanLimits(profile?.plan).label}{profile?.plan_status ? ` • ${profile.plan_status}` : ''}
+                      {getPlanLimits(currentProfile?.plan).label}{currentProfile?.plan_status ? ` • ${currentProfile.plan_status}` : ''}
                     </button>
                   </div>
                   <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                    {profile?.monthly_goal ? `Goal: $${profile.monthly_goal.toLocaleString()}` : 'Goal not set'}
+                    {currentProfile?.monthly_goal ? `Goal: $${currentProfile.monthly_goal.toLocaleString()}` : 'Goal not set'}
                   </p>
                 </div>
                   <div className="shrink-0 pt-4 sm:pt-0">
@@ -530,10 +544,10 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                    {getPlanLimits(profile?.plan).label}
+                    {getPlanLimits(currentProfile?.plan).label}
                   </span>
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/40">
-                    {profile?.plan_status ?? 'inactive'}
+                    {currentProfile?.plan_status ?? 'inactive'}
                   </span>
                 </div>
               </div>
@@ -552,7 +566,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                           style={{ width: `${leadsPct}%` }}
                         />
                       </div>
-                      <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{(profile?.leads_used_this_month ?? 0)} / {getPlanLimits(profile?.plan).leadLimit} leads this month</div>
+                      <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{(currentProfile?.leads_used_this_month ?? 0)} / {getPlanLimits(currentProfile?.plan).leadLimit} leads this month</div>
                     </>
                   ) : (
                     <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Unlimited leads</div>
@@ -573,7 +587,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                             style={{ width: `${seatsPct}%` }}
                           />
                         </div>
-                        <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{(profile?.sender_seats_used ?? 0)} / {seatLimit} seats used</div>
+                        <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{(currentProfile?.sender_seats_used ?? 0)} / {seatLimit} seats used</div>
                       </>
                     ) : (
                       <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Unlimited seats</div>
@@ -612,8 +626,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right hidden sm:block">
-                    {getPlanLimits(profile?.plan).senderLimit ? (
-                      <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{connectedEmails.length} / {getPlanLimits(profile?.plan).senderLimit} seats</div>
+                    {getPlanLimits(currentProfile?.plan).senderLimit ? (
+                      <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{connectedEmails.length} / {getPlanLimits(currentProfile?.plan).senderLimit} seats</div>
                     ) : (
                       <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">Unlimited seats</div>
                     )}
@@ -887,7 +901,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                 <UpgradeModal
                   visible={showUpgradeModal}
                   onClose={() => setShowUpgradeModal(false)}
-                  currentPlan={profile?.plan ?? null}
+                  currentPlan={currentProfile?.plan ?? null}
                   onConfirm={(planId) => {
                     setNotification(`Upgraded to ${planId}.`);
                     // keep modal open to reflect new state; refresh profile
