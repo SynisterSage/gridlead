@@ -65,6 +65,30 @@ Deno.serve(async (req) => {
         await upsertProfile(userId, sub.id, sub.customer as string, priceId, planIdMeta, sub);
         break;
       }
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subscriptionId = invoice.subscription as string | null;
+        const customerId = invoice.customer as string | null;
+        const priceId = invoice.lines?.data?.[0]?.price?.id || null;
+        const planIdMeta = (invoice.metadata as any)?.plan_id || invoice.lines?.data?.[0]?.metadata?.plan_id || null;
+        const userIdMeta = (invoice.metadata as any)?.user_id || null;
+        if (subscriptionId) {
+          await updateFromSubscription(subscriptionId, customerId, priceId, planIdMeta, userIdMeta);
+        }
+        break;
+      }
+      case "payment_intent.succeeded": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        const subscriptionId = (pi.metadata as any)?.subscription_id || (pi as any).subscription || null;
+        const customerId = pi.customer as string | null;
+        const planIdMeta = (pi.metadata as any)?.plan_id || null;
+        const userIdMeta = (pi.metadata as any)?.user_id || null;
+        if (subscriptionId) {
+          const priceId = (pi.metadata as any)?.price_id || null;
+          await updateFromSubscription(subscriptionId, customerId, priceId, planIdMeta, userIdMeta);
+        }
+        break;
+      }
       default:
         // ignore others
         break;
@@ -109,6 +133,19 @@ function mapPriceToPlan(priceId: string | null | undefined): string | null {
   if (priceId === priceStudio) return "studio";
   if (priceId === priceAgency) return "agency_waitlist";
   return null;
+}
+
+async function updateFromSubscription(
+  subscriptionId: string,
+  customerId: string | null,
+  priceIdMeta?: string | null,
+  planIdMeta?: string | null,
+  userIdMeta?: string | null,
+) {
+  const sub = await stripe.subscriptions.retrieve(subscriptionId);
+  const userId = userIdMeta || (sub.metadata as any)?.user_id || null;
+  const priceId = priceIdMeta || sub.items.data[0]?.price?.id || null;
+  await upsertProfile(userId, sub.id, customerId || (sub.customer as string), priceId, planIdMeta || (sub.metadata as any)?.plan_id || null, sub);
 }
 
 function mapPlanId(planId: string | null | undefined): string | null {
