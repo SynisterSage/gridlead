@@ -219,6 +219,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistCompany, setWaitlistCompany] = useState('');
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
+  const [toastHiding, setToastHiding] = useState(false);
 
   useEffect(() => {
     let pollId: number | null = null;
@@ -350,7 +351,14 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   // Auto-dismiss toast
   useEffect(() => {
     if (toastMsg) {
-      const t = setTimeout(() => setToastMsg(null), 3200);
+      setToastHiding(false);
+      const t = setTimeout(() => {
+        setToastHiding(true);
+        setTimeout(() => {
+          setToastMsg(null);
+          setToastHiding(false);
+        }, 260);
+      }, 3000);
       return () => clearTimeout(t);
     }
   }, [toastMsg]);
@@ -414,7 +422,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
           </button>
         </div>
         {toastMsg && (
-          <div className="fixed right-6 top-6 z-[200] animate-in slide-in-from-top-4 duration-300 will-change-transform">
+          <div className={`fixed right-6 top-6 z-[200] ${toastHiding ? 'animate-out fade-out duration-200' : 'animate-in slide-in-from-top-4 duration-300'} will-change-transform`}>
             <div className="bg-rose-500 text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold transition-all duration-300">
               {toastMsg}
             </div>
@@ -526,11 +534,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                           onConfirm?.(plan.id);
                         }}
                         onError={(msg) => {
-                          setConfirmError(msg);
                           setToastMsg(msg);
                         }}
                       />
-                      {confirmError && <p className="text-[11px] text-rose-500 mt-2">{confirmError}</p>}
                     </Elements>
                   ) : clientSecret && !stripePromise ? (
                     <p className="text-[11px] text-rose-500">
