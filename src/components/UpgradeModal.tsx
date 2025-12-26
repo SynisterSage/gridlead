@@ -56,14 +56,14 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
   const showSelected = !!selected;
   const showHover = !!hovered;
   return (
-    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-colors duration-300 overflow-hidden ${plan.featured || showSelected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${isOutlined ? 'border border-slate-700' : ''} ${showHover ? 'border-2 border-slate-500/40 shadow-xl' : ''} ${isActive && !showSelected ? 'ring-1 ring-emerald-300/20 dark:ring-emerald-400/10 bg-emerald-50/5' : ''}` }>
+    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-colors duration-300 overflow-hidden ${showSelected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${isOutlined ? 'border border-slate-700' : ''} ${showHover ? 'border-2 border-slate-500/40 shadow-xl' : ''} ${isActive && !showSelected ? 'ring-1 ring-emerald-300/20 dark:ring-emerald-400/10 bg-emerald-50/5' : ''}` }>
       {/* decorative blurs like LandingPage — placed inside and clipped by overflow-hidden */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-sky-500/10 blur-3xl opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100" />
       <div className="absolute -bottom-12 -left-6 w-28 h-28 bg-emerald-400/10 blur-3xl opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100" />
       {/* subtle hover gradient */}
       <div className="absolute inset-0 rounded-[1.5rem] pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-b from-emerald-400/6 to-transparent mix-blend-overlay" />
       {plan.badge && (
-        <div className="absolute -top-3 right-5 flex items-center gap-2">
+        <div className="absolute top-3 right-5 flex items-center gap-2 z-10">
           <div className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${plan.featured ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-800'}`}>{plan.badge}</div>
           {plan.badge.toLowerCase().includes('development') && (
             <div>
@@ -90,7 +90,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
         onClick={onAction}
         disabled={isActive && !showSelected}
         aria-current={isActive && !showSelected ? true : undefined}
-        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${plan.featured || showSelected ? 'bg-emerald-500 text-white' : isActive && !showSelected ? 'bg-transparent text-emerald-600 border border-emerald-200 cursor-default' : 'bg-transparent text-white border border-slate-700 hover:bg-slate-800/20'}`}
+        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isActive && !showSelected ? 'bg-transparent text-emerald-600 border border-emerald-200 cursor-default' : plan.id === 'agency' ? 'bg-transparent text-white border border-slate-700 hover:bg-slate-800/20' : 'bg-transparent text-white border border-slate-700 hover:bg-slate-800/20'}`}
       >
         {plan.id === 'agency' ? 'Join waitlist' : isActive && !showSelected ? 'Active' : `Choose ${plan.title}`}
       </button>
