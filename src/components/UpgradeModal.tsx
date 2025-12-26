@@ -315,6 +315,24 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   // the plan (used in confirm flow)
   const plan = PLANS.find(p => p.id === selected) || PLANS[1];
 
+  // Auto-start subscription when landing on confirm stage without a client secret
+  useEffect(() => {
+    if (stage === 'confirm' && !clientSecret && plan.id === 'studio' && visible) {
+      setConfirmLoading(true);
+      setConfirmError(null);
+      void (async () => {
+        const { clientSecret: cs, error } = await startSubscription(plan.id as 'studio');
+        setConfirmLoading(false);
+        if (error || !cs) {
+          setConfirmError(error || 'Unable to start subscription.');
+          return;
+        }
+        setClientSecret(cs);
+      })();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, plan.id, visible]);
+
   const startClose = (delay = 300) => {
     // animate out locally then call onClose after the animation
     setOpenState(false);
@@ -331,18 +349,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       setStage('waitlist');
       return;
     }
-    setConfirmError(null);
-    if (!clientSecret) {
-      setConfirmLoading(true);
-      void (async () => {
-        const { clientSecret: cs, error } = await startSubscription(plan.id as 'studio');
-        setConfirmLoading(false);
-        if (error || !cs) {
-          setConfirmError(error || 'Unable to start subscription.');
-          return;
-        }
-        setClientSecret(cs);
-      })();
+    // No longer triggered; kept for safety if reused elsewhere
+    if (stage !== 'confirm') {
+      setStage('confirm');
     }
   };
 
@@ -395,13 +404,13 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
               <div className="space-y-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-2">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest">
-                      <span>Preview</span>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                      <span>Checkout</span>
                     </div>
                     <div>
                       <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Confirm {plan.title}</h4>
                       <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
-                        No payment will be processed in this preview. When ready, replace this button with your Stripe Checkout session call.
+                        Secure, in-app payment. We’ll start your subscription as soon as your payment method is confirmed.
                       </p>
                     </div>
                   </div>
@@ -448,23 +457,6 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 </div>
 
                 <div className="space-y-4">
-                  {!clientSecret && (
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                        Back
-                      </button>
-                      <button
-                        onClick={handleConfirm}
-                        disabled={confirmLoading}
-                        className="px-5 py-2.5 rounded-xl bg-[#0f172a] text-white font-bold text-sm shadow-sm hover:bg-slate-800 transition-all disabled:opacity-60"
-                      >
-                        {confirmLoading ? 'Preparing payment…' : 'Enter payment'}
-                      </button>
-                      <span className="text-[11px] text-slate-400 dark:text-slate-500">Secure in-app checkout.</span>
-                      {confirmError && <span className="text-[11px] text-rose-500">{confirmError}</span>}
-                    </div>
-                  )}
-
                   {clientSecret && stripePromise ? (
                     <Elements stripe={stripePromise} options={{ clientSecret }}>
                       <PaymentStep
@@ -482,7 +474,22 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                     <p className="text-[11px] text-rose-500">
                       Missing Stripe publishable key. Set VITE_STRIPE_PUBLISHABLE_KEY in env and redeploy.
                     </p>
-                  ) : null}
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                          Back
+                        </button>
+                        <div className="h-10 w-40 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                      </div>
+                      <div className="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                      <div className="h-4 w-48 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                      <div className="flex gap-2 text-[11px] text-slate-500 dark:text-slate-400 items-center">
+                        <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                        <span>Preparing secure payment…</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
