@@ -105,6 +105,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const leadLimit = planLimits.leadLimit;
   const leadsUsed = profile?.leads_used_this_month ?? 0;
   const leadsPct = leadLimit ? Math.min(100, Math.round((leadsUsed / (leadLimit || 1)) * 100)) : 0;
+  const seatLimit = planLimits.senderLimit;
+  const seatsUsed = profile?.sender_seats_used ?? 0;
+  const seatsPct = seatLimit ? Math.min(100, Math.round((seatsUsed / (seatLimit || 1)) * 100)) : 0;
   let leadBarColor = 'bg-emerald-500';
   if (leadLimit) {
     if (leadsPct >= 100) leadBarColor = 'bg-rose-500';
@@ -473,55 +476,71 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                 </button>
               </div>
             </div>
-            {/* Billing Row - mockup and usage */}
-            <div ref={billingRowRef} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-6 md:p-8 shadow-sm space-y-4">
-              <div className="flex items-start justify-between gap-4">
+            {/* Billing Row */}
+            <div ref={billingRowRef} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[1.75rem] p-6 md:p-8 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
                   <h4 className="text-base font-extrabold text-[#0f172a] dark:text-white">Billing & Plan</h4>
-                  <p className="text-[9px] text-slate-400 mt-1">View plan, usage, and upgrade options.</p>
+                  <p className="text-[10px] md:text-[11px] text-slate-500 dark:text-slate-400">Usage overview and upgrade options.</p>
                 </div>
-                <div className="text-right">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{getPlanLimits(profile?.plan).label}</div>
-                  <div className="text-[11px] font-bold mt-1">{profile?.plan_status ?? 'inactive'}</div>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                    {getPlanLimits(profile?.plan).label}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/40">
+                    {profile?.plan_status ?? 'inactive'}
+                  </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Leads usage</label>
-                  <div className="mt-2">
-                    {getPlanLimits(profile?.plan).leadLimit ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                    <span>Leads usage</span>
+                    {leadLimit ? <span className="text-slate-400">{leadsPct}%</span> : <span className="text-slate-400">Unlimited</span>}
+                  </div>
+                  {leadLimit ? (
+                    <>
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
+                        <div
+                          className={`h-3 ${leadBarColor} transition-all`}
+                          style={{ width: `${leadsPct}%` }}
+                        />
+                      </div>
+                      <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{(profile?.leads_used_this_month ?? 0)} / {getPlanLimits(profile?.plan).leadLimit} leads this month</div>
+                    </>
+                  ) : (
+                    <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Unlimited leads</div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                    <span>Sender seats</span>
+                    {seatLimit ? <span className="text-slate-400">{seatsPct}%</span> : <span className="text-slate-400">Unlimited</span>}
+                  </div>
+                  <div className="space-y-2">
+                    {seatLimit ? (
                       <>
                         <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
                           <div
-                            className={`h-3 ${leadBarColor}`}
-                            style={{ width: `${leadsPct}%` }}
+                            className={`h-3 ${seatLimit && seatsPct >= 100 ? 'bg-rose-500' : seatsPct >= 80 ? 'bg-amber-400' : 'bg-sky-500'} transition-all`}
+                            style={{ width: `${seatsPct}%` }}
                           />
                         </div>
-                        <div className="text-[10px] font-bold text-slate-500 mt-2">{(profile?.leads_used_this_month ?? 0)} / {getPlanLimits(profile?.plan).leadLimit} leads this month</div>
+                        <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{(profile?.sender_seats_used ?? 0)} / {seatLimit} seats used</div>
                       </>
                     ) : (
-                      <div className="text-[10px] font-bold text-slate-500">Unlimited leads</div>
+                      <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Unlimited seats</div>
                     )}
-                </div>
-                </div>
-
-                <div>
-                  <label className="text-[8px] font-bold uppercase tracking-widest text-slate-400">Sender seats</label>
-                  <div className="mt-2">
-                    {getPlanLimits(profile?.plan).senderLimit ? (
-                      <div className="text-[10px] font-bold text-slate-500">{(profile?.sender_seats_used ?? 0)} / {getPlanLimits(profile?.plan).senderLimit} seats used</div>
-                    ) : (
-                      <div className="text-[10px] font-bold text-slate-500">Unlimited seats</div>
-                    )}
-                            <div className="mt-4 flex gap-3">
-                              <button onClick={() => setShowUpgradeModal(true)} className="px-4 py-2 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all">
-                                Upgrade
-                              </button>
-                              <button disabled className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent cursor-not-allowed">
-                                Manage subscription
-                              </button>
-                            </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => setShowUpgradeModal(true)} className="px-4 py-2 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm">
+                      Upgrade
+                    </button>
+                    <button disabled className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent cursor-not-allowed">
+                      Manage subscription
+                    </button>
                   </div>
                 </div>
               </div>
