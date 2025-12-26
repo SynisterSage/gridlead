@@ -119,45 +119,70 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
   // active plan from props (the user's actual plan)
   const [activePlan, setActivePlan] = useState<string | null>(null);
+  const [activePlanStatus, setActivePlanStatus] = useState<string | null>(null);
   // waitlist form state (mock)
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistCompany, setWaitlistCompany] = useState('');
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
 
   useEffect(() => {
+    let pollId: number | null = null;
+    let unmountTimer: number | null = null;
+
+    const fetchProfileOnce = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const uid = sessionData.session?.user?.id;
+        if (uid) {
+          const { data: profileRow, error } = await supabase
+            .from('profiles')
+            .select('plan,plan_status')
+            .eq('id', uid)
+            .maybeSingle();
+          if (!error && profileRow) {
+            setActivePlan(profileRow.plan ?? null);
+            setActivePlanStatus(profileRow.plan_status ?? null);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
     if (visible) {
-      // mount then trigger enter transition on next frame
       setMounted(true);
       setStage('select');
-      // set active selected plan on open from prop
       setSelected(null);
-      // fetch the latest profile plan from the DB to ensure active state
-      // reflects recent changes (hot-update on open)
-      (async () => {
+      void fetchProfileOnce();
+      // poll every 4s while modal is open
+      pollId = window.setInterval(async () => {
         try {
           const { data: sessionData } = await supabase.auth.getSession();
           const uid = sessionData.session?.user?.id;
-          if (uid) {
-            const { data: profileRow, error } = await supabase
-              .from('profiles')
-              .select('plan')
-              .eq('id', uid)
-              .maybeSingle();
-            if (!error && profileRow) {
-              setActivePlan(profileRow.plan ?? null);
-            }
+          if (!uid) return;
+          const { data: r } = await supabase.from('profiles').select('plan,plan_status').eq('id', uid).maybeSingle();
+          if (r) {
+            setActivePlan(r.plan ?? null);
+            setActivePlanStatus(r.plan_status ?? null);
           }
         } catch (e) {
-          // ignore fetch errors — fall back to prop-driven currentPlan
+          // noop
         }
-      })();
+      }, 4000);
       requestAnimationFrame(() => requestAnimationFrame(() => setOpenState(true)));
     } else {
-      // trigger exit animation then unmount
       setOpenState(false);
-      const t = setTimeout(() => setMounted(false), 320);
-      return () => clearTimeout(t);
+      unmountTimer = window.setTimeout(() => setMounted(false), 320);
     }
+
+    return () => {
+      if (unmountTimer) {
+        window.clearTimeout(unmountTimer);
+      }
+      if (pollId) {
+        window.clearInterval(pollId);
+      }
+    };
   }, [visible]);
 
   useEffect(() => {
@@ -169,9 +194,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     };
   }, []);
 
-  // sync active plan from props on mount/update
+  // sync active plan from props on mount/update but prefer DB fetches when available
   useEffect(() => {
-    setActivePlan(currentPlan ?? null);
+    if (currentPlan && activePlan === null) {
+      setActivePlan(currentPlan);
+    }
   }, [currentPlan]);
 
   if (!mounted) return null;
