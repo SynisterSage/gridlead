@@ -165,7 +165,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     }
   }, [showUpgradeModal]);
 
-  const planLimits = getPlanLimits(currentProfile?.plan);
+  const safePlan = planStatusLower === 'canceled' ? 'starter' : currentProfile?.plan;
+  const planLimits = getPlanLimits(safePlan);
   const leadLimit = planLimits.leadLimit;
   const leadsUsed = currentProfile?.leads_used_this_month ?? 0;
   const leadsPct = leadLimit ? Math.min(100, Math.round((leadsUsed / (leadLimit || 1)) * 100)) : 0;
