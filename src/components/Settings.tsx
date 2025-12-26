@@ -72,9 +72,10 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     }
     return 'profile';
   });
- const [connectedEmails, setConnectedEmails] = useState<{ email: string; primary: boolean; id?: string; avatar_url?: string | null }[]>([]);
+  const [connectedEmails, setConnectedEmails] = useState<{ email: string; primary: boolean; id?: string; avatar_url?: string | null }[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
+  const [planStatusOverride, setPlanStatusOverride] = useState<string | null>(null);
   const { theme, toggleTheme } = useTheme();
   const [bio, setBio] = useState(() => localStorage.getItem('gridlead_profile_bio') || '');
   const [bioSaved, setBioSaved] = useState(false);

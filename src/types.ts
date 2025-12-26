@@ -73,6 +73,8 @@ export interface Profile {
   leads_used_this_month?: number | null;
   sender_seats_used?: number | null;
   stripe_subscription_id?: string | null;
+  cancel_at_period_end?: boolean | null;
+  current_period_end?: string | null;
 }
 
 export type NotificationType =
