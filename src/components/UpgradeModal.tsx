@@ -80,6 +80,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
   const borderColorClass = isOutlined ? 'border-slate-700' : showHover ? 'border-slate-500/40' : 'border-transparent';
   return (
     <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 h-full flex flex-col transition-all duration-300 overflow-visible border ${borderColorClass} ${showSelected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-white dark:bg-transparent text-slate-700 dark:text-slate-300'} ${showHover ? 'shadow-xl translate-y-[-2px]' : ''} ${isActive && !showSelected ? 'border-emerald-300 ring-2 ring-emerald-400/40 dark:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-900/10' : ''} ${highlight ? 'ring-4 ring-emerald-400/50 shadow-2xl' : ''}` }>
+      {highlight && <span className="absolute inset-0 rounded-[1.5rem] border-2 border-emerald-400 animate-ping pointer-events-none" />}
       {/* subtle hover gradient */}
       <div className="absolute inset-0 rounded-[1.5rem] pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-b from-emerald-400/6 to-transparent mix-blend-overlay" />
       {plan.badge && (
@@ -430,8 +431,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
           </button>
         </div>
         {toastMsg && (
-          <div className={`fixed right-6 top-6 z-[200] ${toastHiding ? 'animate-out fade-out duration-200' : 'animate-in slide-in-from-top-4 duration-300'} will-change-transform`}>
-            <div className={`${toastKind === 'success' ? 'bg-emerald-500' : 'bg-rose-500'} text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold transition-all duration-300`}>
+          <div className={`fixed right-6 top-6 z-[200] transition-all duration-300 ${toastHiding ? '-translate-y-3 opacity-0' : 'translate-y-0 opacity-100'}`}>
+            <div className={`${toastKind === 'success' ? 'bg-emerald-500' : 'bg-rose-500'} text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold`}>
               {toastMsg}
             </div>
           </div>
