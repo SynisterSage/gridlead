@@ -57,8 +57,11 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
   const isOutlined = !selected && !isActive;
   const showSelected = !!selected;
   const showHover = !!hovered;
+  // Keep a consistent 1px border to avoid layout shift when hovering (don't
+  // toggle border width). We toggle only the border color and shadow.
+  const borderColorClass = isOutlined ? 'border-slate-700' : showHover ? 'border-slate-500/40' : 'border-transparent';
   return (
-    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-colors duration-300 overflow-hidden ${showSelected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${isOutlined ? 'border border-slate-700' : ''} ${showHover ? 'border-2 border-slate-500/40 shadow-xl' : ''} ${isActive && !showSelected ? 'ring-1 ring-emerald-300/20 dark:ring-emerald-400/10 bg-emerald-50/5' : ''}` }>
+    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 h-full flex flex-col transition-colors duration-300 overflow-hidden border ${borderColorClass} ${showSelected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-transparent dark:bg-transparent text-slate-300'} ${showHover ? 'shadow-xl' : ''} ${isActive && !showSelected ? 'ring-1 ring-emerald-300/20 dark:ring-emerald-400/10 bg-emerald-50/5' : ''}` }>
       {/* decorative blurs like LandingPage — placed inside and clipped by overflow-hidden */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-sky-500/10 blur-3xl opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100" />
       <div className="absolute -bottom-12 -left-6 w-28 h-28 bg-emerald-400/10 blur-3xl opacity-0 pointer-events-none transition-opacity duration-300 group-hover:opacity-100" />
@@ -186,9 +189,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
         <div className="mt-4 rounded-lg">
           <div className="p-4 md:p-6 overflow-auto max-h-[calc(100vh-160px)] pb-24"> 
             {stage === 'select' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
                 {PLANS.map(p => (
-                  <div key={p.id} className="relative" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
+                  <div key={p.id} className="relative h-full" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
                     <PlanCard
                       plan={p}
                       selected={p.id === selected}
