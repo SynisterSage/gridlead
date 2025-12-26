@@ -530,8 +530,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         clientSecret={clientSecret}
                         planTitle={plan.title}
                         onSuccess={() => {
-                          setStage('success');
-                          onConfirm?.(plan.id);
+      setStage('success');
+      setToastMsg(`Upgraded to ${plan.title}.`);
+      onConfirm?.(plan.id);
                         }}
                         onError={(msg) => {
                           setToastMsg(msg);
@@ -647,7 +648,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
             {stage === 'success' && (
               <div className="mt-6 text-center">
-                <div className="w-20 h-20 rounded-full mx-auto bg-emerald-500 flex items-center justify-center text-white mb-4">
+                <div className="w-20 h-20 rounded-full mx-auto bg-emerald-500 flex items-center justify-center text-white mb-4 animate-in zoom-in">
                   <CheckCircle2 size={28} />
                 </div>
                 {selected === 'agency' ? (
@@ -657,12 +658,23 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                   </>
                 ) : (
                   <>
-                    <h4 className="text-lg font-extrabold">Mock purchase complete</h4>
-                    <p className="text-sm text-slate-500">The UI now reflects a successful mock upgrade. When you connect Stripe we'll replace this flow with a real checkout redirect.</p>
+                    <h4 className="text-lg font-extrabold">Upgrade complete</h4>
+                    <p className="text-sm text-slate-500">Your plan is now updated. You can manage billing anytime from Settings.</p>
                   </>
                 )}
-                <div className="mt-6">
-                  <button onClick={() => startClose(220)} className="px-6 py-3 rounded-xl bg-white border">Done</button>
+                <div className="mt-6 flex justify-center gap-3">
+                  <button
+                    onClick={() => {
+                      setStage('select');
+                      setSelected(null);
+                    }}
+                    className="px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold shadow-sm"
+                  >
+                    Stay here
+                  </button>
+                  <button onClick={() => startClose(220)} className="px-6 py-3 rounded-xl bg-[#0f172a] text-white font-semibold shadow-sm">
+                    Close
+                  </button>
                 </div>
               </div>
             )}

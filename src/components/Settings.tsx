@@ -889,8 +889,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   onClose={() => setShowUpgradeModal(false)}
                   currentPlan={profile?.plan ?? null}
                   onConfirm={(planId) => {
-                    setNotification(`Redirecting to secure checkout for ${planId}...`);
-                    setShowUpgradeModal(false);
+                    setNotification(`Upgraded to ${planId}.`);
+                    // keep modal open to reflect new state; refresh profile
+                    void fetchProfile();
                   }}
                 />
               )}
