@@ -546,7 +546,15 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
                     {getPlanLimits(currentProfile?.plan).label}
                   </span>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-100 dark:border-emerald-800/40">
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                      (currentProfile?.plan_status || '').toLowerCase() === 'active'
+                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/40'
+                        : (currentProfile?.plan_status || '').toLowerCase() === 'canceled'
+                        ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-900/40'
+                        : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-900/40'
+                    }`}
+                  >
                     {currentProfile?.plan_status ?? 'inactive'}
                   </span>
                 </div>
@@ -903,8 +911,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   onClose={() => setShowUpgradeModal(false)}
                   currentPlan={currentProfile?.plan ?? null}
                   onConfirm={(planId) => {
-                    setNotification(`Upgraded to ${planId}.`);
-                    // keep modal open to reflect new state; refresh profile
+                    // Optimistically update plan/status locally and refresh
+                    setProfileState(prev => prev ? { ...prev, plan: planId, plan_status: 'active' } : prev);
                     void fetchProfile();
                   }}
                 />

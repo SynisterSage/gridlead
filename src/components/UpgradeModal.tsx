@@ -68,7 +68,7 @@ const mapPlanToId = (raw?: any): string | null => {
   return null;
 };
 
-const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; onAction: () => void }> = ({ plan, selected, hovered, active, onAction }) => {
+const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; active?: boolean; highlight?: boolean; onAction: () => void }> = ({ plan, selected, hovered, active, highlight, onAction }) => {
   const isActive = !!active;
   // Outline non-selected, non-active cards — include featured (Studio) so it
   // displays the same outlined treatment as Agency when not selected.
@@ -79,7 +79,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
   // toggle border width). We toggle only the border color and shadow.
   const borderColorClass = isOutlined ? 'border-slate-700' : showHover ? 'border-slate-500/40' : 'border-transparent';
   return (
-    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 h-full flex flex-col transition-all duration-300 overflow-visible border ${borderColorClass} ${showSelected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-white dark:bg-transparent text-slate-700 dark:text-slate-300'} ${showHover ? 'shadow-xl translate-y-[-2px]' : ''} ${isActive && !showSelected ? 'border-emerald-300 ring-2 ring-emerald-400/40 dark:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-900/10' : ''}` }>
+    <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 h-full flex flex-col transition-all duration-300 overflow-visible border ${borderColorClass} ${showSelected ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-white dark:bg-transparent text-slate-700 dark:text-slate-300'} ${showHover ? 'shadow-xl translate-y-[-2px]' : ''} ${isActive && !showSelected ? 'border-emerald-300 ring-2 ring-emerald-400/40 dark:ring-emerald-500/20 bg-emerald-50/10 dark:bg-emerald-900/10' : ''} ${highlight ? 'ring-4 ring-emerald-400/50 shadow-2xl' : ''}` }>
       {/* subtle hover gradient */}
       <div className="absolute inset-0 rounded-[1.5rem] pointer-events-none opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-b from-emerald-400/6 to-transparent mix-blend-overlay" />
       {plan.badge && (
@@ -212,6 +212,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   // openState: controls the translate/opacity for enter/exit animation
   const [openState, setOpenState] = useState<boolean>(false);
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+  const [justActivated, setJustActivated] = useState<string | null>(null);
 
   // active plan from props (the user's actual plan)
   const [activePlan, setActivePlan] = useState<string | null>(null);
@@ -363,6 +364,13 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     }
   }, [toastMsg]);
 
+  useEffect(() => {
+    if (justActivated) {
+      const t = setTimeout(() => setJustActivated(null), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [justActivated]);
+
   if (!mounted) return null;
 
   const startClose = (delay = 300) => {
@@ -436,15 +444,16 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
             {PLANS.map(p => (
               <div key={p.id} className="relative h-full" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
                 <PlanCard
-                      plan={p}
-                      selected={p.id === selected}
-                      hovered={p.id === hoveredPlan}
-                      active={p.id === activePlan}
-                      onAction={() => {
-                        if (p.id === 'agency') {
-                          // open in-modal waitlist mock flow
-                          setSelected(p.id);
-                          setStage('waitlist');
+                  plan={p}
+                  selected={p.id === selected}
+                  hovered={p.id === hoveredPlan}
+                  active={p.id === activePlan}
+                  highlight={justActivated === p.id}
+                  onAction={() => {
+                    if (p.id === 'agency') {
+                      // open in-modal waitlist mock flow
+                      setSelected(p.id);
+                      setStage('waitlist');
                           return;
                         }
                         // choose a plan within the modal and move to confirm stage
@@ -535,6 +544,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                           setStage('select');
                           setSelected(null);
                           setClientSecret(null);
+                          setActivePlan(plan.id);
+                          setActivePlanStatus('active');
+                          setJustActivated(plan.id);
                           void refreshProfile();
                           onConfirm?.(plan.id);
                         }}
