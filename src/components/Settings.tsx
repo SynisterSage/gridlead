@@ -168,7 +168,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   }, [showUpgradeModal]);
 
   const waitlistPending = (currentProfile?.agency_waitlist_status || '').toLowerCase() === 'pending';
-  const agencyApproved = !!currentProfile?.agency_approved;
+  const waitlistApproved = (currentProfile?.agency_waitlist_status || '').toLowerCase() === 'approved';
+  const agencyApproved = !!currentProfile?.agency_approved || waitlistApproved;
   const effectivePlanStatusRaw = waitlistPending ? 'pending' : (planStatusOverride ?? currentProfile?.plan_status ?? 'inactive');
   const planStatusLower = (effectivePlanStatusRaw || '').toLowerCase();
   const planIncludesAgency = (currentProfile?.plan || '').toLowerCase().includes('agency');
@@ -177,9 +178,11 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       ? 'starter'
       : currentProfile?.plan;
   const displayPlanStatus =
-    planStatusLower === 'pending' ? 'Pending review' :
-    agencyApproved ? 'Approved' :
-    effectivePlanStatusRaw;
+    planStatusLower === 'pending'
+      ? 'Pending review'
+      : agencyApproved
+      ? 'Approved'
+      : effectivePlanStatusRaw;
   const planLimits = getPlanLimits(safePlan);
   const leadLimit = planLimits.leadLimit;
   const leadsUsed = currentProfile?.leads_used_this_month ?? 0;
@@ -1039,12 +1042,15 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
 
         {showCancelDisclosure && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-3 border border-slate-100 dark:border-slate-800">
-              <div className="flex items-start justify-between gap-3">
-                <div>
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-100 dark:border-slate-800">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-600 dark:text-amber-200">
+                  <Info size={18} />
+                </div>
+                <div className="flex-1">
                   <h4 className="text-lg font-extrabold text-[#0f172a] dark:text-white">Downgrade scheduled</h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                    Your plan stays active until the end of the current billing period. We’ll switch you to Starter after that.
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                    You’ll keep {getPlanLimits(currentProfile?.plan).label} until the end of this billing period. After that, we’ll switch you to Starter automatically.
                   </p>
                 </div>
                 <button
@@ -1058,15 +1064,17 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   <X size={16} />
                 </button>
               </div>
-              <button
-                onClick={() => {
-                  setShowCancelDisclosure(false);
-                  localStorage.setItem('gl_cancel_disclosure_seen', '1');
-                }}
-                className="w-full mt-2 px-4 py-2 rounded-xl bg-[#0f172a] text-white font-bold text-sm hover:bg-slate-800 transition-colors"
-              >
-                Got it
-              </button>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    setShowCancelDisclosure(false);
+                    localStorage.setItem('gl_cancel_disclosure_seen', '1');
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#0f172a] text-white font-bold text-sm hover:bg-slate-800 transition-colors"
+                >
+                  Got it
+                </button>
+              </div>
             </div>
           </div>
         )}

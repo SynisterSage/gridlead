@@ -1,4 +1,4 @@
-export type PlanTier = 'starter' | 'studio' | 'agency_waitlist';
+export type PlanTier = 'starter' | 'studio' | 'agency_waitlist' | 'agency';
 
 export interface PlanLimits {
   leadLimit: number | null;
@@ -34,11 +34,22 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     label: 'Agency+',
     description: 'In-development tier; treat as unlimited once activated.',
   },
+  agency: {
+    leadLimit: null,
+    senderLimit: null,
+    auditDepth: 'full',
+    canUseGemini: true,
+    label: 'Agency+',
+    description: 'Approved Agency+ tier with unlimited scale.',
+  },
 };
 
 export const getPlanLimits = (plan?: string | null): PlanLimits => {
   if (!plan) return PLAN_LIMITS.starter;
-  const normalized = plan.toLowerCase() as PlanTier;
+  const p = plan.toLowerCase();
+  const normalized: PlanTier =
+    p.includes('agency') ? (p.includes('waitlist') ? 'agency_waitlist' : 'agency') :
+    (p as PlanTier);
   return PLAN_LIMITS[normalized] ?? PLAN_LIMITS.starter;
 };
 

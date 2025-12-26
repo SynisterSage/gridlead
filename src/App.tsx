@@ -79,6 +79,7 @@ const AppContent: React.FC = () => {
   const [notifPrefs, setNotifPrefs] = useState(notifDefaults);
   const goalNotifiedRef = React.useRef(false);
   const lastAgencyStatusRef = React.useRef<string | null>(null);
+  const profileChannelRef = React.useRef<RealtimeChannel | null>(null);
 
   const hasNotification = useCallback(
     (type: NotificationItem['type'], predicate?: (n: NotificationItem) => boolean) => {
@@ -978,6 +979,40 @@ const AppContent: React.FC = () => {
       }
     }
   }, [session, needsOnboarding]);
+
+  // Realtime profile listener to keep status fresh (for agency approvals, etc.)
+  useEffect(() => {
+    if (!session) {
+      if (profileChannelRef.current) {
+        profileChannelRef.current.unsubscribe();
+        profileChannelRef.current = null;
+      }
+      return;
+    }
+    if (profileChannelRef.current) {
+      profileChannelRef.current.unsubscribe();
+      profileChannelRef.current = null;
+    }
+    const ch = supabase
+      .channel('profile-self')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${session.user.id}` },
+        (payload) => {
+          if (payload.new) {
+            setProfile(payload.new as Profile);
+          }
+        },
+      )
+      .subscribe();
+    profileChannelRef.current = ch;
+    return () => {
+      if (profileChannelRef.current) {
+        profileChannelRef.current.unsubscribe();
+        profileChannelRef.current = null;
+      }
+    };
+  }, [session]);
 
   // Fire a notification when Agency+ waitlist is approved
   useEffect(() => {

@@ -118,7 +118,10 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
     </div>
     <ul className="flex-1 space-y-3 mb-4">
       {plan.bullets.map((b, i) => (
-        <li key={i} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-500"><CheckCircle2 size={16} className="text-emerald-400" /> {b}</li>
+        <li key={i} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-500">
+          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+          <span>{b}</span>
+        </li>
       ))}
     </ul>
   <div className="mt-4">
@@ -126,13 +129,13 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
     onClick={onAction}
     disabled={isActive && !showSelected && isPending && !agencyApproved}
     aria-current={isActive && !showSelected ? true : undefined}
-        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isPending && waitlistPending ? 'bg-transparent text-sky-700 border border-sky-200 cursor-default' : isActive && !showSelected ? 'bg-transparent text-emerald-700 border border-emerald-200 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
+        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isPending && waitlistPending ? 'bg-transparent text-white border border-sky-500 cursor-default' : isActive && !showSelected ? 'bg-transparent text-emerald-400 border border-emerald-300 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
       >
     {plan.id === 'agency'
       ? (waitlistPending
           ? 'Request received'
           : (agencyApproved || waitlistApproved)
-          ? 'Upgrade to Agency+'
+          ? (isActive && !showSelected ? 'Active' : 'Upgrade to Agency+')
           : 'Join waitlist')
       : isActive && !showSelected
       ? 'Active'
@@ -565,18 +568,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                   <div className="space-y-2">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
                       <span>Checkout</span>
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Confirm {plan.title}</h4>
-                      <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
-                        <span>Secure, in-app payment. We’ll start your subscription as soon as your payment method is confirmed.</span>
-                        <div className="relative group">
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold cursor-help">?</span>
-                          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 p-3 bg-slate-900 text-white rounded-xl text-[11px] leading-relaxed shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 border border-slate-800">
-                            Payments are processed by Stripe. Card details never touch our servers.
-                          </div>
+                      <div className="relative group">
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold cursor-help">?</span>
+                        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 p-3 bg-slate-900 text-white rounded-xl text-[11px] leading-relaxed shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150 border border-slate-800">
+                          Payments are processed by Stripe. Card details never touch our servers.
                         </div>
                       </div>
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Confirm {plan.title}</h4>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+                        Secure, in-app payment. We’ll start your subscription as soon as your payment method is confirmed.
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -615,7 +618,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         <span className="text-slate-500">Price</span>
                         <span className="font-bold text-slate-900 dark:text-white">{plan.price}{plan.per}</span>
                       </div>
-                      <div className="rounded-xl bg-slate-100 dark:bg-slate-800/70 px-3 py-2 text-[11px] text-slate-600 dark:text-slate-200 leading-relaxed border border-slate-200 dark:border-slate-700 flex items-start gap-2">
+                      <div className="rounded-xl bg-slate-100 dark:bg-slate-800/70 px-3 py-3 text-[11px] text-slate-600 dark:text-slate-200 leading-relaxed border border-slate-200 dark:border-slate-700 flex items-start gap-2">
                         <span className="mt-0.5 text-slate-500 dark:text-slate-300">ℹ️</span>
                         <span>Card will be charged by Stripe each month. Manage or cancel anytime from Settings → Billing.</span>
                       </div>

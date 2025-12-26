@@ -41,10 +41,13 @@ Deno.serve(async (req) => {
       priceId = priceAgency;
       const { data: agencyProfile } = await supabase
         .from("profiles")
-        .select("agency_approved")
+        .select("agency_approved, agency_waitlist_status")
         .eq("id", user.id)
         .maybeSingle();
-      if (agencyProfile && agencyProfile.agency_approved === false) {
+      const approved =
+        agencyProfile?.agency_approved === true ||
+        (agencyProfile?.agency_waitlist_status || "").toLowerCase() === "approved";
+      if (!approved) {
         return respondError("Agency+ requires approval before checkout.", 403);
       }
     }
@@ -52,7 +55,7 @@ Deno.serve(async (req) => {
     // Ensure customer exists
     const { data: profile } = await supabase
       .from("profiles")
-      .select("stripe_customer_id, display_name")
+      .select("stripe_customer_id, display_name, stripe_subscription_id")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -67,15 +70,34 @@ Deno.serve(async (req) => {
       await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
     }
 
-    // Create subscription in incomplete state to collect payment via Payment Element
-    const subscription = await stripe.subscriptions.create({
-      customer: customerId,
-      items: [{ price: priceId }],
-      payment_behavior: "default_incomplete",
-      payment_settings: { save_default_payment_method: "on_subscription" },
-      metadata: { user_id: user.id, plan_id: planId },
-      expand: ["latest_invoice.payment_intent"],
-    });
+    const existingSubId = profile?.stripe_subscription_id || null;
+    let subscription: Stripe.Subscription | null = null;
+
+    if (existingSubId) {
+      const existing = await stripe.subscriptions.retrieve(existingSubId, { expand: ["items.data"] });
+      const activeItem = existing.items.data[0];
+      // Update the existing subscription to the new price to avoid double billing
+      subscription = await stripe.subscriptions.update(existing.id, {
+        customer: customerId || undefined,
+        items: [{ id: activeItem?.id, price: priceId }],
+        payment_behavior: "default_incomplete",
+        proration_behavior: "create_prorations",
+        payment_settings: { save_default_payment_method: "on_subscription" },
+        metadata: { user_id: user.id, plan_id: planId },
+        expand: ["latest_invoice.payment_intent"],
+      });
+    } else {
+      // Create subscription in incomplete state to collect payment via Payment Element
+      subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        payment_behavior: "default_incomplete",
+        payment_settings: { save_default_payment_method: "on_subscription" },
+        metadata: { user_id: user.id, plan_id: planId },
+        expand: ["latest_invoice.payment_intent"],
+      });
+      await supabase.from("profiles").update({ stripe_subscription_id: subscription.id }).eq("id", user.id);
+    }
 
     const clientSecret = (subscription.latest_invoice as any)?.payment_intent?.client_secret || null;
     if (!clientSecret) {

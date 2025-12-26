@@ -134,7 +134,7 @@ async function upsertProfile(
 function mapPriceToPlan(priceId: string | null | undefined): string | null {
   if (!priceId) return null;
   if (priceId === priceStudio) return "studio";
-  if (priceId === priceAgency) return "agency_waitlist";
+  if (priceId === priceAgency) return "agency";
   return null;
 }
 
@@ -155,7 +155,7 @@ function mapPlanId(planId: string | null | undefined): string | null {
   if (!planId) return null;
   const p = planId.toLowerCase();
   if (p.includes("studio")) return "studio";
-  if (p.includes("agency")) return "agency_waitlist";
+  if (p.includes("agency")) return "agency";
   if (p.includes("starter") || p.includes("free")) return "starter";
   return null;
 }
