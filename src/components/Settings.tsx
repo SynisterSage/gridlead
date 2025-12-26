@@ -588,7 +588,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border inline-flex items-center gap-1 ${
                         cancelAtPeriodEnd || planStatusLower === 'incomplete'
-                          ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-900/40'
+                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800'
                           : planStatusLower === 'active'
                           ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/40'
                           : planStatusLower === 'canceled'
@@ -597,7 +597,6 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       }`}
                     >
                       {planStatusLabel}
-                      {cancelAtPeriodEnd && <span className="w-4 h-4 inline-flex items-center justify-center rounded-full bg-amber-200 text-amber-800 text-[10px] font-black">!</span>}
                     </span>
                     {cancelAtPeriodEnd && (
                       <div className="absolute right-0 mt-2 w-60 p-3 bg-slate-900 text-white rounded-xl shadow-2xl text-[11px] leading-relaxed opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200">
@@ -649,17 +648,17 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Unlimited seats</div>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-3">
                     <button
                       onClick={() => setShowUpgradeModal(true)}
-                      className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md hover:shadow-lg hover:translate-y-[-1px] transition-all"
+                      className="flex-1 min-w-[180px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-[#0f172a] text-white shadow-sm hover:bg-slate-800 transition-colors"
                     >
                       Upgrade
                     </button>
                     <button
                       onClick={handleOpenPortal}
                       disabled={portalLoading}
-                      className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm disabled:opacity-60"
+                      className="flex-1 min-w-[180px] px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 transition-colors shadow-sm disabled:opacity-60"
                     >
                       {portalLoading ? 'Opening…' : 'Manage subscription'}
                     </button>
