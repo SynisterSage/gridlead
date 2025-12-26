@@ -129,7 +129,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
     onClick={onAction}
     disabled={isActive && !showSelected && isPending && !agencyApproved}
     aria-current={isActive && !showSelected ? true : undefined}
-        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isPending && waitlistPending ? 'bg-transparent text-white border border-sky-500 cursor-default' : isActive && !showSelected ? 'bg-transparent text-emerald-400 border border-emerald-300 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
+        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isPending && waitlistPending ? 'bg-transparent text-white border border-slate-300 dark:border-slate-600 cursor-default' : isActive && !showSelected ? 'bg-transparent text-emerald-400 border border-emerald-300 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
       >
     {plan.id === 'agency'
       ? (waitlistPending

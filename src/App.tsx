@@ -1024,17 +1024,28 @@ const AppContent: React.FC = () => {
       void (async () => {
         try {
           if (!session) return;
-          // Avoid dupes per session
-          const cacheKey = `gl_notif_agency_approved_${session.user.id}`;
-          if (localStorage.getItem(cacheKey) === '1') return;
-          await supabase.from('notifications').insert({
+          const { data, error } = await supabase.from('notifications').insert({
             user_id: session.user.id,
             type: 'info',
             title: 'Agency+ approved',
             body: 'Your Agency+ request was approved. You can upgrade now.',
             meta: { kind: 'agency_approved' },
+          }).select().single();
+          const row = data as any;
+          const newNotif = {
+            id: row?.id || `${Date.now()}`,
+            type: 'info' as const,
+            title: 'Agency+ approved',
+            body: 'Your Agency+ request was approved. You can upgrade now.',
+            created_at: row?.created_at || new Date().toISOString(),
+            unread: true,
+            meta: { kind: 'agency_approved' },
+          };
+          setNotifications(prev => {
+            if (prev.some(n => n.meta?.kind === 'agency_approved' && !n.read_at)) return prev;
+            return [newNotif, ...prev].slice(0, 100);
           });
-          localStorage.setItem(cacheKey, '1');
+          if (error) console.warn('Notification insert error', error);
         } catch (e) {
           console.warn('Failed to insert agency approval notification', e);
         }
