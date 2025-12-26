@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle2, X, Info, Mail, Briefcase } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { startSubscription } from '../services/billing';
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe | null } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 interface Plan {
@@ -133,7 +133,8 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
   );
 };
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string);
+const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 const PaymentStep: React.FC<{
   clientSecret: string;
@@ -412,7 +413,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                     </div>
                   )}
 
-                  {clientSecret && (
+                  {clientSecret && stripePromise ? (
                     <Elements stripe={stripePromise} options={{ clientSecret }}>
                       <PaymentStep
                         clientSecret={clientSecret}
@@ -425,7 +426,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                       />
                       {confirmError && <p className="text-[11px] text-rose-500 mt-2">{confirmError}</p>}
                     </Elements>
-                  )}
+                  ) : clientSecret && !stripePromise ? (
+                    <p className="text-[11px] text-rose-500">
+                      Missing Stripe publishable key. Set VITE_STRIPE_PUBLISHABLE_KEY in env and redeploy.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             )}
