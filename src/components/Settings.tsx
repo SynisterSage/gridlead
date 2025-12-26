@@ -89,6 +89,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   };
   const [notifPreferences, setNotifPreferences] = useState({ ...notifDefaults });
   const [portalLoading, setPortalLoading] = useState(false);
+  const REOPEN_UPGRADE_KEY = 'gridlead_reopen_upgrade';
   const handleGmailConnect = async () => {
     // Remember to return to Settings/Integrations after OAuth flow
     localStorage.setItem('gridlead_return_view', 'settings');
@@ -218,6 +219,20 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       if (saved) {
         setActiveTab(saved);
         localStorage.removeItem(SETTINGS_TAB_KEY);
+      }
+      const reopen = localStorage.getItem(REOPEN_UPGRADE_KEY);
+      if (reopen) {
+        setShowUpgradeModal(true);
+        localStorage.removeItem(REOPEN_UPGRADE_KEY);
+      }
+      const params = new URLSearchParams(window.location.search);
+      const billingStatus = params.get('billing');
+      if (billingStatus === 'success') {
+        setNotification('Checkout complete. Your plan will update shortly.');
+      } else if (billingStatus === 'cancel') {
+        setNotification('Checkout canceled — no changes were made.');
+      } else if (billingStatus === 'portal') {
+        setNotification('Returned from billing portal.');
       }
     }
 
@@ -857,7 +872,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   onClose={() => setShowUpgradeModal(false)}
                   currentPlan={profile?.plan ?? null}
                   onConfirm={(planId) => {
-                    setNotification(`Mock upgrade to ${planId} complete.`);
+                    setNotification(`Redirecting to secure checkout for ${planId}...`);
                     setShowUpgradeModal(false);
                   }}
                 />

@@ -230,6 +230,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     setConfirmError(null);
     setConfirmLoading(true);
     void (async () => {
+      // Remember to come back to Settings after checkout
+      localStorage.setItem('gridlead_return_view', 'settings');
+      localStorage.setItem('gridlead_reopen_upgrade', '1');
       const { url, error } = await startCheckout(plan.id as 'studio');
       setConfirmLoading(false);
       if (error || !url) {
