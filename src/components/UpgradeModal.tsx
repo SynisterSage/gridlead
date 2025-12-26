@@ -472,6 +472,12 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         onAction={() => {
                           if (isDowngradeTarget) {
                             void (async () => {
+                              // Persist return state so we land back in Settings with the modal open
+                              localStorage.setItem('gridlead_return_view', 'settings');
+                              localStorage.setItem('gridlead_return_tab', 'profile');
+                              localStorage.setItem('gridlead_return_upgrade_open', '1');
+                              sessionStorage.setItem('gl_upgrade_modal_open', '1');
+                              localStorage.removeItem('gl_cancel_disclosure_seen'); // show disclosure after cancel
                               const { url, error } = await openCustomerPortal();
                               if (error || !url) {
                                 setToastKind('error');
