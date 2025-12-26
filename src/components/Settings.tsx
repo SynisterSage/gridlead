@@ -650,13 +650,16 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setShowUpgradeModal(true)} className="px-4 py-2 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm">
+                    <button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md hover:shadow-lg hover:translate-y-[-1px] transition-all"
+                    >
                       Upgrade
                     </button>
                     <button
                       onClick={handleOpenPortal}
                       disabled={portalLoading}
-                      className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                      className="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white/80 dark:bg-slate-800/70 hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm disabled:opacity-60"
                     >
                       {portalLoading ? 'Opening…' : 'Manage subscription'}
                     </button>
