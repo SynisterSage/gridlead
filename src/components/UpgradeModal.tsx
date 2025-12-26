@@ -49,26 +49,28 @@ const PLANS: Plan[] = [
 ];
 
 const PlanCard: React.FC<{ plan: Plan; selected: boolean; onSelect: () => void }> = ({ plan, selected, onSelect }) => (
-  <div className={`p-6 rounded-2xl flex-1 flex flex-col transition-shadow duration-200 ${plan.featured ? 'bg-slate-900 text-white shadow-2xl' : 'bg-white dark:bg-slate-900 shadow-sm'} ${selected ? 'ring-2 ring-emerald-400' : ''}`}>
+  <div className={`relative group p-6 md:p-8 rounded-[1.5rem] flex-1 flex flex-col transition-transform duration-300 ${plan.featured ? 'bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white shadow-2xl' : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'} ${selected ? 'ring-2 ring-emerald-400' : ''}`}>
     {plan.badge && (
-      <div className={`absolute top-4 right-4 px-2 py-0.5 text-[10px] font-bold rounded ${plan.featured ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-800'}`}>{plan.badge}</div>
+      <div className="absolute top-4 right-4">
+        <div className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${plan.featured ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-800'}`}>{plan.badge}</div>
+      </div>
     )}
     <div className="mb-4">
       <h4 className="text-lg font-extrabold">{plan.title}</h4>
       <div className="flex items-baseline gap-2">
-        <div className="text-3xl font-extrabold">{plan.price}</div>
+        <div className="text-3xl md:text-4xl font-extrabold leading-none">{plan.price}</div>
         <div className="text-sm text-slate-500">{plan.per}</div>
       </div>
-      <p className="text-xs text-slate-400 mt-2">{plan.tagline}</p>
+      <p className="text-sm text-slate-400 mt-2">{plan.tagline}</p>
     </div>
-    <ul className="flex-1 space-y-2 mb-4">
+    <ul className="flex-1 space-y-3 mb-4">
       {plan.bullets.map((b, i) => (
-        <li key={i} className="flex items-center gap-2 text-sm text-slate-500"><CheckCircle2 size={16} className="text-emerald-400" /> {b}</li>
+        <li key={i} className="flex items-center gap-3 text-sm text-slate-500"><CheckCircle2 size={16} className="text-emerald-400" /> {b}</li>
       ))}
     </ul>
     <div className="mt-4">
-      <button onClick={onSelect} className={`w-full py-3 rounded-xl font-bold ${plan.featured ? 'bg-white text-slate-900' : 'bg-[#0f172a] text-white'}`}>
-        {selected ? 'Selected' : plan.featured ? 'Choose Studio' : `Choose ${plan.title}`}
+      <button onClick={onSelect} className={`w-full py-3 rounded-xl font-bold ${plan.featured ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white'}`}>
+        {selected ? 'Selected' : plan.featured ? 'Selected' : `Choose ${plan.title}`}
       </button>
     </div>
   </div>
@@ -77,25 +79,36 @@ const PlanCard: React.FC<{ plan: Plan; selected: boolean; onSelect: () => void }
 const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm }) => {
   const [selected, setSelected] = useState<string>('studio');
   const [stage, setStage] = useState<'select' | 'confirm' | 'success'>('select');
-  const [closing, setClosing] = useState(false);
+
+  // mounted: whether to render the modal at all
+  const [mounted, setMounted] = useState<boolean>(false);
+  // openState: controls the translate/opacity for enter/exit animation
+  const [openState, setOpenState] = useState<boolean>(false);
 
   useEffect(() => {
-    // Reset state when opened
     if (visible) {
-      setClosing(false);
+      // mount then trigger enter transition on next frame
+      setMounted(true);
       setStage('select');
       setSelected('studio');
+      requestAnimationFrame(() => requestAnimationFrame(() => setOpenState(true)));
+    } else {
+      // trigger exit animation then unmount
+      setOpenState(false);
+      const t = setTimeout(() => setMounted(false), 320);
+      return () => clearTimeout(t);
     }
   }, [visible]);
 
-  if (!visible && !closing) return null;
+  if (!mounted) return null;
 
   const plan = PLANS.find(p => p.id === selected) || PLANS[1];
 
   const startClose = (delay = 300) => {
-    setClosing(true);
+    // animate out locally then call onClose after the animation
+    setOpenState(false);
     setTimeout(() => {
-      setClosing(false);
+      setMounted(false);
       onClose();
     }, delay);
   };
@@ -108,9 +121,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${closing ? 'opacity-0' : 'opacity-100'}`} onClick={() => startClose()} />
+      <div className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${openState ? 'opacity-100' : 'opacity-0'}`} onClick={() => startClose()} />
       <aside
-        className={`ml-auto w-full max-w-[940px] bg-white dark:bg-slate-900 p-4 md:p-6 shadow-2xl transform transition-transform duration-300 ${closing ? 'translate-x-full' : 'translate-x-0'}`}
+        className={`ml-auto w-full max-w-[940px] bg-white dark:bg-slate-900 p-4 md:p-6 shadow-2xl transform transition-transform duration-300 ${openState ? 'translate-x-0' : 'translate-x-full'}`}
         role="dialog"
         aria-modal="true"
       >
