@@ -499,19 +499,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                       Missing Stripe publishable key. Set VITE_STRIPE_PUBLISHABLE_KEY in env and redeploy.
                     </p>
                   ) : (
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-4">
                       <div className="flex flex-wrap items-center gap-3">
                         <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                           Back
                         </button>
-                        <div className="h-10 w-40 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                          <div className="h-3 w-3 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                          <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">Fetching payment form…</span>
+                        </div>
                       </div>
-                      <div className="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                      <div className="h-4 w-48 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                      <div className="flex gap-2 text-[11px] text-slate-500 dark:text-slate-400 items-center">
-                        <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                        <span>Preparing secure payment…</span>
-                      </div>
+                      <div className="h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 animate-pulse" />
+                      <div className="h-10 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 animate-pulse" />
                     </div>
                   )}
                 </div>
