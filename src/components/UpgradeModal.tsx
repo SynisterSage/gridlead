@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, X, Info, Mail, Briefcase } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { startCheckout } from '../services/billing';
+import { startSubscription } from '../services/billing';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 interface Plan {
   id: string;
@@ -131,11 +133,60 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
   );
 };
 
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string);
+
+const PaymentStep: React.FC<{
+  clientSecret: string;
+  onSuccess: () => void;
+  onError: (msg: string) => void;
+  planTitle: string;
+}> = ({ clientSecret, onSuccess, onError, planTitle }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [paying, setPaying] = useState(false);
+
+  const handlePay = async () => {
+    if (!stripe || !elements) return;
+    setPaying(true);
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      redirect: 'if_required',
+      confirmParams: {
+        return_url: window.location.origin,
+      },
+    });
+    setPaying(false);
+    if (error) {
+      onError(error.message || 'Payment failed');
+      return;
+    }
+    if (paymentIntent && ['succeeded', 'processing', 'requires_action'].includes(paymentIntent.status)) {
+      onSuccess();
+    } else {
+      onError('Payment did not complete.');
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <PaymentElement />
+      <button
+        onClick={handlePay}
+        disabled={paying || !stripe}
+        className="w-full mt-2 px-5 py-2.5 rounded-xl bg-[#0f172a] text-white font-bold text-sm shadow-sm hover:bg-slate-800 transition-all disabled:opacity-60"
+      >
+        {paying ? 'Processing…' : `Pay and upgrade to ${planTitle}`}
+      </button>
+    </div>
+  );
+};
+
 const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm, currentPlan }) => {
   const [selected, setSelected] = useState<string | null>(null);
   const [stage, setStage] = useState<'select' | 'confirm' | 'waitlist' | 'success'>('select');
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
   // mounted: whether to render the modal at all
   const [mounted, setMounted] = useState<boolean>(false);
@@ -228,20 +279,18 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       return;
     }
     setConfirmError(null);
-    setConfirmLoading(true);
-    void (async () => {
-      // Remember to come back to Settings after checkout
-      localStorage.setItem('gridlead_return_view', 'settings');
-      localStorage.setItem('gridlead_reopen_upgrade', '1');
-      const { url, error } = await startCheckout(plan.id as 'studio');
-      setConfirmLoading(false);
-      if (error || !url) {
-        setConfirmError(error || 'Unable to start checkout.');
-        return;
-      }
-      onConfirm?.(plan.id);
-      window.location.href = url;
-    })();
+    if (!clientSecret) {
+      setConfirmLoading(true);
+      void (async () => {
+        const { clientSecret: cs, error } = await startSubscription(plan.id as 'studio');
+        setConfirmLoading(false);
+        if (error || !cs) {
+          setConfirmError(error || 'Unable to start subscription.');
+          return;
+        }
+        setClientSecret(cs);
+      })();
+    }
   };
 
   return (
@@ -345,19 +394,38 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                    Back
-                  </button>
-                  <button
-                    onClick={handleConfirm}
-                    disabled={confirmLoading}
-                    className="px-5 py-2.5 rounded-xl bg-[#0f172a] text-white font-bold text-sm shadow-sm hover:bg-slate-800 transition-all disabled:opacity-60"
-                  >
-                    {confirmLoading ? 'Redirecting…' : 'Continue'}
-                  </button>
-                  <span className="text-[11px] text-slate-400 dark:text-slate-500">No charge is made in this preview.</span>
-                  {confirmError && <span className="text-[11px] text-rose-500">{confirmError}</span>}
+                <div className="space-y-4">
+                  {!clientSecret && (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                        Back
+                      </button>
+                      <button
+                        onClick={handleConfirm}
+                        disabled={confirmLoading}
+                        className="px-5 py-2.5 rounded-xl bg-[#0f172a] text-white font-bold text-sm shadow-sm hover:bg-slate-800 transition-all disabled:opacity-60"
+                      >
+                        {confirmLoading ? 'Preparing payment…' : 'Enter payment'}
+                      </button>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500">Secure in-app checkout.</span>
+                      {confirmError && <span className="text-[11px] text-rose-500">{confirmError}</span>}
+                    </div>
+                  )}
+
+                  {clientSecret && (
+                    <Elements stripe={stripePromise} options={{ clientSecret }}>
+                      <PaymentStep
+                        clientSecret={clientSecret}
+                        planTitle={plan.title}
+                        onSuccess={() => {
+                          setStage('success');
+                          onConfirm?.(plan.id);
+                        }}
+                        onError={(msg) => setConfirmError(msg)}
+                      />
+                      {confirmError && <p className="text-[11px] text-rose-500 mt-2">{confirmError}</p>}
+                    </Elements>
+                  )}
                 </div>
               </div>
             )}
