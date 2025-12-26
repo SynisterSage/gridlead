@@ -77,6 +77,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const [isConnecting, setIsConnecting] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [planStatusOverride, setPlanStatusOverride] = useState<string | null>(null);
+  const [showCancelDisclosure, setShowCancelDisclosure] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const [bio, setBio] = useState(() => localStorage.getItem('gridlead_profile_bio') || '');
   const [bioSaved, setBioSaved] = useState(false);
@@ -179,6 +180,12 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const planStatusLabel = cancelAtPeriodEnd && planStatusLower === 'active'
     ? 'Active'
     : effectivePlanStatus;
+  useEffect(() => {
+    if (cancelAtPeriodEnd) {
+      const seen = localStorage.getItem('gl_cancel_disclosure_seen');
+      if (!seen) setShowCancelDisclosure(true);
+    }
+  }, [cancelAtPeriodEnd]);
   let leadBarColor = 'bg-emerald-500';
   if (leadLimit) {
     if (leadsPct >= 100) leadBarColor = 'bg-rose-500';
@@ -982,6 +989,39 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
             </button>
           </div>
         </div>
+
+        {showCancelDisclosure && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-3 border border-slate-100 dark:border-slate-800">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h4 className="text-lg font-extrabold text-[#0f172a] dark:text-white">Downgrade scheduled</h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                    Your plan stays active until the end of the current billing period. We’ll switch you to Starter after that.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCancelDisclosure(false);
+                    localStorage.setItem('gl_cancel_disclosure_seen', '1');
+                  }}
+                  className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-sm font-semibold"
+                >
+                  Close
+                </button>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCancelDisclosure(false);
+                  localStorage.setItem('gl_cancel_disclosure_seen', '1');
+                }}
+                className="w-full mt-2 px-4 py-2 rounded-xl bg-[#0f172a] text-white font-bold text-sm hover:bg-slate-800 transition-colors"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
