@@ -35,6 +35,7 @@ import { startGmailOAuth } from '../services/gmailAuth';
 import { subscribePush, saveSubscription, deleteSubscription } from '../lib/pushNotifications';
 import { AppView } from '../types';
 import UpgradeModal from './UpgradeModal';
+import { openCustomerPortal } from '../services/billing';
 
 type SettingsTab = 'profile' | 'integrations' | 'security' | 'notifications';
 
@@ -87,6 +88,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     pipeline_threshold: false
   };
   const [notifPreferences, setNotifPreferences] = useState({ ...notifDefaults });
+  const [portalLoading, setPortalLoading] = useState(false);
   const handleGmailConnect = async () => {
     // Remember to return to Settings/Integrations after OAuth flow
     localStorage.setItem('gridlead_return_view', 'settings');
@@ -341,6 +343,17 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     if (onLogout) onLogout();
   };
 
+  const handleOpenPortal = async () => {
+    setPortalLoading(true);
+    const { url, error } = await openCustomerPortal();
+    setPortalLoading(false);
+    if (error || !url) {
+      setNotification(error || 'Unable to open billing portal.');
+      return;
+    }
+    window.location.href = url;
+  };
+
   const formatDate = (iso?: string) => {
     if (!iso) return 'Unknown';
     const d = new Date(iso);
@@ -538,8 +551,12 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                     <button onClick={() => setShowUpgradeModal(true)} className="px-4 py-2 bg-[#0f172a] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all shadow-sm">
                       Upgrade
                     </button>
-                    <button disabled className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent cursor-not-allowed">
-                      Manage subscription
+                    <button
+                      onClick={handleOpenPortal}
+                      disabled={portalLoading}
+                      className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                    >
+                      {portalLoading ? 'Opening…' : 'Manage subscription'}
                     </button>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, X, Info, Mail, Briefcase } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { startCheckout } from '../services/billing';
 
 interface Plan {
   id: string;
@@ -133,6 +134,8 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
 const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm, currentPlan }) => {
   const [selected, setSelected] = useState<string | null>(null);
   const [stage, setStage] = useState<'select' | 'confirm' | 'waitlist' | 'success'>('select');
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   // mounted: whether to render the modal at all
   const [mounted, setMounted] = useState<boolean>(false);
@@ -220,9 +223,22 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   };
 
   const handleConfirm = () => {
-    // mock confirm then close
-    setStage('success');
-    onConfirm?.(plan.id);
+    if (plan.id === 'agency') {
+      setStage('waitlist');
+      return;
+    }
+    setConfirmError(null);
+    setConfirmLoading(true);
+    void (async () => {
+      const { url, error } = await startCheckout(plan.id as 'studio');
+      setConfirmLoading(false);
+      if (error || !url) {
+        setConfirmError(error || 'Unable to start checkout.');
+        return;
+      }
+      onConfirm?.(plan.id);
+      window.location.href = url;
+    })();
   };
 
   return (
@@ -330,10 +346,15 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                   <button onClick={() => setStage('select')} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                     Back
                   </button>
-                  <button onClick={handleConfirm} className="px-5 py-2.5 rounded-xl bg-[#0f172a] text-white font-bold text-sm shadow-sm hover:bg-slate-800 transition-all">
-                    Continue
+                  <button
+                    onClick={handleConfirm}
+                    disabled={confirmLoading}
+                    className="px-5 py-2.5 rounded-xl bg-[#0f172a] text-white font-bold text-sm shadow-sm hover:bg-slate-800 transition-all disabled:opacity-60"
+                  >
+                    {confirmLoading ? 'Redirecting…' : 'Continue'}
                   </button>
                   <span className="text-[11px] text-slate-400 dark:text-slate-500">No charge is made in this preview.</span>
+                  {confirmError && <span className="text-[11px] text-rose-500">{confirmError}</span>}
                 </div>
               </div>
             )}
