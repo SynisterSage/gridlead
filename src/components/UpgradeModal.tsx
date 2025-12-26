@@ -336,6 +336,24 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, plan.id, visible]);
 
+  // Reset selection/errors when returning to selection stage
+  useEffect(() => {
+    if (stage === 'select') {
+      setSelected(null);
+      setClientSecret(null);
+      setConfirmError(null);
+      setInlineError(null);
+    }
+  }, [stage]);
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (toastMsg) {
+      const t = setTimeout(() => setToastMsg(null), 3200);
+      return () => clearTimeout(t);
+    }
+  }, [toastMsg]);
+
   if (!mounted) return null;
 
   const startClose = (delay = 300) => {
@@ -357,7 +375,6 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
     // No longer triggered; kept for safety if reused elsewhere
     if (stage !== 'confirm') {
       setStage('confirm');
-      setSelected(null);
     }
   };
 
@@ -369,15 +386,16 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            {stage !== 'select' && (
-              <button
-                onClick={() => {
-                  setStage('select');
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              {stage !== 'select' && (
+                <button
+                  onClick={() => {
+                    setStage('select');
                   setClientSecret(null);
                   setConfirmError(null);
                   setInlineError(null);
+                  setSelected(null);
                 }}
                 className="p-2 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
                 aria-label="Back"
@@ -403,7 +421,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
         )}
 
         <div className="mt-4 rounded-lg">
-      <div className="p-4 md:p-6 overflow-y-auto overflow-x-visible max-h-[calc(100vh-140px)] pb-28 pt-1"> 
+      <div className="p-4 md:p-6 overflow-y-auto overflow-x-visible max-h-[calc(100vh-140px)] pb-40 pt-1"> 
         {stage === 'select' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             {PLANS.map(p => (
