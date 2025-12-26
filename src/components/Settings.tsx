@@ -62,7 +62,6 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     const { data: profileRow } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle();
     if (profileRow) {
       setProfileState(profileRow as Profile);
-      setPlanStatusOverride(null);
     }
   };
   const currentProfile = profileState ?? profile ?? null;
@@ -73,8 +72,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     }
     return 'profile';
   });
-  const [planStatusOverride, setPlanStatusOverride] = useState<string | null>(null);
-  const [connectedEmails, setConnectedEmails] = useState<{ email: string; primary: boolean; id?: string; avatar_url?: string | null }[]>([]);
+ const [connectedEmails, setConnectedEmails] = useState<{ email: string; primary: boolean; id?: string; avatar_url?: string | null }[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const { theme, toggleTheme } = useTheme();
@@ -121,6 +119,31 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const billingRowRef = React.useRef<HTMLDivElement | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const upgradeHydratedRef = React.useRef(false);
+  // live profile status updates
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    const setup = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id;
+      if (!uid) return;
+      channel = supabase
+        .channel('profile-plan-status')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${uid}` },
+          (payload) => {
+            if (payload.new) {
+              setProfileState(payload.new as Profile);
+            }
+          },
+        )
+        .subscribe();
+    };
+    void setup();
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
   // Persist upgrade modal open state so tab switches/browser refocus keep it visible
   useEffect(() => {
     const saved = sessionStorage.getItem('gl_upgrade_modal_open');
@@ -144,8 +167,6 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const seatLimit = planLimits.senderLimit;
   const seatsUsed = currentProfile?.sender_seats_used ?? 0;
   const seatsPct = seatLimit ? Math.min(100, Math.round((seatsUsed / (seatLimit || 1)) * 100)) : 0;
-  const effectivePlanStatus = planStatusOverride ?? currentProfile?.plan_status ?? 'inactive';
-  const planStatusLower = (effectivePlanStatus || '').toLowerCase();
   let leadBarColor = 'bg-emerald-500';
   if (leadLimit) {
     if (leadsPct >= 100) leadBarColor = 'bg-rose-500';
@@ -481,7 +502,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       onClick={() => billingRowRef.current?.scrollIntoView({ behavior: 'smooth' })}
                       className="px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
                     >
-                      {getPlanLimits(currentProfile?.plan).label}{effectivePlanStatus ? ` • ${effectivePlanStatus}` : ''}
+                      {getPlanLimits(currentProfile?.plan).label}{currentProfile?.plan_status ? ` • ${currentProfile.plan_status}` : ''}
                     </button>
                   </div>
                   <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
@@ -552,14 +573,14 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   </span>
                   <span
                     className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                      planStatusLower === 'active'
+                      (currentProfile?.plan_status || '').toLowerCase() === 'active'
                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100 dark:border-emerald-800/40'
-                        : planStatusLower === 'canceled'
+                        : (currentProfile?.plan_status || '').toLowerCase() === 'canceled'
                         ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border-rose-100 dark:border-rose-900/40'
                         : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-100 dark:border-amber-900/40'
                     }`}
                   >
-                    {effectivePlanStatus}
+                    {currentProfile?.plan_status ?? 'inactive'}
                   </span>
                 </div>
               </div>
@@ -916,11 +937,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   currentPlan={currentProfile?.plan ?? null}
                   onConfirm={(planId) => {
                     // Optimistically update plan/status locally and refresh
-                    setProfileState(prev => {
-                      const base = prev ?? profile ?? ({} as Profile);
-                      return { ...base, plan: planId, plan_status: 'active' };
-                    });
-                    setPlanStatusOverride('active');
+                    setProfileState(prev => prev ? { ...prev, plan: planId, plan_status: 'active' } : prev);
                     void fetchProfile();
                   }}
                 />
