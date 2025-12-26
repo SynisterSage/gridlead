@@ -111,12 +111,12 @@ async function upsertProfile(
   src: Stripe.Checkout.Session | Stripe.Subscription,
 ) {
   if (!userId) return;
-  const planStatus = deriveStatus(src);
-  const isCanceled = planStatus === "canceled";
+  const derivedStatus = deriveStatus(src);
+  const isCanceled = derivedStatus === "canceled";
   const plan = isCanceled ? "starter" : (mapPriceToPlan(priceId) || mapPlanId(planIdMeta));
-  const planStatus = deriveStatus(src);
   const currentPeriodEnd = isCanceled ? null : getPeriodEnd(src);
   const cancelAtPeriodEnd = isCanceled ? false : getCancelAtPeriodEnd(src);
+  const isAgency = plan === "agency";
 
   await supabase
     .from("profiles")
@@ -124,9 +124,11 @@ async function upsertProfile(
       stripe_customer_id: customerId || null,
       stripe_subscription_id: subscriptionId || null,
       plan,
-      plan_status: planStatus,
+      plan_status: derivedStatus,
       current_period_end: currentPeriodEnd,
       cancel_at_period_end: cancelAtPeriodEnd,
+      agency_waitlist_status: isAgency ? null : undefined,
+      agency_approved: isAgency ? true : undefined,
     })
     .eq("id", userId);
 }

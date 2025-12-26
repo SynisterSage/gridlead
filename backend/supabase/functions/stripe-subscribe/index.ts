@@ -75,20 +75,28 @@ Deno.serve(async (req) => {
 
     if (existingSubId) {
       const existing = await stripe.subscriptions.retrieve(existingSubId, { expand: ["items.data"] });
-      const activeItem = existing.items.data[0];
-      if (!activeItem) {
-        return respondError("No subscription items found to update.", 400);
+
+      // If the existing sub is still incomplete, Stripe won't let us change items; cancel and recreate
+      if (existing.status === "incomplete" || existing.status === "incomplete_expired") {
+        await stripe.subscriptions.cancel(existing.id);
+      } else {
+        const activeItem = existing.items.data[0];
+        if (!activeItem) {
+          return respondError("No subscription items found to update.", 400);
+        }
+        // Update the existing subscription to the new price to avoid double billing
+        subscription = await stripe.subscriptions.update(existing.id, {
+          items: [{ id: activeItem.id, price: priceId }],
+          payment_behavior: "default_incomplete",
+          proration_behavior: "create_prorations",
+          payment_settings: { save_default_payment_method: "on_subscription" },
+          metadata: { user_id: user.id, plan_id: planId },
+          expand: ["latest_invoice.payment_intent"],
+        });
       }
-      // Update the existing subscription to the new price to avoid double billing
-      subscription = await stripe.subscriptions.update(existing.id, {
-        items: [{ id: activeItem.id, price: priceId }],
-        payment_behavior: "default_incomplete",
-        proration_behavior: "create_prorations",
-        payment_settings: { save_default_payment_method: "on_subscription" },
-        metadata: { user_id: user.id, plan_id: planId },
-        expand: ["latest_invoice.payment_intent"],
-      });
-    } else {
+    }
+
+    if (!subscription) {
       // Create subscription in incomplete state to collect payment via Payment Element
       subscription = await stripe.subscriptions.create({
         customer: customerId,

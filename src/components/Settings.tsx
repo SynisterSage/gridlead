@@ -556,18 +556,16 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   )}
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg md:text-xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">{userName || 'Public Profile'}</h3>
-                    <button
-                      onClick={() => billingRowRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                      className="px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
-                    >
-                      {getPlanLimits(currentProfile?.plan).label}{currentProfile?.plan_status ? ` • ${currentProfile.plan_status}` : ''}
-                    </button>
-                  </div>
+                  <h3 className="text-lg md:text-xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">{userName || 'Public Profile'}</h3>
                   <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
                     {currentProfile?.monthly_goal ? `Goal: $${currentProfile.monthly_goal.toLocaleString()}` : 'Goal not set'}
                   </p>
+                  <button
+                    onClick={() => billingRowRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                    className="mt-2 px-3 py-1 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                  >
+                    {getPlanLimits(currentProfile?.plan).label}{currentProfile?.plan_status ? ` • ${currentProfile.plan_status}` : ''}
+                  </button>
                 </div>
                   <div className="shrink-0 pt-4 sm:pt-0">
                   <button 
