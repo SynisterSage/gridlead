@@ -164,12 +164,12 @@ function mapPlanId(planId: string | null | undefined): string | null {
 
 function deriveStatus(src: Stripe.Checkout.Session | Stripe.Subscription): string {
   if ("status" in src && src.status) {
-    // Map Stripe subscription statuses to our plan_status field
-    if (src.status === "active") return "active";
-    if (src.status === "trialing") return "active";
-    if (src.status === "canceled") return "canceled";
-    if (src.status === "incomplete" || src.status === "incomplete_expired" || src.status === "past_due" || src.status === "unpaid") return src.status;
-    return src.status;
+    const status = src.status;
+    // Normalize to our plan_status values
+    if (status === "active" || status === "trialing" || status === "succeeded" || status === "paid" || status === "processing") return "active";
+    if (status === "canceled") return "canceled";
+    if (status === "incomplete" || status === "incomplete_expired" || status === "past_due" || status === "unpaid") return status;
+    return status;
   }
   return "active";
 }

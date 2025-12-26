@@ -129,7 +129,7 @@ const PlanCard: React.FC<{ plan: Plan; selected?: boolean; hovered?: boolean; ac
     onClick={onAction}
     disabled={isActive && !showSelected && isPending && !agencyApproved}
     aria-current={isActive && !showSelected ? true : undefined}
-        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isPending && waitlistPending ? 'bg-transparent text-white border border-slate-400 dark:border-slate-600 cursor-default' : isActive && !showSelected ? 'bg-transparent text-emerald-500 border border-emerald-400 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
+        className={`w-full py-3 rounded-xl font-bold transition-colors duration-150 ${showSelected ? 'bg-emerald-500 text-white' : isPending && waitlistPending ? 'bg-transparent text-white border border-slate-400 dark:border-slate-600 cursor-default' : isActive && !showSelected ? 'bg-transparent text-emerald-500 border border-emerald-500 cursor-default' : 'bg-transparent text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}
       >
     {plan.id === 'agency'
       ? (waitlistPending
@@ -511,6 +511,12 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                 )}
                 {PLANS.map(p => {
                   const isDowngradeTarget = activePlan === 'studio' && p.id === 'starter';
+                  const isAgencyCard = p.id === 'agency';
+                  const cardStatus = isAgencyCard && agencyWaitlistStatus === 'pending'
+                    ? 'pending'
+                    : activePlanStatus;
+                  const cardWaitlistPending = isAgencyCard && agencyWaitlistStatus === 'pending';
+                  const cardWaitlistApproved = isAgencyCard && agencyWaitlistStatus === 'approved';
                   return (
                     <div key={p.id} className="relative h-full" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
                       <PlanCard
@@ -518,10 +524,10 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         selected={p.id === selected}
                         hovered={p.id === hoveredPlan}
                         active={p.id === activePlan}
-                        activeStatus={agencyWaitlistStatus === 'pending' ? 'pending' : activePlanStatus}
+                        activeStatus={cardStatus}
                         agencyApproved={agencyApproved}
-                        waitlistPending={agencyWaitlistStatus === 'pending'}
-                        waitlistApproved={agencyWaitlistStatus === 'approved'}
+                        waitlistPending={cardWaitlistPending}
+                        waitlistApproved={cardWaitlistApproved}
                         isDowngradeTarget={isDowngradeTarget}
                         highlight={justActivated === p.id}
                         onAction={() => {

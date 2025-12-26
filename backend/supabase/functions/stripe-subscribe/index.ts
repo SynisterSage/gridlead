@@ -70,49 +70,44 @@ Deno.serve(async (req) => {
       await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
     }
 
+    // Always cancel any existing subscription to avoid double billing or incomplete update errors
     const existingSubId = profile?.stripe_subscription_id || null;
-    let subscription: Stripe.Subscription | null = null;
-
     if (existingSubId) {
-      const existing = await stripe.subscriptions.retrieve(existingSubId, { expand: ["items.data"] });
-
-      // If the existing sub is still incomplete, Stripe won't let us change items; cancel and recreate
-      if (existing.status === "incomplete" || existing.status === "incomplete_expired") {
-        await stripe.subscriptions.cancel(existing.id);
-      } else {
-        const activeItem = existing.items.data[0];
-        if (!activeItem) {
-          return respondError("No subscription items found to update.", 400);
-        }
-        // Update the existing subscription to the new price to avoid double billing
-        subscription = await stripe.subscriptions.update(existing.id, {
-          items: [{ id: activeItem.id, price: priceId }],
-          payment_behavior: "default_incomplete",
-          proration_behavior: "create_prorations",
-          payment_settings: { save_default_payment_method: "on_subscription" },
-          metadata: { user_id: user.id, plan_id: planId },
-          expand: ["latest_invoice.payment_intent"],
-        });
+      try {
+        await stripe.subscriptions.cancel(existingSubId);
+      } catch (_e) {
+        // ignore cancellation errors; we'll create a fresh sub below
       }
     }
 
-    if (!subscription) {
-      // Create subscription in incomplete state to collect payment via Payment Element
-      subscription = await stripe.subscriptions.create({
-        customer: customerId,
-        items: [{ price: priceId }],
-        payment_behavior: "default_incomplete",
-        payment_settings: { save_default_payment_method: "on_subscription" },
-        metadata: { user_id: user.id, plan_id: planId },
-        expand: ["latest_invoice.payment_intent"],
-      });
-      await supabase.from("profiles").update({ stripe_subscription_id: subscription.id }).eq("id", user.id);
-    }
+    // Create subscription in incomplete state to collect payment via Payment Element
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: priceId }],
+      payment_behavior: "default_incomplete",
+      payment_settings: { save_default_payment_method: "on_subscription" },
+      metadata: { user_id: user.id, plan_id: planId },
+      expand: ["latest_invoice.payment_intent"],
+    });
+    await supabase.from("profiles").update({ stripe_subscription_id: subscription.id }).eq("id", user.id);
 
     const clientSecret = (subscription.latest_invoice as any)?.payment_intent?.client_secret || null;
     if (!clientSecret) {
       return respondError("Unable to create payment intent", 500);
     }
+
+    // Optimistically mark profile with target plan/status until webhook confirms
+    const isAgencyPlan = planId.includes("agency");
+    await supabase
+      .from("profiles")
+      .update({
+        plan: isAgencyPlan ? "agency" : "studio",
+        plan_status: "incomplete",
+        cancel_at_period_end: false,
+        agency_waitlist_status: isAgencyPlan ? null : undefined,
+        agency_approved: isAgencyPlan ? true : undefined,
+      })
+      .eq("id", user.id);
 
     return json({ clientSecret, subscriptionId: subscription.id });
   } catch (err) {
