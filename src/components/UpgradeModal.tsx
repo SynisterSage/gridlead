@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, X, Info, Mail, Briefcase, ChevronLeft } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { startSubscription } from '../services/billing';
+import { startSubscription, openCustomerPortal } from '../services/billing';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
@@ -471,8 +471,15 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
                         highlight={justActivated === p.id}
                         onAction={() => {
                           if (isDowngradeTarget) {
-                            setToastKind('error');
-                            setToastMsg('Open Manage Subscription to schedule the downgrade at period end.');
+                            void (async () => {
+                              const { url, error } = await openCustomerPortal();
+                              if (error || !url) {
+                                setToastKind('error');
+                                setToastMsg(error || 'Unable to open billing portal.');
+                                return;
+                              }
+                              window.location.href = url;
+                            })();
                             return;
                           }
                           if (p.id === 'agency') {
