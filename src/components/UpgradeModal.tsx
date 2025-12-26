@@ -458,29 +458,35 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       <div className="p-4 md:p-6 overflow-y-auto overflow-x-visible max-h-[calc(100vh-140px)] pb-48 pt-1"> 
         {stage === 'select' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-                {PLANS.map(p => (
-                  <div key={p.id} className="relative h-full" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
-                    <PlanCard
-                      plan={p}
-                      selected={p.id === selected}
-                      hovered={p.id === hoveredPlan}
-                      active={p.id === activePlan}
-                      isDowngradeTarget={activePlan === 'studio' && p.id === 'starter'}
-                      highlight={justActivated === p.id}
-                      onAction={() => {
-                        if (p.id === 'agency') {
-                          // open in-modal waitlist mock flow
+                {PLANS.map(p => {
+                  const isDowngradeTarget = activePlan === 'studio' && p.id === 'starter';
+                  return (
+                    <div key={p.id} className="relative h-full" onMouseEnter={() => setHoveredPlan(p.id)} onMouseLeave={() => setHoveredPlan(null)}>
+                      <PlanCard
+                        plan={p}
+                        selected={p.id === selected}
+                        hovered={p.id === hoveredPlan}
+                        active={p.id === activePlan}
+                        isDowngradeTarget={isDowngradeTarget}
+                        highlight={justActivated === p.id}
+                        onAction={() => {
+                          if (isDowngradeTarget) {
+                            setToastKind('error');
+                            setToastMsg('Downgrades happen at period end via Manage Subscription.');
+                            return;
+                          }
+                          if (p.id === 'agency') {
+                            setSelected(p.id);
+                            setStage('waitlist');
+                            return;
+                          }
                           setSelected(p.id);
-                          setStage('waitlist');
-                          return;
-                        }
-                        // choose a plan within the modal and move to confirm stage
-                        setSelected(p.id);
-                        setStage('confirm');
-                      }}
-                    />
-                  </div>
-                ))}
+                          setStage('confirm');
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
             {stage === 'confirm' && (
