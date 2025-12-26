@@ -248,9 +248,6 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
     if (visible) {
       setMounted(true);
-      setStage('select');
-      setSelected(null);
-      void fetchProfileOnce();
       if (!hydratedRef.current) {
         try {
           const raw = sessionStorage.getItem('gl_upgrade_modal_state');
@@ -259,13 +256,24 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
             if (parsed.selected) setSelected(parsed.selected);
             if (parsed.stage) setStage(parsed.stage);
             if (parsed.clientSecret) setClientSecret(parsed.clientSecret);
+          } else {
+            setStage('select');
+            setSelected(null);
           }
         } catch (e) {
-          // ignore corrupted state
+          setStage('select');
+          setSelected(null);
         } finally {
           hydratedRef.current = true;
         }
+      } else {
+        // no stored state to restore, default to select
+        if (!sessionStorage.getItem('gl_upgrade_modal_state')) {
+          setStage('select');
+          setSelected(null);
+        }
       }
+      void fetchProfileOnce();
       window.addEventListener('focus', onFocus);
       requestAnimationFrame(() => requestAnimationFrame(() => setOpenState(true)));
     } else {
