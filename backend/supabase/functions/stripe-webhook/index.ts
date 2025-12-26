@@ -111,10 +111,12 @@ async function upsertProfile(
   src: Stripe.Checkout.Session | Stripe.Subscription,
 ) {
   if (!userId) return;
-  const plan = mapPriceToPlan(priceId) || mapPlanId(planIdMeta);
   const planStatus = deriveStatus(src);
-  const currentPeriodEnd = getPeriodEnd(src);
-  const cancelAtPeriodEnd = getCancelAtPeriodEnd(src);
+  const isCanceled = planStatus === "canceled";
+  const plan = isCanceled ? "starter" : (mapPriceToPlan(priceId) || mapPlanId(planIdMeta));
+  const planStatus = deriveStatus(src);
+  const currentPeriodEnd = isCanceled ? null : getPeriodEnd(src);
+  const cancelAtPeriodEnd = isCanceled ? false : getCancelAtPeriodEnd(src);
 
   await supabase
     .from("profiles")
