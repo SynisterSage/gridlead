@@ -146,8 +146,17 @@ const PaymentStep: React.FC<{
   const elements = useElements();
   const [paying, setPaying] = useState(false);
 
+  if (!stripe || !elements) {
+    return (
+      <div className="space-y-3">
+        <div className="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+        <div className="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">Loading secure payment form…</p>
+      </div>
+    );
+  }
+
   const handlePay = async () => {
-    if (!stripe || !elements) return;
     setPaying(true);
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -178,6 +187,9 @@ const PaymentStep: React.FC<{
       >
         {paying ? 'Processing…' : `Pay and upgrade to ${planTitle}`}
       </button>
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+        Payments are processed securely by Stripe. We never see or store your card details.
+      </p>
     </div>
   );
 };
