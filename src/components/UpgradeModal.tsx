@@ -194,6 +194,8 @@ const PaymentStep: React.FC<{
   );
 };
 
+const UPGRADE_STATE_KEY = 'gl_upgrade_modal_state';
+
 const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm, currentPlan }) => {
   const [selected, setSelected] = useState<string | null>(null);
   const [stage, setStage] = useState<'select' | 'confirm' | 'waitlist' | 'success'>('select');
@@ -250,7 +252,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       setMounted(true);
       if (!hydratedRef.current) {
         try {
-          const raw = sessionStorage.getItem('gl_upgrade_modal_state');
+          const raw = sessionStorage.getItem(UPGRADE_STATE_KEY) || localStorage.getItem(UPGRADE_STATE_KEY);
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed.selected) setSelected(parsed.selected);
@@ -266,12 +268,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
         } finally {
           hydratedRef.current = true;
         }
-      } else {
-        // no stored state to restore, default to select
-        if (!sessionStorage.getItem('gl_upgrade_modal_state')) {
-          setStage('select');
-          setSelected(null);
-        }
+      } else if (!sessionStorage.getItem(UPGRADE_STATE_KEY) && !localStorage.getItem(UPGRADE_STATE_KEY)) {
+        setStage('select');
+        setSelected(null);
       }
       void fetchProfileOnce();
       window.addEventListener('focus', onFocus);
@@ -299,10 +298,12 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   useEffect(() => {
     if (visible) {
       try {
+        const payload = JSON.stringify({ selected, stage, clientSecret });
         sessionStorage.setItem(
-          'gl_upgrade_modal_state',
+          UPGRADE_STATE_KEY,
           JSON.stringify({ selected, stage, clientSecret }),
         );
+        localStorage.setItem(UPGRADE_STATE_KEY, payload);
       } catch (e) {
         // ignore storage failures
       }
@@ -317,7 +318,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const startClose = (delay = 300) => {
     // animate out locally then call onClose after the animation
     setOpenState(false);
-    sessionStorage.removeItem('gl_upgrade_modal_state');
+    sessionStorage.removeItem(UPGRADE_STATE_KEY);
+    localStorage.removeItem(UPGRADE_STATE_KEY);
     setTimeout(() => {
       setMounted(false);
       onClose();
