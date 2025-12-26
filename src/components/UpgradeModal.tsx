@@ -246,6 +246,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistCompany, setWaitlistCompany] = useState('');
   const [waitlistUseCase, setWaitlistUseCase] = useState('scale');
+  const [waitlistName, setWaitlistName] = useState('');
+  const [waitlistAvatar, setWaitlistAvatar] = useState<string | null>(null);
   const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
   const [toastHiding, setToastHiding] = useState(false);
 
@@ -256,7 +258,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
       if (uid) {
         const { data: profileRow, error } = await supabase
           .from('profiles')
-          .select('plan,plan_status,agency_approved')
+          .select('plan,plan_status,agency_approved,agency_name,display_name')
           .eq('id', uid)
           .maybeSingle();
         if (!error && profileRow) {
@@ -265,9 +267,11 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
           setActivePlanStatus(profileRow.plan_status ?? null);
           setAgencyApproved(!!profileRow.agency_approved);
           const email = sessionData.session?.user?.email;
-          if (email && !waitlistEmail) {
-            setWaitlistEmail(email);
-          }
+          if (email && !waitlistEmail) setWaitlistEmail(email);
+          if (profileRow.agency_name && !waitlistCompany) setWaitlistCompany(profileRow.agency_name);
+          if (profileRow.display_name && !waitlistName) setWaitlistName(profileRow.display_name);
+          const avatar = sessionData.session?.user?.user_metadata?.avatar_url || null;
+          if (avatar) setWaitlistAvatar(avatar);
         }
       }
     } catch (e) {
@@ -665,17 +669,22 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ visible, onClose, onConfirm
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <div className="col-span-1 md:col-span-2 space-y-2">
-                    <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Work email</label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                      <input
-                        value={waitlistEmail}
-                        onChange={(e) => setWaitlistEmail(e.target.value)}
-                        placeholder="you@agency.com"
-                        type="email"
-                        aria-label="Work email"
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-12 pr-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10"
-                      />
+                    <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Account email</label>
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60">
+                      {waitlistAvatar ? (
+                        <img src={waitlistAvatar} alt={waitlistName || waitlistEmail} className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-white text-sm font-bold">
+                          {(waitlistName || waitlistEmail || 'U').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className="text-[12px] font-semibold text-slate-900 dark:text-white">{waitlistName || 'Workspace member'}</span>
+                        <span className="text-[12px] text-slate-500 dark:text-slate-300 flex items-center gap-2">
+                          <Mail size={14} className="text-slate-400 dark:text-slate-500" />
+                          {waitlistEmail || 'you@agency.com'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
