@@ -81,6 +81,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Prevent background scroll and show a dim backdrop when mobile menu is open
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const cls = 'overflow-hidden';
+    if (mobileMenuOpen) {
+      document.body.classList.add(cls);
+    } else {
+      document.body.classList.remove(cls);
+    }
+    return () => document.body.classList.remove(cls);
+  }, [mobileMenuOpen]);
+
   const handleDemoSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!demoQuery) return;
@@ -144,41 +156,64 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
         </button>
       </div>
 
-      <button className="md:hidden p-2 text-slate-900 dark:text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+      <button className="md:hidden p-2 text-slate-900 dark:text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle menu">
         {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
       {mobileMenuOpen && (
-        <div className="fixed inset-0 top-[72px] bg-white dark:bg-slate-950 z-40 p-10 flex flex-col gap-8 animate-in fade-in slide-in-from-top-4 duration-300 md:hidden">
-            {['platform', 'pricing'].map(id => (
-              <button 
-                key={id}
-                onClick={() => { setActivePage(id as MarketingPage); setMobileMenuOpen(false); }}
-                className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight text-left capitalize"
-              >
-                {id}
-              </button>
-            ))}
-          <a 
-            href="/privacy.html" 
-            className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight"
+        <>
+          <div
+            className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
             onClick={() => setMobileMenuOpen(false)}
-          >
-            Privacy
-          </a>
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Theme</span>
-            <button onClick={toggleTheme} className="text-slate-900 dark:text-white">
-              {theme === 'light' ? <Moon size={24} /> : <Sun size={24} />}
-            </button>
+          />
+          <div className="fixed inset-0 top-[72px] md:hidden z-50 flex">
+            <div className="ml-auto w-full max-w-sm h-full bg-white/98 dark:bg-slate-950/98 border-l border-slate-200/50 dark:border-slate-800/60 shadow-2xl backdrop-blur-xl p-8 flex flex-col gap-6 animate-in slide-in-from-right duration-300 overflow-y-auto">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Menu</span>
+                <button onClick={() => setMobileMenuOpen(false)} aria-label="Close menu" className="p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex flex-col gap-4">
+                {['platform', 'pricing'].map(id => (
+                  <button 
+                    key={id}
+                    onClick={() => { setActivePage(id as MarketingPage); setMobileMenuOpen(false); }}
+                    className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight text-left capitalize py-2 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors"
+                  >
+                    {id}
+                  </button>
+                ))}
+                <a 
+                  href="/privacy.html" 
+                  className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight py-2 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Privacy
+                </a>
+                <a 
+                  href="/terms.html" 
+                  className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight py-2 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Terms
+                </a>
+              </div>
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Theme</span>
+                <button onClick={toggleTheme} className="text-slate-900 dark:text-white">
+                  {theme === 'light' ? <Moon size={24} /> : <Sun size={24} />}
+                </button>
+              </div>
+              <button 
+                onClick={onGetStarted}
+                className="w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-sm font-bold uppercase tracking-widest mt-2 shadow-lg shadow-slate-900/30 dark:shadow-white/10 active:scale-[0.98] transition-all"
+              >
+                Start Growth
+              </button>
+            </div>
           </div>
-          <button 
-            onClick={onGetStarted}
-            className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-sm font-bold uppercase tracking-widest mt-4"
-          >
-            Start Growth
-          </button>
-        </div>
+        </>
       )}
     </nav>
   );

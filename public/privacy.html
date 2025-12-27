@@ -25,7 +25,7 @@
 <body>
   <div class="card">
     <div class="top-actions">
-      <div class="tag">Last updated: January 2025</div>
+      <div class="tag">Last updated: December 2025</div>
       <a class="btn" href="/">← Back to GridLead</a>
     </div>
     <h1>Privacy Policy</h1>
@@ -37,6 +37,8 @@
       <li>Lead data you create/import (business names, notes, scoring).</li>
       <li>Connected Gmail info (only if you connect it): tokens needed to send/receive outreach, thread/metadata used for replies and sync, status of the connection.</li>
       <li>Product analytics and logs for reliability and abuse prevention.</li>
+      <li>Security metadata: device fingerprints, session IDs, browser/OS info to detect suspicious access and let you manage active sessions.</li>
+      <li>Billing data (if you purchase): name, email, plan, invoice details, and Stripe payment identifiers (we never store full card numbers or CVV).</li>
     </ul>
 
     <h2>How we use data</h2>
@@ -44,13 +46,22 @@
       <li>To operate the app: discovery, scoring, outreach sending, reply tracking, notifications.</li>
       <li>To secure the platform and prevent abuse.</li>
       <li>To provide support and improve features.</li>
+      <li>To process payments and manage subscriptions through Stripe.</li>
     </ul>
 
     <h2>How we store and share</h2>
     <ul>
       <li>Data is stored in Supabase (Postgres) and processed via our Edge Functions.</li>
       <li>Email delivery/notifications may use SendGrid/Resend.</li>
+      <li>Payments are processed by Stripe; card data is tokenized and handled by Stripe under their <a href="https://stripe.com/legal" target="_blank" rel="noopener">Services Agreement</a> and <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</li>
       <li>We do not sell personal data. We only share with service providers needed to run GridLead.</li>
+    </ul>
+
+    <h2>Session security & fingerprints</h2>
+    <ul>
+      <li>We store a device fingerprint and session metadata (UA, last seen) to help you view and revoke active sessions.</li>
+      <li>Revoking a session signs the device out; a fresh login will clear the revoke flag.</li>
+      <li>We use local storage for session fingerprinting and notification state; you can clear it via your browser.</li>
     </ul>
 
     <h2>Gmail integration specifics</h2>
@@ -64,10 +75,11 @@
     <ul>
       <li>Disconnect Gmail and delete lead data from your workspace.</li>
       <li>Contact support to request deletion of your account data.</li>
+      <li>Revoke active sessions from Settings if you see a device you do not recognize.</li>
     </ul>
 
     <h2>Security</h2>
-    <p>We use HTTPS, role-based access, and least-privilege service accounts. Tokens are stored securely; we monitor for abuse.</p>
+    <p>We use HTTPS, role-based access, least-privilege service accounts, per-device sessions/fingerprints, and audit logging. Tokens are stored securely; we monitor for abuse.</p>
 
     <h2>Contact</h2>
     <p>Questions or requests: <a href="mailto:support@gridlead.space">support@gridlead.space</a></p>

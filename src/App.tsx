@@ -290,6 +290,11 @@ const AppContent: React.FC = () => {
         console.warn('Session revoked remotely, signing out');
         await supabase.auth.signOut({ scope: 'local' });
         window.location.replace('/?logged_out=1');
+        return;
+      }
+      if (data?.added) {
+        const ua = shortUserAgent(navigator.userAgent);
+        void addSessionNotification(fp, ua);
       }
     } catch (e: any) {
       const status = e?.status || e?.code;
@@ -300,7 +305,7 @@ const AppContent: React.FC = () => {
         console.warn('session heartbeat failed', e);
       }
     }
-  }, [ensureFingerprint, persistLocalSessionNotifs, session]);
+  }, [ensureFingerprint, persistLocalSessionNotifs, session, addSessionNotification]);
 
   // Heartbeat sessions periodically and on visibility/focus
   useEffect(() => {
