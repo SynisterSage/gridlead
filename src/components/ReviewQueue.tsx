@@ -14,10 +14,13 @@ import {
   Info,
   Activity,
   ArrowLeft,
-  HelpCircle
+  HelpCircle,
+  Loader2,
+  Lightbulb
 } from 'lucide-react';
 import { Lead } from '../types';
 import { runAudit } from '../services/audit';
+import { fetchLeadBrief, LeadBrief } from '../services/brief';
 
 interface ReviewQueueProps {
   leads: Lead[];
@@ -33,6 +36,9 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
   const [auditStep, setAuditStep] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [lastAuditAt, setLastAuditAt] = useState<string | null>(null);
+  const [briefs, setBriefs] = useState<Record<string, LeadBrief | null>>({});
+  const [briefLoading, setBriefLoading] = useState<Record<string, boolean>>({});
+  const [briefError, setBriefError] = useState<Record<string, string | null>>({});
 
   const activeLeads = leads.filter(l => l.status === 'pending');
 
@@ -41,6 +47,38 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
       setSelectedLead(activeLeads[0]);
     }
   }, [activeLeads, selectedLead]);
+
+  useEffect(() => {
+    const currentLead = selectedLead || activeLeads[0];
+    if (!currentLead) return;
+    if (briefs[currentLead.id] || briefLoading[currentLead.id]) return;
+
+    setBriefLoading(prev => ({ ...prev, [currentLead.id]: true }));
+    setBriefError(prev => ({ ...prev, [currentLead.id]: null }));
+
+    const website = currentLead.website && currentLead.website.toLowerCase().includes('no website')
+      ? null
+      : currentLead.website;
+
+    fetchLeadBrief({
+      id: currentLead.id,
+      name: currentLead.name,
+      category: currentLead.category,
+      rating: currentLead.rating,
+      website,
+      notes: currentLead.notes || '',
+    })
+      .then((brief) => {
+        setBriefs(prev => ({ ...prev, [currentLead.id]: brief }));
+      })
+      .catch((err: any) => {
+        setBriefError(prev => ({ ...prev, [currentLead.id]: err?.message || 'Failed to load brief' }));
+      })
+      .finally(() => {
+        setBriefLoading(prev => ({ ...prev, [currentLead.id]: false }));
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLead?.id, selectedLead?.website, selectedLead?.rating, selectedLead?.category, activeLeads.length]);
 
   const handleApprove = () => {
     if (!selectedLead) return;
@@ -139,6 +177,36 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
     (current.notes && current.notes.toLowerCase().includes('performance:'))
   );
   const displayScore = (val: number | undefined) => (isAudited ? (val ?? 0) : 0);
+
+  const currentBrief = current ? briefs[current.id] || null : null;
+  const isBriefLoading = current ? briefLoading[current.id] === true : false;
+  const briefLoadError = current ? briefError[current.id] || null : null;
+
+  const applyPlaybook = (type: 'review' | 'booking') => {
+    if (!current) return;
+    const tag = type === 'review' ? '[Playbook: Review SOS]' : '[Playbook: Booking Leak]';
+    const alreadyTagged = (current.notes || '').includes(tag);
+
+    const opener = currentBrief?.opener || `Quick wins I spotted for ${current.name}.`;
+    const cta = currentBrief?.cta || 'Want me to share a 3-step fix this week?';
+    const subject = type === 'review'
+      ? `Lift ${current.name}'s reviews fast`
+      : `${current.name} booking quick win`;
+
+    const body = type === 'review'
+      ? `${opener}\n\nI can summarize the top complaints and roll out a 30-day recovery checklist. ${cta}`
+      : `${opener}\n\nI can add a clear booking CTA + tracking so you see who’s converting. ${cta}`;
+
+    const nextNotes = alreadyTagged
+      ? current.notes
+      : `${tag} ${current.notes || ''}`.trim();
+
+    onUpdateLead(current.id, {
+      draftSubject: subject,
+      draftBody: body,
+      notes: nextNotes,
+    });
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-8 pt-12 md:pt-20 pb-32 animate-in fade-in duration-700">
@@ -314,6 +382,94 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
 
                 {/* Intelligence Note */}
                 <div className="space-y-4 flex flex-col h-full">
+                  <div className="p-4 md:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-lg">
+                          <Lightbulb size={16} />
+                        </div>
+                        <div>
+                          <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Lead Brief</p>
+                          <p className="text-[11px] font-extrabold text-slate-900 dark:text-white">{current.name}</p>
+                        </div>
+                      </div>
+                      {isBriefLoading && <Loader2 className="animate-spin text-slate-300 dark:text-slate-700" size={16} />}
+                    </div>
+
+                    {briefLoadError && (
+                      <div className="text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-xl p-3">
+                        {briefLoadError}
+                      </div>
+                    )}
+
+                    {!briefLoadError && (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          {(currentBrief?.whyNow || ['Scanning signals...']).map((reason, idx) => (
+                            <span 
+                              key={idx} 
+                              className="px-3 py-1 rounded-full bg-slate-900/5 dark:bg-white/5 text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800"
+                            >
+                              {reason}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-slate-900/50">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Talking Points</p>
+                          <ul className="space-y-1.5">
+                            {(currentBrief?.talkingPoints || ['We’ll add a clear CTA and booking path.', 'Tighten speed and trust signals.']).map((pt, idx) => (
+                              <li key={idx} className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-start gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1" /> {pt}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-slate-900/50 space-y-2">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Suggested opener</p>
+                          <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">{currentBrief?.opener || 'Spotted quick wins—happy to share a 3-step fix this week.'}</p>
+                          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">CTA</p>
+                          <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">{currentBrief?.cta || 'Want me to prioritize the fixes and send a quick plan?'}</p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <button
+                            onClick={() => applyPlaybook('review')}
+                            className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm"
+                          >
+                            <Sparkles size={14} /> Review SOS
+                          </button>
+                          <button
+                            onClick={() => applyPlaybook('booking')}
+                            className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                          >
+                            <Layout size={14} /> Booking Leak
+                          </button>
+                        </div>
+                        {currentBrief && (
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { label: 'SSL', ok: currentBrief.signals.hasSSL },
+                              { label: 'Booking', ok: currentBrief.signals.hasBooking },
+                              { label: 'Pixel', ok: currentBrief.signals.hasPixel },
+                              { label: 'Schema', ok: currentBrief.signals.hasSchema },
+                              { label: 'Contact', ok: currentBrief.signals.hasContact },
+                            ].map((sig) => (
+                              <span
+                                key={sig.label}
+                                className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                                  sig.ok
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50'
+                                    : 'bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800'
+                                }`}
+                              >
+                                {sig.label}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
                     <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Intelligence Brief</h3>
                     <div className="relative group cursor-help">
@@ -332,7 +488,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                   </div>
                   
                   <textarea 
-                    value={current.notes}
+                    value={current.notes || ''}
                     onChange={(e) => onUpdateLead(current.id, { notes: e.target.value })}
                     className="w-full min-h-[160px] bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-5 text-[11px] md:text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-100 transition-all resize-none font-medium leading-relaxed flex-1"
                   />
