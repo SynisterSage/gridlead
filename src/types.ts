@@ -89,7 +89,8 @@ export type NotificationType =
   | 'goal_hit'
   | 'pipeline_threshold'
   | 'weekly'
-  | 'info';
+  | 'info'
+  | 'session';
 
 export interface NotificationItem {
   id: string;

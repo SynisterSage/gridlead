@@ -80,6 +80,7 @@ const AppContent: React.FC = () => {
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = React.useRef<number | null>(null);
   const SESSION_FP_KEY = 'gl_session_fp';
+  const SESSION_SEEN_KEY = 'gl_seen_session_ids';
   const notifChannelRef = React.useRef<RealtimeChannel | null>(null);
   const notifDefaults = {
     leads: true,
@@ -97,6 +98,20 @@ const AppContent: React.FC = () => {
   const lastAgencyStatusRef = React.useRef<string | null>(null);
   const profileChannelRef = React.useRef<RealtimeChannel | null>(null);
   const agencyNotifSentRef = React.useRef<boolean>(false);
+  const sessionSeenRef = React.useRef<Set<string>>(new Set());
+
+  const rememberSessionSeen = useCallback((key: string) => {
+    const set = sessionSeenRef.current;
+    set.add(key);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(SESSION_SEEN_KEY, JSON.stringify(Array.from(set)));
+    }
+  }, []);
+
+  const shortUserAgent = (ua?: string | null) => {
+    if (!ua) return 'New device';
+    return ua.length > 64 ? `${ua.slice(0, 64)}…` : ua;
+  };
 
   const hasNotification = useCallback(
     (type: NotificationItem['type'], predicate?: (n: NotificationItem) => boolean) => {
@@ -117,6 +132,20 @@ const AppContent: React.FC = () => {
     const saved = localStorage.getItem('gridlead_leads');
     if (saved) setLeads(JSON.parse(saved));
     else setLeads(MOCK_LEADS);
+  }, []);
+
+  // Restore seen session ids to avoid duplicate device notifications
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = localStorage.getItem(SESSION_SEEN_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        sessionSeenRef.current = new Set(parsed);
+      } catch (_e) {
+        sessionSeenRef.current = new Set();
+      }
+    }
   }, []);
 
   // Clean up logout query params from URL (logged_out, _ts) for neatness after redirect.
@@ -597,31 +626,33 @@ const AppContent: React.FC = () => {
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
-            (payload) => {
-              const row: any = payload.new;
-              if (row?.meta?.kind === 'agency_approved') {
-                markAgencyApprovedSeen();
-                if (hasSeenAgencyApproved()) return;
-              }
-              if (row.archived_at) return; // new rows should default to inbox; skip if already archived
-              setNotifications(prev => {
-                if (prev.some(n => n.id === row.id)) return prev;
-                const next = [
-                  {
-                    id: row.id,
-                    type: row.type,
-                    title: row.title,
-                    body: row.body,
-                    created_at: row.created_at,
-                    unread: !row.read_at,
-                    archived_at: row.archived_at || null,
-                    meta: row.meta || {},
-                  },
-                  ...prev,
-                ].slice(0, 100);
-                return next;
-              });
+          (payload) => {
+            const row: any = payload.new;
+            if (row?.meta?.kind === 'agency_approved' && hasSeenAgencyApproved()) {
+              return; // already seen; avoid re-showing on refresh
             }
+            if (row.archived_at) return; // new rows should default to inbox; skip if already archived
+            setNotifications(prev => {
+              if (prev.some(n => n.id === row.id)) return prev;
+              const next = [
+                {
+                  id: row.id,
+                  type: row.type,
+                  title: row.title,
+                  body: row.body,
+                  created_at: row.created_at,
+                  unread: !row.read_at,
+                  archived_at: row.archived_at || null,
+                  meta: row.meta || {},
+                },
+                ...prev,
+              ].slice(0, 100);
+              return next;
+            });
+            if (row?.meta?.kind === 'agency_approved') {
+              markAgencyApprovedSeen();
+            }
+          }
         )
         .subscribe();
 
@@ -640,9 +671,8 @@ const AppContent: React.FC = () => {
             } catch (e) {
               return;
             }
-            if (row?.meta?.kind === 'agency_approved') {
-              markAgencyApprovedSeen();
-              if (hasSeenAgencyApproved()) return;
+            if (row?.meta?.kind === 'agency_approved' && hasSeenAgencyApproved()) {
+              return;
             }
             if (row.archived_at) return;
             setNotifications(prev => {
@@ -662,6 +692,9 @@ const AppContent: React.FC = () => {
               ].slice(0, 100);
               return next;
             });
+            if (row?.meta?.kind === 'agency_approved') {
+              markAgencyApprovedSeen();
+            }
           }
         )
         .subscribe();
@@ -688,6 +721,33 @@ const AppContent: React.FC = () => {
       }
     };
   }, [session, fetchNotifications]);
+
+  // Notify when a new device/session is added (once per fingerprint/id)
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase
+      .channel('user-sessions-feed')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'user_sessions', filter: `user_id=eq.${session.user.id}` },
+        (payload) => {
+          const row: any = payload.new;
+          const key = row?.fingerprint || row?.id;
+          if (!key) return;
+          if (sessionSeenRef.current.has(key)) return;
+          rememberSessionSeen(key);
+          const ua = shortUserAgent(row?.user_agent);
+          void createNotification('session', 'New device signed in', ua || 'New device detected', {
+            fingerprint: row?.fingerprint || null,
+            user_agent: row?.user_agent || null,
+          });
+        }
+      )
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [session, createNotification, rememberSessionSeen]);
 
   // If user is logged in but profile is incomplete, keep onboarding visible
   useEffect(() => {

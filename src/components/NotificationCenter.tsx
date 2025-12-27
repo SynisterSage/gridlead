@@ -56,6 +56,7 @@ const iconConfig: Record<
   goal_hit: { Icon: TrendingUp, color: 'text-indigo-300', bg: 'bg-indigo-500/15' },
   pipeline_threshold: { Icon: TrendingDown, color: 'text-amber-300', bg: 'bg-amber-500/15' },
   weekly: { Icon: Info, color: 'text-sky-300', bg: 'bg-sky-500/15' },
+  session: { Icon: CheckCircle2, color: 'text-emerald-300', bg: 'bg-emerald-500/15' },
   info: { Icon: Info, color: 'text-sky-300', bg: 'bg-sky-500/15' },
   default: { Icon: Info, color: 'text-slate-300', bg: 'bg-slate-600/15' },
 };
