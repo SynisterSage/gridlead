@@ -228,6 +228,14 @@ const AppContent: React.FC = () => {
     await supabase.from('notifications').delete().eq('id', id).eq('user_id', uid);
   }, []);
 
+  const deleteAllArchived = useCallback(async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    setArchivedNotifications([]);
+    if (!uid) return;
+    await supabase.from('notifications').delete().eq('user_id', uid).not('archived_at', 'is', null);
+  }, []);
+
   const createNotification = useCallback(
     async (type: NotificationItem['type'], title: string, body: string, meta: Record<string, any> = {}) => {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -1224,6 +1232,7 @@ const AppContent: React.FC = () => {
         onClose={() => setNotificationsOpen(false)}
         onMarkAllRead={markAllNotificationsRead}
         onArchiveAll={archiveAllNotifications}
+        onDeleteAll={deleteAllArchived}
         onArchive={archiveNotification}
         onMarkRead={markNotificationRead}
         onDelete={deleteNotification}

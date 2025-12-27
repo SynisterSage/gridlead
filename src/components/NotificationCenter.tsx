@@ -8,6 +8,7 @@ import {
   Target,
   AlertOctagon,
   Archive as ArchiveIcon,
+  Trash2,
   TrendingUp,
   TrendingDown,
   CheckCircle2,
@@ -24,6 +25,7 @@ interface NotificationCenterProps {
   onClose: () => void;
   onMarkAllRead: () => void;
   onArchiveAll: () => void;
+  onDeleteAll: () => void;
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
   onMarkRead: (id: string) => void;
@@ -68,20 +70,28 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   onClose,
   onMarkAllRead,
   onArchiveAll,
+  onDeleteAll,
   onArchive,
   onDelete,
   onMarkRead,
 }) => {
-  if (!open) return null;
-
-  const list = activeTab === 'inbox' ? inbox : archive;
-  const [animateIn, setAnimateIn] = useState(false);
+  const [visible, setVisible] = useState(open);
+  const [animateIn, setAnimateIn] = useState(open);
 
   useEffect(() => {
-    // Kick off slide/fade animation on mount
-    const id = requestAnimationFrame(() => setAnimateIn(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
+    if (open) {
+      setVisible(true);
+      requestAnimationFrame(() => setAnimateIn(true));
+    } else {
+      setAnimateIn(false);
+      const t = setTimeout(() => setVisible(false), 200);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  if (!visible) return null;
+
+  const list = activeTab === 'inbox' ? inbox : archive;
 
   return (
     <div className="fixed inset-0 z-[90] pointer-events-none">
@@ -100,24 +110,34 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
               <Bell size={16} className="text-amber-400" />
               <div className="flex items-center gap-4 text-xs font-semibold text-slate-300">
                 <button
-                  className={`pb-2 transition-colors ${
+                  className={`relative pb-3 transition-colors ${
                     activeTab === 'inbox'
-                      ? 'text-white border-b-2 border-emerald-400'
-                      : 'text-slate-400 border-b-2 border-transparent hover:text-white/80'
+                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-6px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
+                      : 'text-slate-400 hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('inbox')}
                 >
-                  Inbox ({inbox.length})
+                  <span className="inline-flex items-center gap-2">
+                    <span>Inbox</span>
+                    <span className="bg-slate-800 text-white rounded-full px-2 py-[2px] text-[10px] font-semibold">
+                      {inbox.length}
+                    </span>
+                  </span>
                 </button>
                 <button
-                  className={`pb-2 transition-colors ${
+                  className={`relative pb-3 transition-colors ${
                     activeTab === 'archive'
-                      ? 'text-white border-b-2 border-emerald-400'
-                      : 'text-slate-400 border-b-2 border-transparent hover:text-white/80'
+                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-6px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
+                      : 'text-slate-400 hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('archive')}
                 >
-                  Archive ({archive.length})
+                  <span className="inline-flex items-center gap-2">
+                    <span>Archive</span>
+                    <span className="bg-slate-800 text-white rounded-full px-2 py-[2px] text-[10px] font-semibold">
+                      {archive.length}
+                    </span>
+                  </span>
                 </button>
               </div>
             </div>
@@ -180,9 +200,10 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                                 e.stopPropagation();
                                 onDelete(n.id);
                               }}
-                              className="text-[10px] font-semibold text-rose-300 hover:text-rose-200"
+                              className="text-slate-300 hover:text-white"
+                              aria-label="Delete"
                             >
-                              Delete
+                              <Trash2 size={14} />
                             </button>
                           )}
                         </div>
@@ -206,6 +227,16 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 className="text-slate-300 hover:text-white font-semibold"
               >
                 Archive all
+              </button>
+            </div>
+          )}
+          {activeTab === 'archive' && list.length > 0 && (
+            <div className="border-t border-slate-800 bg-slate-900/80 px-5 py-3 flex items-center justify-end text-[11px]">
+              <button
+                onClick={onDeleteAll}
+                className="text-slate-300 hover:text-white font-semibold"
+              >
+                Delete all
               </button>
             </div>
           )}
