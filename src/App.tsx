@@ -177,9 +177,15 @@ const AppContent: React.FC = () => {
     if (!fp) return;
     const expiresAt = session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null;
     try {
-      await supabase.functions.invoke('session-heartbeat', {
+      const { data, error } = await supabase.functions.invoke('session-heartbeat', {
         body: { fingerprint: fp, userAgent: navigator.userAgent, expiresAt },
       });
+      if (error) throw error;
+      if (data?.revoked) {
+        console.warn('Session revoked remotely, signing out');
+        await supabase.auth.signOut({ scope: 'local' });
+        window.location.replace('/?logged_out=1');
+      }
     } catch (e) {
       console.warn('session heartbeat failed', e);
     }

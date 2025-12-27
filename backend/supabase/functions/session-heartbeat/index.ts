@@ -37,9 +37,29 @@ Deno.serve(async (req) => {
   const fingerprint = body.fingerprint || null;
   if (!fingerprint) return respondError("Missing fingerprint", 400);
 
-  const now = new Date().toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
   const expiresAt = body.expiresAt || null;
   const userAgent = body.userAgent || req.headers.get("User-Agent") || null;
+
+  // Check existing session
+  const { data: existing, error: selErr } = await supabase
+    .from("user_sessions")
+    .select("id, revoked_at, expires_at, user_id")
+    .eq("user_id", user.id)
+    .eq("fingerprint", fingerprint)
+    .maybeSingle();
+
+  if (selErr) {
+    console.error("session-heartbeat select error", selErr);
+  }
+
+  const isExpired = (existing?.expires_at && new Date(existing.expires_at).getTime() < now.getTime());
+  const isRevoked = !!existing?.revoked_at;
+
+  if (isExpired || isRevoked) {
+    return json({ revoked: true });
+  }
 
   const { data, error } = await supabase
     .from("user_sessions")
@@ -47,8 +67,9 @@ Deno.serve(async (req) => {
       user_id: user.id,
       fingerprint,
       user_agent: userAgent,
-      last_seen: now,
+      last_seen: nowIso,
       expires_at: expiresAt,
+      revoked_at: null,
     }, { onConflict: "user_id,fingerprint" })
     .select()
     .maybeSingle();
@@ -58,7 +79,7 @@ Deno.serve(async (req) => {
     return respondError("Failed to update session", 500);
   }
 
-  return json({ ok: true, session: data });
+  return json({ ok: true, session: data, revoked: false });
 });
 
 function json(data: unknown, status = 200) {
