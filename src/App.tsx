@@ -37,6 +37,18 @@ const SAMPLE_NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
+const AGENCY_APPROVED_ACK_KEY = 'gl_agency_approved_notif_seen';
+
+const hasSeenAgencyApproved = () => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(AGENCY_APPROVED_ACK_KEY) === '1';
+};
+
+const markAgencyApprovedSeen = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(AGENCY_APPROVED_ACK_KEY, '1');
+};
+
 const AppContent: React.FC = () => {
   const avgDealSize = 2500;
   const [session, setSession] = useState<Session | null>(null);
@@ -110,6 +122,9 @@ const AppContent: React.FC = () => {
       console.debug('[notif] fetchNotifications', { uid, error, count: data?.length });
       if (!error && data) {
         console.debug('[notif] fetched ids', data.map((n: any) => n.id));
+        if (data.some((n: any) => n?.meta?.kind === 'agency_approved')) {
+          markAgencyApprovedSeen();
+        }
         setNotifications(
           data.map((n: any) => ({
             id: n.id,
@@ -145,7 +160,13 @@ const AppContent: React.FC = () => {
   const deleteNotification = useCallback(async (id: string) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const uid = sessionData.session?.user?.id;
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications(prev => {
+      const target = prev.find(n => n.id === id);
+      if (target?.meta?.kind === 'agency_approved') {
+        markAgencyApprovedSeen();
+      }
+      return prev.filter(n => n.id !== id);
+    });
     if (!uid) return;
     await supabase.from('notifications').delete().eq('id', id).eq('user_id', uid);
   }, []);
@@ -440,6 +461,9 @@ const AppContent: React.FC = () => {
           { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
             (payload) => {
               const row: any = payload.new;
+              if (row?.meta?.kind === 'agency_approved') {
+                markAgencyApprovedSeen();
+              }
               setNotifications(prev => {
                 if (prev.some(n => n.id === row.id)) return prev;
                 const next = [
@@ -474,6 +498,9 @@ const AppContent: React.FC = () => {
               if (row.user_id !== session.user.id) return;
             } catch (e) {
               return;
+            }
+            if (row?.meta?.kind === 'agency_approved') {
+              markAgencyApprovedSeen();
             }
             setNotifications(prev => {
               if (prev.some(n => n.id === row.id)) return prev;
@@ -1020,7 +1047,7 @@ const AppContent: React.FC = () => {
     const currentStatus = profile?.agency_waitlist_status || null;
     const approved = !!profile?.agency_approved || (currentStatus || '').toLowerCase() === 'approved';
     const prev = lastAgencyStatusRef.current;
-    if (approved && prev !== 'approved' && !agencyNotifSentRef.current) {
+    if (approved && prev !== 'approved' && !agencyNotifSentRef.current && !hasSeenAgencyApproved()) {
       lastAgencyStatusRef.current = 'approved';
       agencyNotifSentRef.current = true;
       void (async () => {
@@ -1033,6 +1060,7 @@ const AppContent: React.FC = () => {
             body: 'Your Agency+ request was approved. You can upgrade now.',
             meta: { kind: 'agency_approved' },
           }).select().single();
+          markAgencyApprovedSeen();
           const row = data as any;
           const newNotif = {
             id: row?.id || `${Date.now()}`,

@@ -16,6 +16,30 @@ const stripe = new Stripe(stripeSecret, {
   httpClient: Stripe.createFetchHttpClient(),
 });
 
+// Force a fresh payment method entry by clearing any defaults/saved cards.
+async function clearSavedPaymentMethods(customerId: string | null, subscriptionId?: string | null) {
+  if (!customerId) return;
+  // Clear any default on the customer so Stripe doesn't auto-charge.
+  try {
+    await stripe.customers.update(customerId, { invoice_settings: { default_payment_method: null } });
+  } catch (err) {
+    console.warn("clearSavedPaymentMethods: failed to clear customer invoice_settings.default_payment_method", err);
+  }
+
+  try {
+    const savedCards = await stripe.paymentMethods.list({ customer: customerId, type: "card", limit: 20 });
+    for (const pm of savedCards.data) {
+      try {
+        await stripe.paymentMethods.detach(pm.id);
+      } catch (err) {
+        console.warn("clearSavedPaymentMethods: detach failed", pm.id, err);
+      }
+    }
+  } catch (err) {
+    console.warn("clearSavedPaymentMethods: list failed", err);
+  }
+}
+
 type Payload = {
   planId?: string; // 'studio' | 'agency'
 };
@@ -60,6 +84,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     let customerId = profile?.stripe_customer_id || null;
+    const existingSubId = profile?.stripe_subscription_id || null;
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email || undefined,
@@ -69,32 +94,23 @@ Deno.serve(async (req) => {
       customerId = customer.id;
       await supabase.from("profiles").update({ stripe_customer_id: customerId }).eq("id", user.id);
     }
-
-    const existingSubId = profile?.stripe_subscription_id || null;
+    await clearSavedPaymentMethods(customerId, existingSubId);
     let subscription: Stripe.Subscription | null = null;
 
     if (existingSubId) {
-      const existing = await stripe.subscriptions.retrieve(existingSubId, { expand: ["items.data"] });
-      const status = existing.status;
-      if (status === "incomplete" || status === "incomplete_expired") {
+      try {
+        const existing = await stripe.subscriptions.retrieve(existingSubId, { expand: ["items.data"] });
+        // Always cancel any prior subscription so we force a fresh incomplete subscription with a new PI.
         try {
           await stripe.subscriptions.cancel(existing.id);
         } catch (_e) {
-          /* ignore cancellation errors */
+          /* best-effort; continue */
         }
-      } else {
-        const activeItem = existing.items.data[0];
-        if (!activeItem) {
-          return respondError("No subscription items found to update.", 400);
-        }
-        subscription = await stripe.subscriptions.update(existing.id, {
-          items: [{ id: activeItem.id, price: priceId }],
-          payment_behavior: "default_incomplete",
-          proration_behavior: "create_prorations",
-          payment_settings: { save_default_payment_method: "on_subscription" },
-          metadata: { user_id: user.id, plan_id: planId },
-          expand: ["latest_invoice.payment_intent"],
-        });
+        await supabase.from("profiles").update({ stripe_subscription_id: null }).eq("id", user.id);
+      } catch (err) {
+        console.warn("Failed to reuse existing subscription; creating new one", err);
+        // Clear the bad subscription reference so we can create a new one
+        await supabase.from("profiles").update({ stripe_subscription_id: null }).eq("id", user.id);
       }
     }
 
@@ -104,7 +120,10 @@ Deno.serve(async (req) => {
         customer: customerId,
         items: [{ price: priceId }],
         payment_behavior: "default_incomplete",
-        payment_settings: { save_default_payment_method: "on_subscription" },
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+          payment_method_types: ["card"],
+        },
         metadata: { user_id: user.id, plan_id: planId },
         expand: ["latest_invoice.payment_intent"],
       });
@@ -115,13 +134,8 @@ Deno.serve(async (req) => {
     const latestInvoice = subscription.latest_invoice as any;
     const paymentIntent = latestInvoice?.payment_intent as any;
     const clientSecret = paymentIntent?.client_secret || null;
-    const paymentStatus = paymentIntent?.status || subscription.status;
-    const alreadyPaid =
-      paymentStatus === "succeeded" ||
-      paymentStatus === "processing" ||
-      paymentStatus === "requires_capture" ||
-      subscription.status === "active" ||
-      latestInvoice?.amount_due === 0;
+    const paymentStatus = paymentIntent?.status || null;
+    const alreadyPaid = false;
 
     // Optimistically mark profile with target plan/status until webhook confirms
     const isAgencyPlan = planId.includes("agency");
@@ -129,16 +143,12 @@ Deno.serve(async (req) => {
       .from("profiles")
       .update({
         plan: isAgencyPlan ? "agency" : "studio",
-        plan_status: alreadyPaid ? "active" : "incomplete",
+        plan_status: "incomplete",
         cancel_at_period_end: false,
         agency_waitlist_status: isAgencyPlan ? null : undefined,
         agency_approved: isAgencyPlan ? true : undefined,
       })
       .eq("id", user.id);
-
-    if (alreadyPaid) {
-      return json({ subscriptionId: subscription.id, alreadyPaid: true, paymentStatus });
-    }
 
     if (!clientSecret) {
       return respondError("Unable to create payment intent", 500);
