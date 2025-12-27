@@ -25,6 +25,7 @@ type BriefResult = {
   opener: string;
   cta: string;
   evidence: string[];
+  complaints?: string[];
   signals: {
     htmlFetched?: boolean;
     rating: number | null;
@@ -59,6 +60,7 @@ type BriefResult = {
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const placesApiKey = Deno.env.get("PLACES_API_KEY") || "";
 
 const supabase = supabaseUrl && supabaseServiceRole
   ? createClient(supabaseUrl, supabaseServiceRole, { global: { headers: { "x-client-info": "lead-brief-fn" } } })
@@ -92,7 +94,7 @@ const parseSignals = (html: string) => {
   return { hasBooking, hasPixel, hasSchema, hasContact, hasMap, hasForm, ctaText };
 };
 
-const buildBrief = (lead: LeadInput, signals: BriefResult["signals"]): BriefResult => {
+const buildBrief = (lead: LeadInput, signals: BriefResult["signals"], complaints: string[] = []): BriefResult => {
   const whyNow: string[] = [];
   const talkingPoints: string[] = [];
   const evidence: string[] = [];
@@ -161,7 +163,7 @@ const buildBrief = (lead: LeadInput, signals: BriefResult["signals"]): BriefResu
     ? "Want me to audit your booking flow and share 3 fixes?"
     : "Want a quick booking CTA + tracking live this week?";
 
-  return { whyNow, talkingPoints: talkingPoints.slice(0, 4), opener, cta, evidence: evidence.slice(0, 5), signals };
+  return { whyNow, talkingPoints: talkingPoints.slice(0, 4), opener, cta, evidence: evidence.slice(0, 5), complaints: complaints.slice(0, 3), signals };
 };
 
 serve(async (req) => {
@@ -172,6 +174,8 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const lead: LeadInput = body?.lead || {};
     const url = normalizeUrl(lead.website);
+    let placeId: string | null = null;
+    let complaints: string[] = [];
 
     const signals: BriefResult["signals"] = {
       htmlFetched: false,
@@ -194,11 +198,12 @@ serve(async (req) => {
       try {
         const { data: stored, error } = await supabase
           .from("leads")
-          .select("score_design, score_performance, score_reviews, score_trust, checklist_mobile_optimization, checklist_ssl_certificate, checklist_seo_presence, checklist_conversion_flow, checklist_google_reviews, checklist_render, rating, notes, website")
+          .select("score_design, score_performance, score_reviews, score_trust, checklist_mobile_optimization, checklist_ssl_certificate, checklist_seo_presence, checklist_conversion_flow, checklist_google_reviews, checklist_render, rating, notes, website, place_id")
           .eq("id", lead.id)
           .maybeSingle();
         if (!error && stored) {
           signals.rating = stored.rating ?? signals.rating;
+          placeId = stored.place_id || null;
           signals.auditScore = {
             design: stored.score_design ?? null,
             performance: stored.score_performance ?? null,
@@ -255,7 +260,37 @@ serve(async (req) => {
       }
     }
 
-    const brief = buildBrief(lead, signals);
+    // Try to fetch complaint snippets from Places if available and API key present
+    if (placesApiKey && placeId) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const urlDetails = new URL("https://maps.googleapis.com/maps/api/place/details/json");
+        urlDetails.searchParams.set("place_id", placeId);
+        urlDetails.searchParams.set("fields", "rating,user_ratings_total,reviews");
+        urlDetails.searchParams.set("key", placesApiKey);
+        const res = await fetch(urlDetails.toString(), { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const json = await res.json();
+          const revs = json?.result?.reviews || [];
+          complaints = revs
+            .filter((r: any) => typeof r?.rating === "number" && r.rating <= 3 && r?.text)
+            .slice(0, 3)
+            .map((r: any) => String(r.text).slice(0, 240));
+          if (!signals.reviewsCount && typeof json?.result?.user_ratings_total === "number") {
+            signals.reviewsCount = json.result.user_ratings_total;
+          }
+          if (!signals.rating && typeof json?.result?.rating === "number") {
+            signals.rating = json.result.rating;
+          }
+        }
+      } catch (_e) {
+        // ignore complaints errors
+      }
+    }
+
+    const brief = buildBrief(lead, signals, complaints);
     return new Response(JSON.stringify(brief), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },

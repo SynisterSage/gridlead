@@ -16,6 +16,7 @@ export interface LeadBrief {
   opener: string;
   cta: string;
   evidence?: string[];
+  complaints?: string[];
   signals: {
     htmlFetched?: boolean;
     rating: number | null;

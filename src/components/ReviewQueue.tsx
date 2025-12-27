@@ -397,21 +397,24 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                   </div>
                   {/* Intelligence Notes under audit */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Intelligence Brief</h3>
-                      <div className="relative group cursor-help">
-                        <HelpCircle size={14} className="text-slate-300 dark:text-slate-700 hover:text-blue-500 transition-colors" />
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
-                          <div className="flex items-center gap-2 mb-2 text-emerald-400">
-                            <Sparkles size={12} fill="currentColor" />
-                            <span className="text-[9px] font-black uppercase tracking-widest">Personalization Hook</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Intelligence Brief</h3>
+                        <div className="relative group cursor-help">
+                          <HelpCircle size={14} className="text-slate-300 dark:text-slate-700 hover:text-blue-500 transition-colors" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
+                            <div className="flex items-center gap-2 mb-2 text-emerald-400">
+                              <Sparkles size={12} fill="currentColor" />
+                              <span className="text-[9px] font-black uppercase tracking-widest">Personalization Hook</span>
+                            </div>
+                            <p className="text-[10px] font-medium leading-relaxed opacity-80">
+                              Specific weaknesses identified here result in higher conversion rates.
+                            </p>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
                           </div>
-                          <p className="text-[10px] font-medium leading-relaxed opacity-80">
-                            Specific weaknesses identified here result in higher conversion rates.
-                          </p>
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
                         </div>
                       </div>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Tip: run Review SOS / Booking Leak for auto-fill</span>
                     </div>
                     <textarea 
                       value={current.notes || ''}
@@ -484,6 +487,18 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                                   </li>
                                 ))}
                               </ul>
+                              {currentBrief?.complaints && currentBrief.complaints.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Complaints</p>
+                                  <ul className="space-y-1">
+                                    {currentBrief.complaints.map((ev, idx) => (
+                                      <li key={idx} className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-1" /> {ev}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                               {currentBrief?.evidence && currentBrief.evidence.length > 0 && (
                                 <div className="mt-3">
                                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Evidence</p>
