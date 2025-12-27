@@ -98,6 +98,9 @@ const buildBrief = (lead: LeadInput, signals: BriefResult["signals"], complaints
   const whyNow: string[] = [];
   const talkingPoints: string[] = [];
   const evidence: string[] = [];
+  const hasAuditData =
+    !!signals.auditChecklist &&
+    Object.values(signals.auditChecklist).some((v) => v !== undefined && v !== null);
 
   if (signals.rating !== null && signals.rating < 3.5) {
     whyNow.push("Rating is below 3.5 — reputation risk.");
@@ -140,14 +143,14 @@ const buildBrief = (lead: LeadInput, signals: BriefResult["signals"], complaints
     evidence.push(`HTTP status ${signals.statusCode}`);
     talkingPoints.push("Check hosting/SSL setup to ensure the site is reachable.");
   }
-  if (signals.auditScore?.performance && (signals.auditScore.performance < 60)) {
+  if (hasAuditData && signals.auditScore?.performance && (signals.auditScore.performance < 60)) {
     whyNow.push("Performance score is low.");
     evidence.push(`Audit performance score ${signals.auditScore.performance}`);
   }
-  if (signals.auditChecklist?.mobileOptimization === false) {
+  if (hasAuditData && signals.auditChecklist?.mobileOptimization === false) {
     evidence.push("Audit: mobile optimization missing");
   }
-  if (signals.auditChecklist?.conversionFlow === false) {
+  if (hasAuditData && signals.auditChecklist?.conversionFlow === false) {
     evidence.push("Audit: conversion/contact flow weak");
   }
   if (complaints.length > 0) {

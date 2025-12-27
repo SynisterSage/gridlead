@@ -40,6 +40,18 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
   const [briefLoading, setBriefLoading] = useState<Record<string, boolean>>({});
   const [briefError, setBriefError] = useState<Record<string, string | null>>({});
 
+  const normalizeWebsite = (raw?: string | null) => {
+    if (!raw) return null;
+    let w = raw.trim();
+    // Fix common malformed "http//" (missing colon)
+    if (/^http\/\//i.test(w)) w = `http://${w.slice(6)}`;
+    // If proper protocol present, keep it
+    if (/^https?:\/\//i.test(w)) return w;
+    // Remove leading slashes
+    w = w.replace(/^\/+/, '');
+    return `https://${w}`;
+  };
+
   const activeLeads = leads.filter(l => l.status === 'pending');
 
   useEffect(() => {
@@ -111,9 +123,10 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
   };
 
   const handleDeepAnalysis = async () => {
-    if (!selectedLead || !selectedLead.website || selectedLead.website.toLowerCase().includes('no website')) {
-      setAuditStep('No website detected');
-      setTimeout(() => setAuditStep(null), 1200);
+    const normalized = normalizeWebsite(selectedLead?.website);
+    if (!selectedLead || !normalized) {
+      setAuditStep('Add a website to run audit');
+      setTimeout(() => setAuditStep(null), 1500);
       console.warn('Deep audit skipped: no website', { leadId: selectedLead?.id, website: selectedLead?.website });
       return;
     }
@@ -128,7 +141,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
     scheduleStep('Step 3/4: Scoring design & speed…', 1800);
     scheduleStep('Step 4/4: Updating record…', 2600);
     try {
-      const audit = await runAudit(`https://${selectedLead.website.replace(/^https?:\/\//, '')}`, selectedLead.id, selectedLead.placeId);
+      const audit = await runAudit(normalized, selectedLead.id, selectedLead.placeId);
       const updates: Partial<Lead> = {
         score: {
           design: audit.scores.design,
@@ -200,6 +213,25 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
     const points = currentBrief?.talkingPoints || [];
     const evidence = currentBrief?.evidence || [];
     const complaints = currentBrief?.complaints || [];
+    const auditSignals = currentBrief?.signals?.auditScore || {};
+    const auditChecklist = currentBrief?.signals?.auditChecklist || {};
+    const auditLines: string[] = [];
+    if (isAudited && auditSignals.performance !== undefined && auditSignals.performance !== null) {
+      auditLines.push(`Audit performance: ${auditSignals.performance}`);
+    }
+    if (isAudited && auditSignals.design !== undefined && auditSignals.design !== null) {
+      auditLines.push(`Audit design: ${auditSignals.design}`);
+    }
+    if (isAudited && auditSignals.trust !== undefined && auditSignals.trust !== null) {
+      auditLines.push(`Audit trust: ${auditSignals.trust}`);
+    }
+    if (isAudited && auditSignals.reviews !== undefined && auditSignals.reviews !== null) {
+      auditLines.push(`Audit reviews: ${auditSignals.reviews}`);
+    }
+    if (isAudited && auditChecklist.mobileOptimization === false) auditLines.push('Audit: mobile optimization missing');
+    if (isAudited && auditChecklist.conversionFlow === false) auditLines.push('Audit: conversion/contact flow weak');
+    if (isAudited && auditChecklist.seoPresence === false) auditLines.push('Audit: SEO presence weak');
+    if (isAudited && auditChecklist.sslCertificate === false) auditLines.push('Audit: SSL missing');
 
     const summaryLines: string[] = [];
     if (points.length) {
@@ -213,6 +245,10 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
     if (complaints.length) {
       summaryLines.push('Complaints:');
       complaints.slice(0, 3).forEach(c => summaryLines.push(`- ${c}`));
+    }
+    if (auditLines.length) {
+      summaryLines.push('Audit Highlights:');
+      auditLines.forEach(a => summaryLines.push(`- ${a}`));
     }
     summaryLines.push(`Opener: ${opener}`);
     summaryLines.push(`CTA: ${cta}`);
@@ -239,7 +275,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
         
         {/* Success Toast */}
         {approvedSuccess && (
-          <div className="absolute top-4 right-4 z-50">
+          <div className="fixed top-4 right-4 z-[70]">
             <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-top fade-in duration-300">
               <div className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-300">
                 <CheckCircle size={18} />
@@ -297,7 +333,12 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-3 md:gap-4">
-                    <a href={`https://${current.website}`} target="_blank" className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 text-[10px] md:text-[11px] font-bold underline underline-offset-4 truncate max-w-[200px]">
+                    <a
+                      href={normalizeWebsite(current.website) || '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 text-[10px] md:text-[11px] font-bold underline underline-offset-4 truncate max-w-[200px]"
+                    >
                       {current.website} <ExternalLink size={10} />
                     </a>
                     <span className="hidden md:block w-1 h-1 bg-slate-200 dark:bg-slate-800 rounded-full" />
@@ -353,9 +394,9 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 items-start">
                 {/* Audit Checklist + Intelligence */}
-                <div className="space-y-6 flex flex-col h-full">
+                <div className="space-y-4 flex flex-col h-full">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                     <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Site Audit</h3>
                     <div className="relative group">
@@ -431,7 +472,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
 
                 {/* Lead Brief card column */}
                 <div className="space-y-4 flex flex-col h-full">
-                  <div className="p-4 md:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-4">
+                  <div className="p-4 md:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-4 min-h-[240px]">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow-lg">
@@ -487,8 +528,8 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                                   ? currentBrief.talkingPoints
                                   : ['We’ll add a clear CTA and booking path.', 'Tighten speed and trust signals.']
                                 ).map((pt, idx) => (
-                                  <li key={idx} className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-start gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1" /> {pt}
+                                  <li key={idx} className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-start gap-2 leading-relaxed">
+                                    <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-emerald-400" /> {pt}
                                   </li>
                                 ))}
                               </ul>
@@ -497,8 +538,8 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Complaints</p>
                                   <ul className="space-y-1">
                                     {currentBrief.complaints.map((ev, idx) => (
-                                      <li key={idx} className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-1" /> {ev}
+                                      <li key={idx} className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2 leading-relaxed">
+                                        <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-rose-400" /> {ev}
                                       </li>
                                     ))}
                                   </ul>
@@ -509,10 +550,51 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Evidence</p>
                                   <ul className="space-y-1">
                                     {currentBrief.evidence.map((ev, idx) => (
-                                      <li key={idx} className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1" /> {ev}
+                                      <li key={idx} className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2 leading-relaxed">
+                                        <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-blue-400" /> {ev}
                                       </li>
                                     ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {currentBrief?.signals?.auditScore && isAudited && (
+                                <div className="mt-3">
+                                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Audit Highlights</p>
+                                  <ul className="space-y-1">
+                                    {['performance','design','trust','reviews'].map((key) => {
+                                      const val = (currentBrief.signals.auditScore as any)[key];
+                                      if (val === undefined || val === null) return null;
+                                      return (
+                                        <li key={key} className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2 leading-relaxed">
+                                          <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                          {`Audit ${key}: ${val}`}
+                                        </li>
+                                      );
+                                    })}
+                                    {currentBrief.signals.auditChecklist?.mobileOptimization === false && (
+                                      <li className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2 leading-relaxed">
+                                        <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                        Audit: mobile optimization missing
+                                      </li>
+                                    )}
+                                    {currentBrief.signals.auditChecklist?.conversionFlow === false && (
+                                      <li className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2 leading-relaxed">
+                                        <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                        Audit: conversion/contact flow weak
+                                      </li>
+                                    )}
+                                    {currentBrief.signals.auditChecklist?.seoPresence === false && (
+                                      <li className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2 leading-relaxed">
+                                        <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                        Audit: SEO presence weak
+                                      </li>
+                                    )}
+                                    {currentBrief.signals.auditChecklist?.sslCertificate === false && (
+                                      <li className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2 leading-relaxed">
+                                        <span className="flex-shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                        Audit: SSL missing
+                                      </li>
+                                    )}
                                   </ul>
                                 </div>
                               )}
@@ -526,34 +608,21 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                 </div>
               </div>
 
-              {/* Opener + CTA + Playbooks full width */}
-              <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 md:p-5 bg-slate-50 dark:bg-slate-950 space-y-3 mt-6 lg:col-span-2">
+              {/* Send Brief full width */}
+              <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 md:p-6 bg-slate-50 dark:bg-slate-950 space-y-3 mt-6 lg:col-span-2">
                 <div className="flex items-center gap-2">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Suggested opener</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Send Brief</p>
                 </div>
-                {isBriefLoading ? (
-                  <div className="space-y-2">
-                    <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                    <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse w-3/4" />
-                    <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse w-1/2" />
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">
-                      {currentBrief?.opener || 'Spotted quick wins—happy to share a 3-step fix this week.'}
-                    </p>
-                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">CTA</p>
-                    <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-                      {currentBrief?.cta || 'Want me to prioritize the fixes and send a quick plan?'}
-                    </p>
-                  </>
-                )}
+                <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">
+                  Push talking points, evidence, complaints, and audit highlights into Intelligence. Outreach can generate the opener/CTA with that context.
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     onClick={applyBriefToIntelligence}
                     className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm col-span-1 sm:col-span-2"
+                    disabled={isBriefLoading}
                   >
-                    <Sparkles size={14} /> Send brief to Intelligence
+                    <Sparkles size={14} /> {isBriefLoading ? 'Preparing brief...' : 'Send brief to Intelligence'}
                   </button>
                 </div>
                 {currentBrief && (
