@@ -111,7 +111,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 <button
                   className={`relative pb-3 transition-colors ${
                     activeTab === 'inbox'
-                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-1px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
+                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-2px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
                       : 'text-slate-400 hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('inbox')}
@@ -126,7 +126,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 <button
                   className={`relative pb-3 transition-colors ${
                     activeTab === 'archive'
-                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-1px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
+                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-2px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
                       : 'text-slate-400 hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('archive')}
@@ -173,36 +173,36 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                       <cfg.Icon size={18} />
                     </div>
                     <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-bold truncate">{n.title}</p>
                           <p className="text-[11px] text-slate-400 leading-snug">{n.body}</p>
-                          <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-500">
-                            <span>{timeAgo(n.created_at)}</span>
-                            {activeTab === 'inbox' ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onArchive(n.id);
-                                }}
-                                className="text-slate-300 hover:text-white"
-                                aria-label="Archive"
-                              >
-                                <ArchiveIcon size={14} />
-                              </button>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDelete(n.id);
-                                }}
-                                className="text-slate-300 hover:text-white"
-                                aria-label="Delete"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </div>
+                          <p className="text-[11px] text-slate-500 mt-1">{timeAgo(n.created_at)}</p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {activeTab === 'inbox' ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onArchive(n.id);
+                              }}
+                              className="text-slate-300 hover:text-white"
+                              aria-label="Archive"
+                            >
+                              <ArchiveIcon size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(n.id);
+                              }}
+                              className="text-slate-300 hover:text-white"
+                              aria-label="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
