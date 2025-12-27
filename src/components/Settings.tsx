@@ -97,6 +97,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const SESSION_FP_KEY = 'gl_session_fp';
+  const SESSION_SEEN_KEY = 'gl_seen_session_ids';
   const notifDefaults = { 
     leads: true, 
     replies: true, 
@@ -511,6 +512,10 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
         const now = new Date().toISOString();
         await supabase.from('user_sessions').update({ revoked_at: now }).eq('user_id', uid);
         await purgeStaleSessions();
+        // Clear seen cache so future device logins can notify again
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(SESSION_SEEN_KEY);
+        }
       }
       setSessions([]);
     } catch (_e) {
@@ -613,6 +618,19 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       // Best-effort: also clear any other rows with same fingerprint
       if (fp && uid) {
         await supabase.from('user_sessions').update({ revoked_at: now }).eq('user_id', uid).eq('fingerprint', fp);
+      }
+      // Allow future notifications for this fingerprint by clearing seen cache entry
+      if (typeof window !== 'undefined' && fp) {
+        try {
+          const raw = localStorage.getItem(SESSION_SEEN_KEY);
+          if (raw) {
+            const set = new Set<string>(JSON.parse(raw));
+            set.delete(fp);
+            localStorage.setItem(SESSION_SEEN_KEY, JSON.stringify(Array.from(set)));
+          }
+        } catch (_e) {
+          /* ignore */
+        }
       }
       await purgeStaleSessions();
       await loadSessions();
