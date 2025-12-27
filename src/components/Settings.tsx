@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   User,
   Mail,
@@ -90,6 +90,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const [pwdError, setPwdError] = useState<string | null>(null);
   const [pwdSaving, setPwdSaving] = useState(false);
   const [sessionInfo, setSessionInfo] = useState<{ lastSignIn?: string; expiresAt?: number } | null>(null);
+  const [sessions, setSessions] = useState<Array<{ id: string; user_agent: string | null; last_seen: string | null; created_at: string | null; expires_at: string | null }>>([]);
   const [pushStatus, setPushStatus] = useState<'idle' | 'granted' | 'denied' | 'error'>('idle');
   const [pushError, setPushError] = useState<string | null>(null);
   const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
@@ -108,6 +109,30 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const [notifPreferences, setNotifPreferences] = useState({ ...notifDefaults });
   const [portalLoading, setPortalLoading] = useState(false);
   const REOPEN_UPGRADE_KEY = 'gridlead_reopen_upgrade';
+  const loadSessions = useCallback(async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    if (!uid) return;
+    const { data, error } = await supabase
+      .from('user_sessions')
+      .select('id,user_agent,last_seen,created_at,expires_at')
+      .order('last_seen', { ascending: false })
+      .limit(20);
+    if (!error && data) {
+      setSessions(
+        data.map((s: any) => ({
+          id: s.id,
+          user_agent: s.user_agent || 'Unknown device',
+          last_seen: s.last_seen,
+          created_at: s.created_at,
+          expires_at: s.expires_at,
+        }))
+      );
+    }
+  }, []);
+  useEffect(() => {
+    void loadSessions();
+  }, [loadSessions]);
   const handleGmailConnect = async () => {
     // Remember to return to Settings/Integrations after OAuth flow
     localStorage.setItem('gridlead_return_view', 'settings');
@@ -908,6 +933,30 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                       Sign out all
                     </button>
                   </div>
+                  {sessions.length > 0 && (
+                    <div className="space-y-3">
+                      {sessions.map((s) => (
+                        <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50/30 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-xl">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-center text-slate-900 dark:text-white border border-slate-100 dark:border-slate-700 shadow-sm">
+                              <Monitor size={12} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-[#0f172a] dark:text-white truncate max-w-[200px]">{s.user_agent}</p>
+                              <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                                Last seen: {formatDate(s.last_seen || undefined)}
+                              </p>
+                              {s.expires_at && (
+                                <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                                  Expires: {formatDate(s.expires_at || undefined)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

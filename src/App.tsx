@@ -79,6 +79,7 @@ const AppContent: React.FC = () => {
   const [notificationTab, setNotificationTab] = useState<'inbox' | 'archive'>('inbox');
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = React.useRef<number | null>(null);
+  const SESSION_FP_KEY = 'gl_session_fp';
   const notifChannelRef = React.useRef<RealtimeChannel | null>(null);
   const notifDefaults = {
     leads: true,
@@ -117,6 +118,65 @@ const AppContent: React.FC = () => {
     if (saved) setLeads(JSON.parse(saved));
     else setLeads(MOCK_LEADS);
   }, []);
+
+  // Clean up logout query params from URL (logged_out, _ts) for neatness after redirect.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('logged_out') || url.searchParams.has('_ts')) {
+      url.searchParams.delete('logged_out');
+      url.searchParams.delete('_ts');
+      const clean = url.pathname + (url.search ? `?${url.searchParams.toString()}` : '') + url.hash;
+      window.history.replaceState({}, document.title, clean);
+    }
+  }, []);
+
+  const ensureFingerprint = useCallback((): string | null => {
+    if (typeof window === 'undefined') return null;
+    const existing = localStorage.getItem(SESSION_FP_KEY);
+    if (existing) return existing;
+    const fp = crypto.randomUUID();
+    localStorage.setItem(SESSION_FP_KEY, fp);
+    return fp;
+  }, []);
+
+  const sendSessionHeartbeat = useCallback(async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData.session;
+    if (!session) return;
+    const fp = ensureFingerprint();
+    if (!fp) return;
+    const expiresAt = session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null;
+    try {
+      await supabase.functions.invoke('session-heartbeat', {
+        body: { fingerprint: fp, userAgent: navigator.userAgent, expiresAt },
+      });
+    } catch (e) {
+      console.warn('session heartbeat failed', e);
+    }
+  }, [ensureFingerprint]);
+
+  // Heartbeat sessions periodically and on visibility/focus
+  useEffect(() => {
+    let interval: number | null = null;
+    const kick = () => void sendSessionHeartbeat();
+    if (session) {
+      kick();
+      interval = window.setInterval(kick, 5 * 60 * 1000);
+      const onFocus = () => kick();
+      const onVisible = () => document.visibilityState === 'visible' && kick();
+      window.addEventListener('focus', onFocus);
+      document.addEventListener('visibilitychange', onVisible);
+      return () => {
+        if (interval) window.clearInterval(interval);
+        window.removeEventListener('focus', onFocus);
+        document.removeEventListener('visibilitychange', onVisible);
+      };
+    }
+    return () => {
+      if (interval) window.clearInterval(interval);
+    };
+  }, [session, sendSessionHeartbeat]);
 
   useEffect(() => {
     localStorage.setItem('gridlead_leads', JSON.stringify(leads));
