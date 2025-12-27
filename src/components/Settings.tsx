@@ -117,7 +117,10 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     if (!uid) return;
     const { data, error } = await supabase
       .from('user_sessions')
-      .select('id,user_agent,last_seen,created_at,expires_at,fingerprint')
+      .select('id,user_agent,last_seen,created_at,expires_at,fingerprint,revoked_at')
+      .eq('user_id', uid)
+      .is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString())
       .order('last_seen', { ascending: false })
       .limit(20);
     if (!error && data) {
@@ -489,6 +492,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       if (uid) {
         await supabase.from('user_sessions').delete().eq('user_id', uid);
       }
+      setSessions([]);
     } catch (_e) {
       /* non-blocking */
     }
@@ -569,6 +573,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
         await handleGlobalSignOut();
         return;
       }
+      setSessions(prev => prev.filter(s => s.id !== id));
       await supabase.from('user_sessions').delete().eq('id', id);
       await loadSessions();
     } catch (e) {
@@ -976,40 +981,42 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                         const descriptor = deviceDescriptor(s.user_agent);
                         const DeviceIcon = descriptor.icon;
                         return (
-                          <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50/30 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-xl">
-                            <div className="flex items-center gap-3 pr-2">
+                          <div key={s.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-3 bg-slate-50/30 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-xl">
+                            <div className="flex items-center gap-3 pr-0 md:pr-2 w-full md:w-auto">
                               <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-center text-slate-900 dark:text-white border border-slate-100 dark:border-slate-700 shadow-sm">
                                 <DeviceIcon size={14} />
                               </div>
                               <div>
-                                <p className="text-sm font-bold text-[#0f172a] dark:text-white truncate max-w-[220px]">
+                                <p className="text-sm font-bold text-[#0f172a] dark:text-white truncate max-w-[240px] md:max-w-[220px]">
                                   {isCurrent ? 'This device' : descriptor.label}
                                 </p>
                                 {s.user_agent && (
-                                  <p className="text-[10px] font-semibold text-slate-400 truncate max-w-[260px]">
+                                  <p className="text-[10px] font-semibold text-slate-400 truncate max-w-[260px] md:max-w-[240px]">
                                     {s.user_agent}
                                   </p>
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <div className="text-right space-y-0.5">
-                                <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                            <div className="flex items-center gap-3 w-full md:w-auto">
+                              <div className="text-left md:text-right space-y-0.5 flex-1">
+                                <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest truncate">
                                   Last seen: {formatDate(s.last_seen || undefined)}
                                 </p>
                                 {s.expires_at && (
-                                  <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
+                                  <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest truncate">
                                     Expires: {formatDate(s.expires_at || undefined)}
                                   </p>
                                 )}
                               </div>
-                              <button
-                                onClick={() => handleSignOutSession(s.id, isCurrent)}
-                                className="h-9 w-9 rounded-lg bg-slate-900/60 dark:bg-slate-700/60 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 flex items-center justify-center transition-colors"
-                                aria-label="Revoke session"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              {!isCurrent && (
+                                <button
+                                  onClick={() => handleSignOutSession(s.id, isCurrent)}
+                                  className="h-9 w-9 rounded-lg bg-slate-900/60 dark:bg-slate-700/60 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 flex items-center justify-center transition-colors flex-shrink-0"
+                                  aria-label="Revoke session"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
