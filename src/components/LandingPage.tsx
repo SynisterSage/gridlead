@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Send, BarChart3, ArrowRight, CheckCircle2, Globe, Shield, Activity, Users, Star, Layout, MousePointer2, Sparkles, Server, Cpu, Globe2, Menu, X, Rocket, Briefcase, Eye, ShieldCheck, Gauge, Sun, Moon } from 'lucide-react';
+import { Search, Send, BarChart3, ArrowRight, CheckCircle2, Globe, Shield, Activity, Users, Star, Layout, MousePointer2, Sparkles, Server, Cpu, Globe2, Menu, X, Rocket, Briefcase, Eye, ShieldCheck, Gauge, Sun, Moon, Download } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
+import { usePwaInstall } from '../lib/usePwaInstall';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -51,6 +52,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
   const [isDemoScanning, setIsDemoScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{name: string, score: number, issues: string[]} | null>(null);
   const { theme, toggleTheme } = useTheme();
+  const { canPrompt, installed, supportsSw, promptInstall } = usePwaInstall();
+  const [installMessage, setInstallMessage] = useState<string | null>(null);
   
   const featureSectionRef = useRef<HTMLDivElement>(null);
   const scoreLeftReveal = useReveal();
@@ -109,6 +112,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
       });
       featureSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 1800);
+  };
+
+  const handleInstallClick = async () => {
+    const res = await promptInstall();
+    if (res.outcome === 'accepted') {
+      setInstallMessage('Installing… Check your Dock/Taskbar for the GridLead app.');
+      return;
+    }
+    if (res.outcome === 'dismissed') {
+      setInstallMessage('Install dismissed. You can reopen the prompt from your browser menu.');
+      return;
+    }
+    setInstallMessage('Use your browser menu to “Install app” / “Add to Dock”.');
   };
 
   const Nav = () => (
@@ -238,6 +254,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
             <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 font-medium max-w-2xl mb-12">
               GridLead finds sites with design or performance gaps, scores intent, and drafts outreach, so your shop spends more time shipping.
             </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
+              <button 
+                onClick={onGetStarted}
+                className="px-7 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-slate-900/10 dark:shadow-white/10 hover:bg-slate-800 dark:hover:bg-slate-200 transition-all active:scale-[0.98]"
+              >
+                Start Growth
+              </button>
+              <button
+                onClick={handleInstallClick}
+                disabled={installed || (!canPrompt && !supportsSw)}
+                className="px-6 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 bg-white/70 dark:bg-slate-900/70 hover:bg-white dark:hover:bg-slate-800 transition-all flex items-center gap-2 active:scale-[0.98] disabled:opacity-60"
+              >
+                <Download size={14} />
+                {installed ? 'Installed' : 'Install app'}
+              </button>
+            </div>
+            {installMessage && (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mb-6">{installMessage}</p>
+            )}
 
             <form onSubmit={handleDemoSearch} className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2 md:p-3 rounded-2xl md:rounded-[2rem] shadow-2xl mb-12 flex flex-col sm:flex-row gap-2">
               <input 

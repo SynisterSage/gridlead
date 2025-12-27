@@ -164,13 +164,38 @@ const buildBrief = (lead: LeadInput, signals: BriefResult["signals"], complaints
     talkingPoints.push("Tidy the hero, add a clear CTA, and tighten load time.");
   }
 
-  const topReason = whyNow[0] || "Quick wins available";
+  const topReason = (whyNow[0] || "Quick wins available").toLowerCase();
   const name = lead.name || "your site";
-  const complaintLine = complaints.length ? `I also noticed a recent review mentioning "${complaints[0].slice(0, 80)}".` : "";
-  const opener = `Took a look at ${name} — ${topReason.toLowerCase()}. ${complaintLine}`.trim();
-  const cta = signals.hasBooking
-    ? "Want me to tune your booking flow and share 3 quick fixes?"
-    : "Want a booking CTA + tracking live this week so you see who’s ready to book?";
+  const complaintLine = complaints.length ? `I saw a recent review: "${complaints[0].slice(0, 80)}".` : "";
+
+  const openerVariants: string[] = [
+    `I checked out ${name} and ${topReason}. ${complaintLine}`.trim(),
+    `Visited ${name}; noticed ${topReason}. ${complaintLine}`.trim(),
+    `${name} caught my eye and I noticed ${topReason}. ${complaintLine}`.trim(),
+  ];
+
+  const ctaVariants: string[] = signals.hasBooking
+    ? [
+        "Want me to tune the booking flow and share 3 quick fixes?",
+        "If helpful, I can tighten your booking path and show results this week.",
+      ]
+    : [
+        "Want me to add a clear booking CTA and tracking this week?",
+        "Happy to wire up a simple booking flow so you see who is ready to schedule.",
+      ];
+
+  const perfVariants = [
+    "I can tighten load time and trim heavy assets without changing your brand.",
+    "If you’d like, I can speed things up and keep the look you already have.",
+  ];
+
+  let opener = openerVariants[0];
+  if (!complaintLine && openerVariants.length > 1) opener = openerVariants[1];
+  if (!complaintLine && topReason.includes("performance")) opener = openerVariants[2] || opener;
+
+  let cta = ctaVariants[0];
+  if (ctaVariants.length > 1 && Math.random() > 0.5) cta = ctaVariants[1];
+  if (topReason.includes("performance") && Math.random() > 0.5) cta = perfVariants[Math.floor(Math.random() * perfVariants.length)];
 
   return { whyNow, talkingPoints: talkingPoints.slice(0, 4), opener, cta, evidence: evidence.slice(0, 5), complaints: complaints.slice(0, 3), signals };
 };

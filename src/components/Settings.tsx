@@ -29,6 +29,7 @@ import {
   Sun,
   Info,
   X,
+  Download,
 } from 'lucide-react';
 import { useTheme } from '../ThemeContext';
 import { getPlanLimits } from '../lib/planLimits';
@@ -39,8 +40,9 @@ import { subscribePush, saveSubscription, deleteSubscription } from '../lib/push
 import { AppView } from '../types';
 import UpgradeModal from './UpgradeModal';
 import { openCustomerPortal } from '../services/billing';
+import { usePwaInstall } from '../lib/usePwaInstall';
 
-type SettingsTab = 'profile' | 'integrations' | 'security' | 'notifications';
+type SettingsTab = 'profile' | 'integrations' | 'security' | 'notifications' | 'desktop';
 
 interface SettingsProps {
   onLogout?: () => void;
@@ -98,6 +100,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const SESSION_FP_KEY = 'gl_session_fp';
   const SESSION_SEEN_KEY = 'gl_seen_session_ids';
+  const { canPrompt: canPromptPwa, installed: pwaInstalled, supportsSw: supportsPwa, promptInstall: promptPwaInstall } = usePwaInstall();
+  const [pwaMessage, setPwaMessage] = useState<string | null>(null);
   const notifDefaults = { 
     leads: true, 
     replies: true, 
@@ -475,6 +479,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     { id: 'integrations' as SettingsTab, label: 'Integrations', icon: Zap },
     { id: 'security' as SettingsTab, label: 'Security', icon: Shield },
     { id: 'notifications' as SettingsTab, label: 'Notifications', icon: Bell },
+    { id: 'desktop' as SettingsTab, label: 'Desktop App', icon: Download },
   ];
 
   const handlePasswordChange = async () => {
@@ -638,6 +643,19 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       console.warn('Failed to revoke session', e);
     }
   }, [loadSessions, sessions, handleGlobalSignOut, purgeStaleSessions]);
+
+  const handlePwaInstall = async () => {
+    const res = await promptPwaInstall();
+    if (res.outcome === 'accepted') {
+      setPwaMessage('Installing… check your Dock/Taskbar for GridLead.');
+      return;
+    }
+    if (res.outcome === 'dismissed') {
+      setPwaMessage('Install dismissed. You can re-open the prompt from your browser menu.');
+      return;
+    }
+    setPwaMessage('Use your browser menu to “Install app” / “Add to Dock”.');
+  };
 
   // Realtime listener to keep sessions in sync (deletes/inserts/updates)
   useEffect(() => {
@@ -1164,6 +1182,68 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                 </div>
               </section>
             </div>
+          </div>
+        );
+      case 'desktop':
+        return (
+          <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
+            <section className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-6 md:p-10 shadow-sm space-y-8">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-900 dark:text-white border border-slate-100 dark:border-slate-700">
+                    <Download size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-[#0f172a] dark:text-white tracking-tight">GridLead Desktop</h3>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Install to Dock/Taskbar</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                    {pwaInstalled ? 'Installed' : 'Not installed'}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 border border-blue-100 dark:border-blue-900/40">
+                    PWA
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Install GridLead as a desktop app for a cleaner window, a Dock/Taskbar icon, and faster re-opens. Works on Chrome/Edge (macOS/Windows) and Safari “Add to Dock” on macOS/iOS.
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <button
+                      onClick={handlePwaInstall}
+                      disabled={pwaInstalled || (!canPromptPwa && !supportsPwa)}
+                      className="w-full sm:w-auto px-5 h-11 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 dark:shadow-white/10 active:scale-[0.99] disabled:opacity-60"
+                    >
+                      <Download size={14} />
+                      {pwaInstalled ? 'Installed' : 'Install app'}
+                    </button>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {pwaInstalled ? 'Already running in standalone.' : canPromptPwa ? 'Install prompt will open in your browser.' : 'If the prompt does not appear, use your browser menu → Install app/Add to Dock.'}
+                    </div>
+                  </div>
+                  {pwaMessage && (
+                    <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                      {pwaMessage}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/40 space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Browser steps</p>
+                  <ul className="space-y-2 text-[12px] text-slate-700 dark:text-slate-200 font-semibold">
+                    <li>• Chrome/Edge: Menu → Install app.</li>
+                    <li>• Safari (macOS): Share → Add to Dock.</li>
+                    <li>• Safari (iOS): Share → Add to Home Screen.</li>
+                    <li>• After install: open from Dock/Taskbar for a standalone window.</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
           </div>
         );
       default:
