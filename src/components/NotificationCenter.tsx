@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Bell,
   X,
@@ -13,8 +13,7 @@ import {
   TrendingDown,
   CheckCircle2,
 } from 'lucide-react';
-import { NotificationItem } from '../types';
-import { useEffect, useState } from 'react';
+import type { NotificationItem } from '../types';
 
 interface NotificationCenterProps {
   open: boolean;
@@ -112,12 +111,12 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 <button
                   className={`relative pb-3 transition-colors ${
                     activeTab === 'inbox'
-                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-6px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
+                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-1px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
                       : 'text-slate-400 hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('inbox')}
                 >
-                  <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex items-center gap-2 align-middle">
                     <span>Inbox</span>
                     <span className="bg-slate-800 text-white rounded-full px-2 py-[2px] text-[10px] font-semibold">
                       {inbox.length}
@@ -127,7 +126,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 <button
                   className={`relative pb-3 transition-colors ${
                     activeTab === 'archive'
-                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-6px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
+                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-1px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
                       : 'text-slate-400 hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('archive')}
@@ -144,7 +143,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={onClose}
-                className="h-8 w-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300"
+                className="h-8 w-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition-transform duration-150 hover:rotate-90"
               >
                 <X size={14} />
               </button>
@@ -176,36 +175,34 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-sm font-bold truncate">
-                            {n.title}
-                          </p>
+                          <p className="text-sm font-bold truncate">{n.title}</p>
                           <p className="text-[11px] text-slate-400 leading-snug">{n.body}</p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1 text-[11px] text-slate-400">
-                          <span>{timeAgo(n.created_at)}</span>
-                          {activeTab === 'inbox' ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onArchive(n.id);
-                              }}
-                              className="text-slate-300 hover:text-white"
-                              aria-label="Archive"
-                            >
-                              <ArchiveIcon size={14} />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDelete(n.id);
-                              }}
-                              className="text-slate-300 hover:text-white"
-                              aria-label="Delete"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
+                          <div className="flex items-center gap-3 mt-1 text-[11px] text-slate-500">
+                            <span>{timeAgo(n.created_at)}</span>
+                            {activeTab === 'inbox' ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onArchive(n.id);
+                                }}
+                                className="text-slate-300 hover:text-white"
+                                aria-label="Archive"
+                              >
+                                <ArchiveIcon size={14} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDelete(n.id);
+                                }}
+                                className="text-slate-300 hover:text-white"
+                                aria-label="Delete"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
