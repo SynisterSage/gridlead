@@ -86,18 +86,19 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
   const handleApprove = () => {
     if (!selectedLead) return;
     setIsApproving(true);
-    
-    setTimeout(() => {
+
+    const finish = () => {
       onUpdateLead(selectedLead.id, { status: 'approved' });
       setIsApproving(false);
       setApprovedSuccess(true);
-      
       setTimeout(() => {
         setApprovedSuccess(false);
         setSelectedLead(null);
         setMobileView('list');
       }, 1500);
-    }, 600);
+    };
+
+    setTimeout(finish, 400);
   };
 
   const handleDelete = (id: string) => {
@@ -236,13 +237,18 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
 
       <div className="flex border border-slate-200 dark:border-slate-800 rounded-[2rem] md:rounded-[2.5rem] overflow-hidden bg-white dark:bg-slate-950 shadow-xl shadow-slate-200/50 dark:shadow-black/50 min-h-[500px] md:h-[680px] relative ring-1 ring-slate-100/50 dark:ring-slate-800/50">
         
-        {/* Success Overlay */}
+        {/* Success Toast */}
         {approvedSuccess && (
-          <div className="absolute inset-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
-            <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 mb-4 border border-blue-100 dark:border-blue-900/50">
-              <CheckCircle size={28} />
+          <div className="absolute top-4 right-4 z-50">
+            <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-800 animate-in slide-in-from-top fade-in duration-300">
+              <div className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-300">
+                <CheckCircle size={18} />
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Approved</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">Lead moved forward</p>
+              </div>
             </div>
-            <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Lead Approved</h3>
           </div>
         )}
 
@@ -547,7 +553,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                     onClick={applyBriefToIntelligence}
                     className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm col-span-1 sm:col-span-2"
                   >
-                    <Sparkles size={14} /> Send brief to Intelligence & Outreach
+                    <Sparkles size={14} /> Send brief to Intelligence
                   </button>
                 </div>
                 {currentBrief && (
