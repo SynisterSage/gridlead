@@ -163,13 +163,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
       {mobileMenuOpen && (
         <>
           <div
-            className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
+            className="fixed inset-0 top-[72px] bg-slate-900/60 dark:bg-black/70 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
             onClick={() => setMobileMenuOpen(false)}
           />
           <div className="fixed inset-0 top-[72px] md:hidden z-50 flex">
-            <div className="ml-auto w-full max-w-sm h-full bg-white/98 dark:bg-slate-950/98 border-l border-slate-200/50 dark:border-slate-800/60 shadow-2xl backdrop-blur-xl p-8 flex flex-col gap-6 animate-in slide-in-from-right duration-300 overflow-y-auto">
+            <div className="ml-auto w-full max-w-sm h-full bg-white/98 dark:bg-slate-950/98 border-l border-slate-200/60 dark:border-slate-800/70 shadow-2xl backdrop-blur-xl p-8 flex flex-col gap-6 animate-in slide-in-from-right duration-300 overflow-y-auto">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Menu</span>
+                <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Menu</span>
                 <button onClick={() => setMobileMenuOpen(false)} aria-label="Close menu" className="p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
                   <X size={20} />
                 </button>
@@ -179,21 +179,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
                   <button 
                     key={id}
                     onClick={() => { setActivePage(id as MarketingPage); setMobileMenuOpen(false); }}
-                    className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight text-left capitalize py-2 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors"
+                    className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight text-left capitalize py-2 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors"
                   >
                     {id}
                   </button>
                 ))}
                 <a 
                   href="/privacy.html" 
-                  className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight py-2 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors"
+                  className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight py-2 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Privacy
                 </a>
                 <a 
                   href="/terms.html" 
-                  className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight py-2 rounded-xl hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors"
+                  className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight py-2 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Terms
