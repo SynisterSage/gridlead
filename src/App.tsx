@@ -277,14 +277,28 @@ const AppContent: React.FC = () => {
         body: { fingerprint: fp, userAgent: navigator.userAgent, expiresAt },
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (error) throw error;
+      if (error) {
+        const status = (error as any)?.status || (error as any)?.code;
+        if (status === 401) {
+          await supabase.auth.signOut({ scope: 'local' });
+          window.location.replace('/?logged_out=1');
+          return;
+        }
+        throw error;
+      }
       if (data?.revoked) {
         console.warn('Session revoked remotely, signing out');
         await supabase.auth.signOut({ scope: 'local' });
         window.location.replace('/?logged_out=1');
       }
-    } catch (e) {
-      console.warn('session heartbeat failed', e);
+    } catch (e: any) {
+      const status = e?.status || e?.code;
+      if (status === 401) {
+        await supabase.auth.signOut({ scope: 'local' });
+        window.location.replace('/?logged_out=1');
+      } else {
+        console.warn('session heartbeat failed', e);
+      }
     }
   }, [ensureFingerprint, persistLocalSessionNotifs, session]);
 
