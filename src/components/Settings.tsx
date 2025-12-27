@@ -111,6 +111,10 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const [notifPreferences, setNotifPreferences] = useState({ ...notifDefaults });
   const [portalLoading, setPortalLoading] = useState(false);
   const REOPEN_UPGRADE_KEY = 'gridlead_reopen_upgrade';
+  const currentFingerprint = React.useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(SESSION_FP_KEY);
+  }, []);
   const loadSessions = useCallback(async () => {
     const { data: sessionData } = await supabase.auth.getSession();
     const uid = sessionData.session?.user?.id;
@@ -140,10 +144,19 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
           created_at: s.created_at,
           expires_at: s.expires_at,
           fingerprint: s.fingerprint || null,
-        }));
+        }))
+        .sort((a, b) => {
+          const aCurrent = currentFingerprint && a.fingerprint === currentFingerprint;
+          const bCurrent = currentFingerprint && b.fingerprint === currentFingerprint;
+          if (aCurrent && !bCurrent) return -1;
+          if (!aCurrent && bCurrent) return 1;
+          const aTime = a.last_seen ? new Date(a.last_seen).getTime() : 0;
+          const bTime = b.last_seen ? new Date(b.last_seen).getTime() : 0;
+          return bTime - aTime;
+        });
       setSessions(mapped);
     }
-  }, []);
+  }, [currentFingerprint]);
   useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
@@ -546,11 +559,6 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     return d.toLocaleString();
   };
 
-  const currentFingerprint = React.useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(SESSION_FP_KEY);
-  }, []);
-
   const deviceDescriptor = (ua: string | null) => {
     const raw = (ua || '').toLowerCase();
     const isIphone = raw.includes('iphone');
@@ -574,11 +582,43 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
         return;
       }
       setSessions(prev => prev.filter(s => s.id !== id));
-      await supabase.from('user_sessions').delete().eq('id', id);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id;
+      const target = sessions.find(s => s.id === id);
+      const fp = target?.fingerprint || id;
+      const query = supabase.from('user_sessions').delete().eq('id', id);
+      if (uid) query.eq('user_id', uid);
+      await query;
+      // Best-effort: also clear any other rows with same fingerprint
+      if (fp && uid) {
+        await supabase.from('user_sessions').delete().eq('user_id', uid).eq('fingerprint', fp);
+      }
       await loadSessions();
     } catch (e) {
       console.warn('Failed to revoke session', e);
     }
+  }, [loadSessions, sessions, handleGlobalSignOut]);
+
+  // Realtime listener to keep sessions in sync (deletes/inserts/updates)
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    const setup = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id;
+      if (!uid) return;
+      channel = supabase
+        .channel('user-sessions-ui')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'user_sessions', filter: `user_id=eq.${uid}` },
+          () => void loadSessions()
+        )
+        .subscribe();
+    };
+    void setup();
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [loadSessions]);
 
   const handleToggleNotif = async (key: keyof typeof notifPreferences) => {
