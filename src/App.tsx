@@ -866,7 +866,7 @@ const AppContent: React.FC = () => {
     return () => {
       channel.unsubscribe();
     };
-  }, [session, createNotification, rememberSessionSeen]);
+  }, [session, addSessionNotification]);
 
   // Fallback: on load, inspect recent sessions and emit notifications for unseen ones
   useEffect(() => {
