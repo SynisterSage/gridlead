@@ -109,14 +109,14 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
               <Bell size={16} className="text-amber-400" />
               <div className="flex items-center gap-4 text-xs font-semibold text-slate-300">
                 <button
-                  className={`relative pb-3 transition-colors ${
+                  className={`relative pb-4 transition-colors ${
                     activeTab === 'inbox'
-                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-2px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
+                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-0 after:h-[2px] after:bg-emerald-400 after:rounded-full'
                       : 'text-slate-400 hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('inbox')}
                 >
-                  <span className="inline-flex items-center gap-2 align-middle">
+                  <span className="inline-flex items-center gap-2 align-middle translate-y-[2px]">
                     <span>Inbox</span>
                     <span className="bg-slate-800 text-white rounded-full px-2 py-[2px] text-[10px] font-semibold">
                       {inbox.length}
@@ -124,14 +124,14 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   </span>
                 </button>
                 <button
-                  className={`relative pb-3 transition-colors ${
+                  className={`relative pb-4 transition-colors ${
                     activeTab === 'archive'
-                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-[-2px] after:h-[2px] after:bg-emerald-400 after:rounded-full'
+                      ? 'text-white after:absolute after:left-0 after:right-0 after:bottom-0 after:h-[2px] after:bg-emerald-400 after:rounded-full'
                       : 'text-slate-400 hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('archive')}
                 >
-                  <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex items-center gap-2 translate-y-[2px]">
                     <span>Archive</span>
                     <span className="bg-slate-800 text-white rounded-full px-2 py-[2px] text-[10px] font-semibold">
                       {archive.length}
