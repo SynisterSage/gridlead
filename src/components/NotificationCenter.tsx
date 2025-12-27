@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { NotificationItem } from '../types';
+import { useEffect, useState } from 'react';
 
 interface NotificationCenterProps {
   open: boolean;
@@ -74,34 +75,45 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   if (!open) return null;
 
   const list = activeTab === 'inbox' ? inbox : archive;
+  const [animateIn, setAnimateIn] = useState(false);
+
+  useEffect(() => {
+    // Kick off slide/fade animation on mount
+    const id = requestAnimationFrame(() => setAnimateIn(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[90] pointer-events-none">
       <div
-        className="absolute inset-0 bg-slate-900/40 pointer-events-auto z-[80]"
+        className="absolute inset-0 bg-slate-900/30 pointer-events-auto z-[80]"
         onClick={onClose}
       />
-      <div className="pointer-events-auto absolute top-6 right-6 w-full max-w-md px-2 sm:px-4 animate-in fade-in slide-in-from-right-6 duration-200">
+      <div
+        className={`pointer-events-auto absolute top-6 right-6 w-full max-w-md px-2 sm:px-4 z-[95] transition-all duration-200 ease-out transform ${
+          animateIn ? 'translate-x-0 opacity-100' : 'translate-x-4 opacity-0'
+        }`}
+      >
         <div className="rounded-3xl bg-slate-950 text-white border border-slate-800/80 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.65)] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
-            <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.2em]">
+            <div className="flex items-center gap-3 text-sm font-semibold">
               <Bell size={16} className="text-amber-400" />
-              <div className="flex items-center gap-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <div className="flex items-center gap-4 text-xs font-semibold text-slate-300">
                 <button
-                  className={`pb-1 border-b-2 transition-colors ${
+                  className={`pb-2 transition-colors ${
                     activeTab === 'inbox'
-                      ? 'border-white text-white'
-                      : 'border-transparent hover:text-white/80'
+                      ? 'text-white border-b-2 border-emerald-400'
+                      : 'text-slate-400 border-b-2 border-transparent hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('inbox')}
                 >
                   Inbox ({inbox.length})
                 </button>
                 <button
-                  className={`pb-1 border-b-2 transition-colors ${
+                  className={`pb-2 transition-colors ${
                     activeTab === 'archive'
-                      ? 'border-white text-white'
-                      : 'border-transparent hover:text-white/80'
+                      ? 'text-white border-b-2 border-emerald-400'
+                      : 'text-slate-400 border-b-2 border-transparent hover:text-white/80'
                   }`}
                   onClick={() => onTabChange('archive')}
                 >
@@ -123,7 +135,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
             {list.length === 0 ? (
               <div className="p-8 text-center text-slate-500 flex flex-col items-center gap-2">
                 <CheckCircle2 size={24} className="text-slate-600" />
-                <p className="text-xs font-semibold uppercase tracking-[0.2em]">
+                <p className="text-xs font-semibold">
                   {activeTab === 'archive' ? 'No archived items' : 'All caught up'}
                 </p>
               </div>
@@ -157,9 +169,10 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                                 e.stopPropagation();
                                 onArchive(n.id);
                               }}
-                              className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-200"
+                              className="text-slate-300 hover:text-white"
+                              aria-label="Archive"
                             >
-                              Archive
+                              <ArchiveIcon size={14} />
                             </button>
                           ) : (
                             <button
@@ -167,7 +180,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                                 e.stopPropagation();
                                 onDelete(n.id);
                               }}
-                              className="text-[10px] font-black uppercase tracking-widest text-rose-300 hover:text-rose-200"
+                              className="text-[10px] font-semibold text-rose-300 hover:text-rose-200"
                             >
                               Delete
                             </button>
@@ -181,7 +194,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
             )}
           </div>
           {activeTab === 'inbox' && list.length > 0 && (
-            <div className="border-t border-slate-800 bg-slate-900/80 px-5 py-3 flex items-center justify-between text-[11px] uppercase tracking-[0.2em]">
+            <div className="border-t border-slate-800 bg-slate-900/80 px-5 py-3 flex items-center justify-between text-[11px]">
               <button
                 onClick={onMarkAllRead}
                 className="text-slate-300 hover:text-white font-semibold"
@@ -190,9 +203,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
               </button>
               <button
                 onClick={onArchiveAll}
-                className="text-slate-300 hover:text-white font-semibold inline-flex items-center gap-1"
+                className="text-slate-300 hover:text-white font-semibold"
               >
-                <ArchiveIcon size={14} />
                 Archive all
               </button>
             </div>
