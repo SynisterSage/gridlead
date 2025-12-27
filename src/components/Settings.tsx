@@ -129,12 +129,17 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       .limit(20);
     if (!error && data) {
       const seen = new Set<string>();
+      const now = Date.now();
+      const staleCutoff = now - 30 * 60 * 1000; // 30 minutes
       const mapped = data
         .filter((s: any) => {
           if (s.fingerprint) {
             if (seen.has(s.fingerprint)) return false;
             seen.add(s.fingerprint);
           }
+          // hide stale sessions that haven't heartbeated recently
+          const lastSeenTs = s.last_seen ? new Date(s.last_seen).getTime() : 0;
+          if (lastSeenTs && lastSeenTs < staleCutoff) return false;
           return true;
         })
         .map((s: any) => ({

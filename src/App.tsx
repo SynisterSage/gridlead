@@ -113,6 +113,40 @@ const AppContent: React.FC = () => {
     return ua.length > 64 ? `${ua.slice(0, 64)}…` : ua;
   };
 
+  const addSessionNotification = useCallback(async (fingerprint: string, ua: string | null) => {
+    if (!session) return;
+    try {
+      const insert = await supabase.from('notifications').insert({
+        user_id: session.user.id,
+        type: 'session',
+        title: 'New device signed in',
+        body: ua || 'New device detected',
+        meta: { fingerprint, user_agent: ua },
+        channel: 'in_app',
+      }).select().maybeSingle();
+      const created = insert?.data as any;
+      if (created) {
+        setNotifications(prev => {
+          if (prev.some(n => n.id === created.id)) return prev;
+          const item: NotificationItem = {
+            id: created.id,
+            type: created.type,
+            title: created.title,
+            body: created.body,
+            created_at: created.created_at,
+            unread: !created.read_at,
+            archived_at: created.archived_at || null,
+            meta: created.meta || {},
+          };
+          return [item, ...prev].slice(0, 100);
+        });
+        rememberSessionSeen(fingerprint);
+      }
+    } catch (e) {
+      console.warn('Failed to insert session notification', e);
+    }
+  }, [session, rememberSessionSeen]);
+
   const hasNotification = useCallback(
     (type: NotificationItem['type'], predicate?: (n: NotificationItem) => boolean) => {
       return notifications.some(n => n.type === type && (!predicate || predicate(n)));
@@ -176,9 +210,12 @@ const AppContent: React.FC = () => {
     const fp = ensureFingerprint();
     if (!fp) return;
     const expiresAt = session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null;
+    const accessToken = session.access_token;
+    if (!accessToken) return;
     try {
       const { data, error } = await supabase.functions.invoke('session-heartbeat', {
         body: { fingerprint: fp, userAgent: navigator.userAgent, expiresAt },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (error) throw error;
       if (data?.revoked) {
@@ -741,12 +778,8 @@ const AppContent: React.FC = () => {
           const key = row?.fingerprint || row?.id;
           if (!key) return;
           if (sessionSeenRef.current.has(key)) return;
-          rememberSessionSeen(key);
           const ua = shortUserAgent(row?.user_agent);
-          void createNotification('session', 'New device signed in', ua || 'New device detected', {
-            fingerprint: row?.fingerprint || null,
-            user_agent: row?.user_agent || null,
-          });
+          void addSessionNotification(key, ua || null);
         }
       )
       .subscribe();
@@ -769,16 +802,12 @@ const AppContent: React.FC = () => {
       data.forEach((row: any) => {
         const key = row?.fingerprint || row?.id;
         if (!key || sessionSeenRef.current.has(key)) return;
-        rememberSessionSeen(key);
         const ua = shortUserAgent(row?.user_agent);
-        void createNotification('session', 'New device signed in', ua || 'New device detected', {
-          fingerprint: row?.fingerprint || null,
-          user_agent: row?.user_agent || null,
-        });
+        void addSessionNotification(key, ua || null);
       });
     };
     void syncRecentSessions();
-  }, [session, createNotification, rememberSessionSeen]);
+  }, [session, addSessionNotification]);
 
   // If user is logged in but profile is incomplete, keep onboarding visible
   useEffect(() => {
