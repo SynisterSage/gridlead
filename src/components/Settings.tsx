@@ -102,6 +102,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
   const SESSION_SEEN_KEY = 'gl_seen_session_ids';
   const { canPrompt: canPromptPwa, installed: pwaInstalled, supportsSw: supportsPwa, promptInstall: promptPwaInstall } = usePwaInstall();
   const [pwaMessage, setPwaMessage] = useState<string | null>(null);
+  const [showPwaHelp, setShowPwaHelp] = useState(false);
   const notifDefaults = { 
     leads: true, 
     replies: true, 
@@ -648,13 +649,16 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     const res = await promptPwaInstall();
     if (res.outcome === 'accepted') {
       setPwaMessage('Installing… check your Dock/Taskbar for GridLead.');
+      setShowPwaHelp(false);
       return;
     }
     if (res.outcome === 'dismissed') {
       setPwaMessage('Install dismissed. You can re-open the prompt from your browser menu.');
+      setShowPwaHelp(true);
       return;
     }
     setPwaMessage('Use your browser menu to “Install app” / “Add to Dock”.');
+    setShowPwaHelp(true);
   };
 
   // Realtime listener to keep sessions in sync (deletes/inserts/updates)
@@ -1229,6 +1233,16 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                   {pwaMessage && (
                     <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                       {pwaMessage}
+                    </div>
+                  )}
+                  {showPwaHelp && (
+                    <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl p-3 space-y-1">
+                      <div className="font-black uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">Manual steps</div>
+                      <ul className="space-y-1">
+                        <li>• Chrome/Edge: Menu → “Install app”.</li>
+                        <li>• Safari (macOS): Share → “Add to Dock”.</li>
+                        <li>• Safari (iOS): Share → “Add to Home Screen”.</li>
+                      </ul>
                     </div>
                   )}
                 </div>

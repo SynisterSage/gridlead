@@ -54,6 +54,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
   const { theme, toggleTheme } = useTheme();
   const { canPrompt, installed, supportsSw, promptInstall } = usePwaInstall();
   const [installMessage, setInstallMessage] = useState<string | null>(null);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
   
   const featureSectionRef = useRef<HTMLDivElement>(null);
   const scoreLeftReveal = useReveal();
@@ -118,13 +119,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
     const res = await promptInstall();
     if (res.outcome === 'accepted') {
       setInstallMessage('Installing… Check your Dock/Taskbar for the GridLead app.');
+      setShowInstallHelp(false);
       return;
     }
     if (res.outcome === 'dismissed') {
       setInstallMessage('Install dismissed. You can reopen the prompt from your browser menu.');
+      setShowInstallHelp(true);
       return;
     }
     setInstallMessage('Use your browser menu to “Install app” / “Add to Dock”.');
+    setShowInstallHelp(true);
   };
 
   const Nav = () => (
@@ -273,6 +277,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
             </div>
             {installMessage && (
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold mb-6">{installMessage}</p>
+            )}
+            {showInstallHelp && (
+              <div className="max-w-xl mx-auto mb-8 text-left bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2">How to install</p>
+                <ul className="space-y-1 text-[12px] font-semibold text-slate-700 dark:text-slate-200">
+                  <li>• Chrome/Edge: three-dot menu → “Install app”.</li>
+                  <li>• Safari (macOS): Share → “Add to Dock”.</li>
+                  <li>• Safari (iOS): Share → “Add to Home Screen”.</li>
+                </ul>
+              </div>
             )}
 
             <form onSubmit={handleDemoSearch} className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-2 md:p-3 rounded-2xl md:rounded-[2rem] shadow-2xl mb-12 flex flex-col sm:flex-row gap-2">
