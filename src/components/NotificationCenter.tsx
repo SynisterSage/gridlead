@@ -7,10 +7,10 @@ import {
   MessageSquare,
   Target,
   AlertOctagon,
+  Archive as ArchiveIcon,
   TrendingUp,
   TrendingDown,
   CheckCircle2,
-  Clock,
 } from 'lucide-react';
 import { NotificationItem } from '../types';
 
@@ -27,6 +27,20 @@ interface NotificationCenterProps {
   onDelete: (id: string) => void;
   onMarkRead: (id: string) => void;
 }
+
+const timeAgo = (iso: string) => {
+  const diff = Date.now() - new Date(iso).getTime();
+  const sec = Math.floor(diff / 1000);
+  const min = Math.floor(sec / 60);
+  const hr = Math.floor(min / 60);
+  const day = Math.floor(hr / 24);
+  const week = Math.floor(day / 7);
+  if (week > 0) return `${week}w ago`;
+  if (day > 0) return `${day}d ago`;
+  if (hr > 0) return `${hr}h ago`;
+  if (min > 0) return `${min}m ago`;
+  return 'Just now';
+};
 
 const iconConfig: Record<
   NotificationItem['type'] | 'default',
@@ -64,11 +78,11 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   return (
     <div className="fixed inset-0 z-[90] pointer-events-none">
       <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] pointer-events-auto z-[80]"
+        className="absolute inset-0 bg-slate-900/40 pointer-events-auto z-[80]"
         onClick={onClose}
       />
-      <div className="pointer-events-auto absolute top-6 right-6 w-full max-w-md px-2 sm:px-4 animate-in fade-in slide-in-from-top-4 duration-200">
-        <div className="rounded-3xl bg-slate-950 text-white border border-slate-800/80 shadow-2xl shadow-black/30 overflow-hidden backdrop-blur">
+      <div className="pointer-events-auto absolute top-6 right-6 w-full max-w-md px-2 sm:px-4 animate-in fade-in slide-in-from-right-6 duration-200">
+        <div className="rounded-3xl bg-slate-950 text-white border border-slate-800/80 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.65)] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
             <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-[0.2em]">
               <Bell size={16} className="text-amber-400" />
@@ -96,22 +110,6 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {activeTab === 'inbox' && (
-                <>
-                  <button
-                    onClick={onMarkAllRead}
-                    className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white"
-                  >
-                    Mark all read
-                  </button>
-                  <button
-                    onClick={onArchiveAll}
-                    className="text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-white"
-                  >
-                    Archive all
-                  </button>
-                </>
-              )}
               <button
                 onClick={onClose}
                 className="h-8 w-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300"
@@ -148,14 +146,11 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         <div className="min-w-0">
                           <p className="text-sm font-bold truncate">
                             {n.title}
-                            {n.unread && activeTab === 'inbox' && (
-                              <span className="ml-2 inline-flex h-2 w-2 rounded-full bg-emerald-400 align-middle" />
-                            )}
                           </p>
                           <p className="text-[11px] text-slate-400 leading-snug">{n.body}</p>
                         </div>
                         <div className="flex flex-col items-end gap-1 text-[11px] text-slate-400">
-                          <span>{new Date(n.created_at).toLocaleString()}</span>
+                          <span>{timeAgo(n.created_at)}</span>
                           {activeTab === 'inbox' ? (
                             <button
                               onClick={(e) => {
@@ -185,6 +180,23 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
               })
             )}
           </div>
+          {activeTab === 'inbox' && list.length > 0 && (
+            <div className="border-t border-slate-800 bg-slate-900/80 px-5 py-3 flex items-center justify-between text-[11px] uppercase tracking-[0.2em]">
+              <button
+                onClick={onMarkAllRead}
+                className="text-slate-300 hover:text-white font-semibold"
+              >
+                Mark all read
+              </button>
+              <button
+                onClick={onArchiveAll}
+                className="text-slate-300 hover:text-white font-semibold inline-flex items-center gap-1"
+              >
+                <ArchiveIcon size={14} />
+                Archive all
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
