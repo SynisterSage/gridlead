@@ -510,6 +510,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       if (uid) {
         const now = new Date().toISOString();
         await supabase.from('user_sessions').update({ revoked_at: now }).eq('user_id', uid);
+        await purgeStaleSessions();
       }
       setSessions([]);
     } catch (_e) {
@@ -581,6 +582,22 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     return { label: 'Unknown device', icon: Monitor };
   };
 
+  const purgeStaleSessions = useCallback(async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData.session?.user?.id;
+      if (!uid) return;
+      const nowIso = new Date().toISOString();
+      await supabase
+        .from('user_sessions')
+        .delete()
+        .eq('user_id', uid)
+        .or(`revoked_at.not.is.null,expires_at.lt.${nowIso}`);
+    } catch (e) {
+      console.warn('Failed to purge stale sessions', e);
+    }
+  }, []);
+
   const handleSignOutSession = useCallback(async (id: string, isCurrent: boolean) => {
     try {
       if (isCurrent) {
@@ -600,11 +617,12 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       if (fp && uid) {
         await supabase.from('user_sessions').update({ revoked_at: now }).eq('user_id', uid).eq('fingerprint', fp);
       }
+      await purgeStaleSessions();
       await loadSessions();
     } catch (e) {
       console.warn('Failed to revoke session', e);
     }
-  }, [loadSessions, sessions, handleGlobalSignOut]);
+  }, [loadSessions, sessions, handleGlobalSignOut, purgeStaleSessions]);
 
   // Realtime listener to keep sessions in sync (deletes/inserts/updates)
   useEffect(() => {

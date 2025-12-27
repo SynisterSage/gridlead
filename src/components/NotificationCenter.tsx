@@ -12,6 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
   CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import type { NotificationItem } from '../types';
 
