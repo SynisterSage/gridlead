@@ -258,13 +258,19 @@ const AppContent: React.FC = () => {
   }, []);
 
   const sendSessionHeartbeat = useCallback(async () => {
+    if (!session) {
+      // When logged out, clear local session markers
+      persistLocalSessionNotifs([]);
+      sessionSeenRef.current = new Set();
+      return;
+    }
     const { data: sessionData } = await supabase.auth.getSession();
-    const session = sessionData.session;
-    if (!session) return;
+    const sess = sessionData.session;
+    if (!sess) return;
     const fp = ensureFingerprint();
     if (!fp) return;
-    const expiresAt = session.expires_at ? new Date(session.expires_at * 1000).toISOString() : null;
-    const accessToken = session.access_token;
+    const expiresAt = sess.expires_at ? new Date(sess.expires_at * 1000).toISOString() : null;
+    const accessToken = sess.access_token;
     if (!accessToken) return;
     try {
       const { data, error } = await supabase.functions.invoke('session-heartbeat', {
@@ -280,7 +286,7 @@ const AppContent: React.FC = () => {
     } catch (e) {
       console.warn('session heartbeat failed', e);
     }
-  }, [ensureFingerprint]);
+  }, [ensureFingerprint, persistLocalSessionNotifs, session]);
 
   // Heartbeat sessions periodically and on visibility/focus
   useEffect(() => {
@@ -353,31 +359,21 @@ const AppContent: React.FC = () => {
           meta: n.meta || {},
         });
 
-        const filteredInbox = inboxData.filter((n: any) => !(alreadySeenAgency && n?.meta?.kind === 'agency_approved')).map(mapRow);
-        const filteredArchive = archiveData.filter((n: any) => !(alreadySeenAgency && n?.meta?.kind === 'agency_approved')).map(mapRow);
+        const filteredInbox = inboxData
+          .filter((n: any) => !(alreadySeenAgency && n?.meta?.kind === 'agency_approved'))
+          .map(mapRow);
+        const filteredArchive = archiveData
+          .filter((n: any) => !(alreadySeenAgency && n?.meta?.kind === 'agency_approved'))
+          .map(mapRow);
 
-        // Merge server inbox with any existing notifications to avoid dropping local-only items
-        setNotifications(prev => {
-          const byId = new Map<string, NotificationItem>();
-          [...filteredInbox, ...prev].forEach(n => {
-            if (!byId.has(n.id)) byId.set(n.id, n);
-          });
-          // Sort by created_at desc
-          const merged = Array.from(byId.values()).sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-          return merged.slice(0, 100);
-        });
+        // Base notifications come from server inbox only (reset samples), then append any local session alerts
+        const ids = new Set(filteredInbox.map(n => n.id));
+        const locals = localSessionNotifsRef.current.filter(n => !ids.has(n.id));
+        const merged = [...locals, ...filteredInbox].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setNotifications(merged.slice(0, 100));
         setArchivedNotifications(filteredArchive);
-      }
-      // merge local session notifications not present in inbox
-      const locals = localSessionNotifsRef.current;
-      if (locals.length) {
-        setNotifications(prev => {
-          const ids = new Set(prev.map(p => p.id));
-          const merged = [...locals.filter(n => !ids.has(n.id)), ...prev];
-          return merged.slice(0, 100);
-        });
       }
     },
     [loadLocalSessionNotifs]
@@ -511,7 +507,12 @@ const AppContent: React.FC = () => {
       if (!session) {
         setProfile(null);
         setLeads(MOCK_LEADS);
-        setNotifications(SAMPLE_NOTIFICATIONS);
+        // Keep samples only when logged out and no user session
+        if (!notifications.length) {
+          setNotifications(SAMPLE_NOTIFICATIONS);
+        } else {
+          setNotifications([]);
+        }
         setArchivedNotifications([]);
         setNotificationTab('inbox');
         setNotifPrefs(notifDefaults);

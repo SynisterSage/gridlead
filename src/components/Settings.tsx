@@ -509,7 +509,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       const uid = sessionData.session?.user?.id;
       if (uid) {
         const now = new Date().toISOString();
-        await supabase.from('user_sessions').update({ revoked_at: now, token_hash: null }).eq('user_id', uid);
+        await supabase.from('user_sessions').update({ revoked_at: now }).eq('user_id', uid);
         await purgeStaleSessions();
       }
       setSessions([]);
@@ -607,12 +607,12 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       const target = sessions.find(s => s.id === id);
       const fp = target?.fingerprint || id;
       const now = new Date().toISOString();
-      const query = supabase.from('user_sessions').update({ revoked_at: now, token_hash: null }).eq('id', id);
+      const query = supabase.from('user_sessions').update({ revoked_at: now }).eq('id', id);
       if (uid) query.eq('user_id', uid);
       await query;
       // Best-effort: also clear any other rows with same fingerprint
       if (fp && uid) {
-        await supabase.from('user_sessions').update({ revoked_at: now, token_hash: null }).eq('user_id', uid).eq('fingerprint', fp);
+        await supabase.from('user_sessions').update({ revoked_at: now }).eq('user_id', uid).eq('fingerprint', fp);
       }
       await purgeStaleSessions();
       await loadSessions();
