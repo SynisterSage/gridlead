@@ -107,7 +107,12 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
   };
 
   const handleDeepAnalysis = async () => {
-    if (!selectedLead || !selectedLead.website || selectedLead.website.toLowerCase().includes('no website')) return;
+    if (!selectedLead || !selectedLead.website || selectedLead.website.toLowerCase().includes('no website')) {
+      setAuditStep('No website detected');
+      setTimeout(() => setAuditStep(null), 1200);
+      console.warn('Deep audit skipped: no website', { leadId: selectedLead?.id, website: selectedLead?.website });
+      return;
+    }
     setIsAnalyzing(true);
     const timers: number[] = [];
     const scheduleStep = (label: string, delay: number) => {
@@ -189,13 +194,19 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
 
     const opener = currentBrief?.opener || `Quick wins I spotted for ${current.name}.`;
     const cta = currentBrief?.cta || 'Want me to share a 3-step fix this week?';
+
+    const evidence = currentBrief?.evidence || [];
+    const formattedEvidence = evidence.length
+      ? `\nEvidence:\n- ${evidence.slice(0, 4).join('\n- ')}`
+      : '';
+
     const subject = type === 'review'
       ? `Lift ${current.name}'s reviews fast`
       : `${current.name} booking quick win`;
 
     const body = type === 'review'
-      ? `${opener}\n\nI can summarize the top complaints and roll out a 30-day recovery checklist. ${cta}`
-      : `${opener}\n\nI can add a clear booking CTA + tracking so you see who’s converting. ${cta}`;
+      ? `${opener}\n\nI can summarize complaints, draft responses, and roll out a 30-day recovery checklist.${formattedEvidence}\n\n${cta}`
+      : `${opener}\n\nI can add a clear booking CTA + tracking so you see who’s converting.${formattedEvidence}\n\n${cta}`;
 
     const nextNotes = alreadyTagged
       ? current.notes
@@ -429,83 +440,120 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                     {!briefLoadError && (
                       <div className="space-y-3">
                         <div className="flex flex-wrap gap-2">
-                        {(currentBrief?.whyNow && currentBrief.whyNow.length ? currentBrief.whyNow : ['Scanning signals...']).map((reason, idx) => (
-                            <span 
-                              key={idx} 
-                              className="px-3 py-1 rounded-full bg-slate-900/5 dark:bg-white/5 text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800"
-                            >
-                              {reason}
-                            </span>
-                          ))}
+                          {isBriefLoading
+                            ? Array.from({ length: 2 }).map((_, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse text-[10px] font-bold text-slate-300 dark:text-slate-600 border border-slate-100 dark:border-slate-800"
+                                >
+                                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                </span>
+                              ))
+                            : (currentBrief?.whyNow && currentBrief.whyNow.length ? currentBrief.whyNow : ['Scanning signals...']).map((reason, idx) => (
+                                <span 
+                                  key={idx} 
+                                  className="px-3 py-1 rounded-full bg-slate-900/5 dark:bg-white/5 text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800"
+                                >
+                                  {reason}
+                                </span>
+                              ))}
                         </div>
                         <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-slate-900/50">
                           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Talking Points</p>
-                          <ul className="space-y-1.5">
-                            {(currentBrief?.talkingPoints && currentBrief.talkingPoints.length
-                              ? currentBrief.talkingPoints
-                              : ['We’ll add a clear CTA and booking path.', 'Tighten speed and trust signals.']
-                            ).map((pt, idx) => (
-                              <li key={idx} className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-start gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1" /> {pt}
-                              </li>
-                            ))}
-                          </ul>
-                          {currentBrief?.evidence && currentBrief.evidence.length > 0 && (
-                            <div className="mt-3">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Evidence</p>
-                              <ul className="space-y-1">
-                                {currentBrief.evidence.map((ev, idx) => (
-                                  <li key={idx} className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1" /> {ev}
+                          {isBriefLoading ? (
+                            <div className="space-y-2">
+                              {Array.from({ length: 3 }).map((_, idx) => (
+                                <div key={idx} className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                              ))}
+                            </div>
+                          ) : (
+                            <>
+                              <ul className="space-y-1.5">
+                                {(currentBrief?.talkingPoints && currentBrief.talkingPoints.length
+                                  ? currentBrief.talkingPoints
+                                  : ['We’ll add a clear CTA and booking path.', 'Tighten speed and trust signals.']
+                                ).map((pt, idx) => (
+                                  <li key={idx} className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-start gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1" /> {pt}
                                   </li>
                                 ))}
                               </ul>
-                            </div>
+                              {currentBrief?.evidence && currentBrief.evidence.length > 0 && (
+                                <div className="mt-3">
+                                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Evidence</p>
+                                  <ul className="space-y-1">
+                                    {currentBrief.evidence.map((ev, idx) => (
+                                      <li key={idx} className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1" /> {ev}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
-                        <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-slate-900/50 space-y-2">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Suggested opener</p>
-                          <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">{currentBrief?.opener || 'Spotted quick wins—happy to share a 3-step fix this week.'}</p>
-                          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">CTA</p>
-                          <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">{currentBrief?.cta || 'Want me to prioritize the fixes and send a quick plan?'}</p>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <button
-                            onClick={() => applyPlaybook('review')}
-                            className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm"
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Opener + CTA + Playbooks */}
+                  <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 md:p-5 bg-slate-50 dark:bg-slate-950 space-y-3">
+                    <div className="flex items-center gap-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Suggested opener</p>
+                  </div>
+                    {isBriefLoading ? (
+                      <div className="space-y-2">
+                        <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                        <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse w-3/4" />
+                        <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse w-1/2" />
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">
+                          {currentBrief?.opener || 'Spotted quick wins—happy to share a 3-step fix this week.'}
+                        </p>
+                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">CTA</p>
+                        <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                          {currentBrief?.cta || 'Want me to prioritize the fixes and send a quick plan?'}
+                        </p>
+                      </>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        onClick={() => applyPlaybook('review')}
+                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm"
+                      >
+                        <Sparkles size={14} /> Review SOS
+                      </button>
+                      <button
+                        onClick={() => applyPlaybook('booking')}
+                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                      >
+                        <Layout size={14} /> Booking Leak
+                      </button>
+                    </div>
+                    {currentBrief && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {[
+                          { label: 'SSL', ok: currentBrief.signals.hasSSL },
+                          { label: 'Booking', ok: currentBrief.signals.hasBooking },
+                          { label: 'Form', ok: currentBrief.signals.hasForm },
+                          { label: 'Pixel', ok: currentBrief.signals.hasPixel },
+                          { label: 'Schema', ok: currentBrief.signals.hasSchema },
+                          { label: 'Contact', ok: currentBrief.signals.hasContact },
+                        ].map((sig) => (
+                          <span
+                            key={sig.label}
+                            className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                              sig.ok
+                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50'
+                                : 'bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800'
+                            }`}
                           >
-                            <Sparkles size={14} /> Review SOS
-                          </button>
-                          <button
-                            onClick={() => applyPlaybook('booking')}
-                            className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
-                          >
-                            <Layout size={14} /> Booking Leak
-                          </button>
-                        </div>
-                        {currentBrief && (
-                          <div className="flex flex-wrap gap-2">
-                            {[
-                              { label: 'SSL', ok: currentBrief.signals.hasSSL },
-                              { label: 'Booking', ok: currentBrief.signals.hasBooking },
-                              { label: 'Form', ok: currentBrief.signals.hasForm },
-                              { label: 'Pixel', ok: currentBrief.signals.hasPixel },
-                              { label: 'Schema', ok: currentBrief.signals.hasSchema },
-                              { label: 'Contact', ok: currentBrief.signals.hasContact },
-                            ].map((sig) => (
-                              <span
-                                key={sig.label}
-                                className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                                  sig.ok
-                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50'
-                                    : 'bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800'
-                                }`}
-                              >
-                                {sig.label}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                            {sig.label}
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>

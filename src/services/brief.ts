@@ -17,6 +17,7 @@ export interface LeadBrief {
   cta: string;
   evidence?: string[];
   signals: {
+    htmlFetched?: boolean;
     rating: number | null;
     reviewsCount?: number | null;
     hasSSL: boolean;

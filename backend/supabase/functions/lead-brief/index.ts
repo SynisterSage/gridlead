@@ -26,6 +26,7 @@ type BriefResult = {
   cta: string;
   evidence: string[];
   signals: {
+    htmlFetched?: boolean;
     rating: number | null;
     reviewsCount?: number | null;
     hasSSL: boolean;
@@ -105,34 +106,34 @@ const buildBrief = (lead: LeadInput, signals: BriefResult["signals"]): BriefResu
     }
     talkingPoints.push("Recent reviews suggest trust gaps; propose a 30-day recovery sprint.");
   }
-  if (!signals.hasBooking) {
+  if (signals.htmlFetched && !signals.hasBooking) {
     whyNow.push("No booking/appointment flow detected.");
     evidence.push("No booking CTA or scheduler found");
     talkingPoints.push("Add a booking CTA to capture ready-to-buy visitors.");
   }
-  if (!signals.hasSSL) {
+  if (signals.htmlFetched && !signals.hasSSL) {
     whyNow.push("Site is not serving over HTTPS.");
     evidence.push("Site appears to load without HTTPS");
     talkingPoints.push("Enable SSL to boost trust and avoid browser warnings.");
   }
-  if (!signals.hasPixel) {
+  if (signals.htmlFetched && !signals.hasPixel) {
     evidence.push("No GA/Meta pixel detected");
     talkingPoints.push("Add tracking (GA/Meta) to measure and retarget traffic.");
   }
-  if (!signals.hasSchema) {
+  if (signals.htmlFetched && !signals.hasSchema) {
     evidence.push("No schema markup detected");
     talkingPoints.push("Add local schema (address/phone) to improve visibility.");
   }
-  if (!signals.hasContact) {
+  if (signals.htmlFetched && !signals.hasContact) {
     evidence.push("Contact details not clearly found");
     talkingPoints.push("Surface phone/email clearly to reduce drop-off.");
   }
-  if (signals.perfMs && signals.perfMs > 2500) {
+  if (signals.htmlFetched && signals.perfMs && signals.perfMs > 2500) {
     whyNow.push("Page responded slowly; speed is leaking conversions.");
     evidence.push(`Fetch latency ~${signals.perfMs}ms`);
     talkingPoints.push("Tighten assets and hosting to improve first load.");
   }
-  if (signals.statusCode && signals.statusCode >= 400) {
+  if (signals.htmlFetched && signals.statusCode && signals.statusCode >= 400) {
     whyNow.push(`Site returned ${signals.statusCode}`);
     evidence.push(`HTTP status ${signals.statusCode}`);
     talkingPoints.push("Check hosting/SSL setup to ensure the site is reachable.");
@@ -173,6 +174,7 @@ serve(async (req) => {
     const url = normalizeUrl(lead.website);
 
     const signals: BriefResult["signals"] = {
+      htmlFetched: false,
       rating: typeof lead.rating === "number" ? lead.rating : null,
       reviewsCount: typeof lead.reviews_count === "number" ? lead.reviews_count : null,
       hasSSL: url ? url.startsWith("https://") : false,
@@ -247,6 +249,7 @@ serve(async (req) => {
         signals.hasSchema = parsed.hasSchema;
         signals.hasContact = parsed.hasContact;
         signals.hasMap = parsed.hasMap;
+        signals.htmlFetched = true;
       } catch (_e) {
         // graceful degradation: keep defaults
       }
