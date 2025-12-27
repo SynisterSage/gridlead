@@ -25,9 +25,11 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd, onNotice }) =>
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [autoLocating, setAutoLocating] = useState(false);
   const [hasAutoLocated, setHasAutoLocated] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const handleDiscovery = async () => {
     if (!query) return;
+    setHasSearched(true);
     setLoading(true);
     setError(null);
     setNextPageToken(undefined);
@@ -49,10 +51,16 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd, onNotice }) =>
         });
         onNotice?.('Expanded search to show more results.', 'info');
         setResults(relaxed.results || []);
+        if (!relaxed.results || relaxed.results.length === 0) {
+          onNotice?.('No results found. Try broadening the search.', 'info');
+        }
         // Pagination disabled for now (testing): keep to first page only.
         setNextPageToken(undefined);
       } else {
         setResults(data.results || []);
+        if (!data.results || data.results.length === 0) {
+          onNotice?.('No results found. Try broadening the search.', 'info');
+        }
         // Pagination disabled for now (testing): keep to first page only.
         setNextPageToken(undefined);
       }
@@ -306,12 +314,21 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd, onNotice }) =>
               </div>
             ))
           )}
-            {/* Empty state when a search has not yet returned results */}
+            {/* Empty states */}
             {!loading && filteredResults.length === 0 && (
-                <div className="col-span-1 sm:col-span-2 lg:col-span-3 py-20 text-center opacity-20">
+              <div className="col-span-1 sm:col-span-2 lg:col-span-3 py-20 text-center opacity-40">
+                {hasSearched ? (
+                  <>
+                    <Globe size={36} className="mx-auto mb-2" />
+                    <p className="text-[9px] font-black uppercase tracking-widest">No results found. Try widening radius or changing the query.</p>
+                  </>
+                ) : (
+                  <>
                     <Search size={36} className="mx-auto mb-2" />
                     <p className="text-[9px] font-black uppercase tracking-widest">Start a scan to surface opportunities</p>
-                </div>
+                  </>
+                )}
+              </div>
             )}
         </div>
       </div>
