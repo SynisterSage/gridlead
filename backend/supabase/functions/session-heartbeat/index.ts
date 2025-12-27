@@ -58,14 +58,29 @@ Deno.serve(async (req) => {
   const isExpired = (existing?.expires_at && new Date(existing.expires_at).getTime() < now.getTime());
   const isRevoked = !!existing?.revoked_at;
 
+  // If the stored session is past its expires_at but the current token is valid
+  // (supabase.auth.getUser succeeded), treat it as a stale row and allow refresh.
   if (isExpired) {
-    return json({ revoked: true });
+    console.log("session-heartbeat: stored session stale, refreshing", {
+      user_id: user.id,
+      fingerprint,
+      expires_at: existing?.expires_at || null,
+      now: nowIso,
+    });
   }
 
   // If previously revoked, allow only if this is a new login (different token) or we don't have a stored token hash
   if (isRevoked) {
     const storedHash = existing?.token_hash || null;
     if (storedHash && storedHash === tokenHash) {
+      console.log("session-heartbeat: revoked (hash match)", {
+        user_id: user.id,
+        fingerprint,
+        session_id: existing?.id || null,
+        revoked_at: existing?.revoked_at || null,
+        stored_hash: storedHash,
+        token_hash: tokenHash,
+      });
       return json({ revoked: true });
     }
     // otherwise allow through to clear revoked_at
@@ -89,6 +104,15 @@ Deno.serve(async (req) => {
     console.error("session-heartbeat upsert error", error);
     return respondError("Failed to update session", 500);
   }
+
+  console.log("session-heartbeat: upsert ok", {
+    user_id: user.id,
+    fingerprint,
+    session_id: data?.id || existing?.id || null,
+    revoked_cleared: isRevoked,
+    prev_revoked_at: existing?.revoked_at || null,
+    token_hash: tokenHash,
+  });
 
   return json({ ok: true, session: data, revoked: false });
 });

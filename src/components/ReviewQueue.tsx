@@ -378,9 +378,33 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                       </div>
                     ))}
                   </div>
+                  {/* Intelligence Notes under audit */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Intelligence Brief</h3>
+                      <div className="relative group cursor-help">
+                        <HelpCircle size={14} className="text-slate-300 dark:text-slate-700 hover:text-blue-500 transition-colors" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
+                          <div className="flex items-center gap-2 mb-2 text-emerald-400">
+                            <Sparkles size={12} fill="currentColor" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Personalization Hook</span>
+                          </div>
+                          <p className="text-[10px] font-medium leading-relaxed opacity-80">
+                            Specific weaknesses identified here result in higher conversion rates.
+                          </p>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
+                        </div>
+                      </div>
+                    </div>
+                    <textarea 
+                      value={current.notes || ''}
+                      onChange={(e) => onUpdateLead(current.id, { notes: e.target.value })}
+                      className="w-full min-h-[140px] bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-5 text-[11px] md:text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-100 transition-all resize-none font-medium leading-relaxed"
+                    />
+                  </div>
                 </div>
 
-                {/* Intelligence Note */}
+                {/* Lead Brief card column */}
                 <div className="space-y-4 flex flex-col h-full">
                   <div className="p-4 md:p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 space-y-4">
                     <div className="flex items-center justify-between">
@@ -405,7 +429,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                     {!briefLoadError && (
                       <div className="space-y-3">
                         <div className="flex flex-wrap gap-2">
-                          {(currentBrief?.whyNow || ['Scanning signals...']).map((reason, idx) => (
+                        {(currentBrief?.whyNow && currentBrief.whyNow.length ? currentBrief.whyNow : ['Scanning signals...']).map((reason, idx) => (
                             <span 
                               key={idx} 
                               className="px-3 py-1 rounded-full bg-slate-900/5 dark:bg-white/5 text-[10px] font-bold text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-800"
@@ -417,12 +441,27 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                         <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-slate-900/50">
                           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">Talking Points</p>
                           <ul className="space-y-1.5">
-                            {(currentBrief?.talkingPoints || ['We’ll add a clear CTA and booking path.', 'Tighten speed and trust signals.']).map((pt, idx) => (
+                            {(currentBrief?.talkingPoints && currentBrief.talkingPoints.length
+                              ? currentBrief.talkingPoints
+                              : ['We’ll add a clear CTA and booking path.', 'Tighten speed and trust signals.']
+                            ).map((pt, idx) => (
                               <li key={idx} className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-start gap-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1" /> {pt}
                               </li>
                             ))}
                           </ul>
+                          {currentBrief?.evidence && currentBrief.evidence.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1">Evidence</p>
+                              <ul className="space-y-1">
+                                {currentBrief.evidence.map((ev, idx) => (
+                                  <li key={idx} className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1" /> {ev}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                         <div className="border border-slate-100 dark:border-slate-800 rounded-xl p-3 bg-white dark:bg-slate-900/50 space-y-2">
                           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Suggested opener</p>
@@ -449,6 +488,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                             {[
                               { label: 'SSL', ok: currentBrief.signals.hasSSL },
                               { label: 'Booking', ok: currentBrief.signals.hasBooking },
+                              { label: 'Form', ok: currentBrief.signals.hasForm },
                               { label: 'Pixel', ok: currentBrief.signals.hasPixel },
                               { label: 'Schema', ok: currentBrief.signals.hasSchema },
                               { label: 'Contact', ok: currentBrief.signals.hasContact },
@@ -470,28 +510,6 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                    <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Intelligence Brief</h3>
-                    <div className="relative group cursor-help">
-                      <HelpCircle size={14} className="text-slate-300 dark:text-slate-700 hover:text-blue-500 transition-colors" />
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
-                        <div className="flex items-center gap-2 mb-2 text-emerald-400">
-                          <Sparkles size={12} fill="currentColor" />
-                          <span className="text-[9px] font-black uppercase tracking-widest">Personalization Hook</span>
-                        </div>
-                        <p className="text-[10px] font-medium leading-relaxed opacity-80">
-                          Specific weaknesses identified here result in higher conversion rates.
-                        </p>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <textarea 
-                    value={current.notes || ''}
-                    onChange={(e) => onUpdateLead(current.id, { notes: e.target.value })}
-                    className="w-full min-h-[160px] bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl md:rounded-2xl p-4 md:p-5 text-[11px] md:text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-100 transition-all resize-none font-medium leading-relaxed flex-1"
-                  />
                 </div>
               </div>
             </div>
