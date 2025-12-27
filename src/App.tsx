@@ -749,6 +749,31 @@ const AppContent: React.FC = () => {
     };
   }, [session, createNotification, rememberSessionSeen]);
 
+  // Fallback: on load, inspect recent sessions and emit notifications for unseen ones
+  useEffect(() => {
+    const syncRecentSessions = async () => {
+      if (!session) return;
+      const { data, error } = await supabase
+        .from('user_sessions')
+        .select('id,fingerprint,user_agent')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error || !data) return;
+      data.forEach((row: any) => {
+        const key = row?.fingerprint || row?.id;
+        if (!key || sessionSeenRef.current.has(key)) return;
+        rememberSessionSeen(key);
+        const ua = shortUserAgent(row?.user_agent);
+        void createNotification('session', 'New device signed in', ua || 'New device detected', {
+          fingerprint: row?.fingerprint || null,
+          user_agent: row?.user_agent || null,
+        });
+      });
+    };
+    void syncRecentSessions();
+  }, [session, createNotification, rememberSessionSeen]);
+
   // If user is logged in but profile is incomplete, keep onboarding visible
   useEffect(() => {
     if (session && !profileLoading && (!profile || !profile.onboarding_completed)) {

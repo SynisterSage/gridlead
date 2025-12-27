@@ -563,6 +563,19 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
     return { label: 'Unknown device', icon: Monitor };
   };
 
+  const handleSignOutSession = useCallback(async (id: string, isCurrent: boolean) => {
+    try {
+      if (isCurrent) {
+        await handleGlobalSignOut();
+        return;
+      }
+      await supabase.from('user_sessions').delete().eq('id', id);
+      await loadSessions();
+    } catch (e) {
+      console.warn('Failed to revoke session', e);
+    }
+  }, [loadSessions]);
+
   const handleToggleNotif = async (key: keyof typeof notifPreferences) => {
     const next = { ...notifPreferences, [key]: !notifPreferences[key] };
     setNotifPreferences(next);
@@ -963,9 +976,9 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                         const descriptor = deviceDescriptor(s.user_agent);
                         const DeviceIcon = descriptor.icon;
                         return (
-                          <div key={s.id} className="flex items-start justify-between p-3 bg-slate-50/30 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-xl">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-center text-slate-900 dark:text-white border border-slate-100 dark:border-slate-700 shadow-sm">
+                          <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50/30 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700 rounded-xl">
+                            <div className="flex items-center gap-3 pr-2">
+                              <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-center text-slate-900 dark:text-white border border-slate-100 dark:border-slate-700 shadow-sm">
                                 <DeviceIcon size={14} />
                               </div>
                               <div>
@@ -973,10 +986,14 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                                   {isCurrent ? 'This device' : descriptor.label}
                                 </p>
                                 {s.user_agent && (
-                                  <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest truncate max-w-[260px]">
+                                  <p className="text-[10px] font-semibold text-slate-400 truncate max-w-[260px]">
                                     {s.user_agent}
                                   </p>
                                 )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="text-right space-y-0.5">
                                 <p className="text-[9px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">
                                   Last seen: {formatDate(s.last_seen || undefined)}
                                 </p>
@@ -986,6 +1003,13 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
                                   </p>
                                 )}
                               </div>
+                              <button
+                                onClick={() => handleSignOutSession(s.id, isCurrent)}
+                                className="h-9 w-9 rounded-lg bg-slate-900/60 dark:bg-slate-700/60 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-500 flex items-center justify-center transition-colors"
+                                aria-label="Revoke session"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                           </div>
                         );
