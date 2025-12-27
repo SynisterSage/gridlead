@@ -6,9 +6,10 @@ import { runDiscover, stageLeadPayloadFromResult, DiscoverResult } from '../serv
 
 interface HeroDiscoveryProps {
   onLeadAdd: (lead: Lead) => Promise<void> | void;
+  onNotice?: (msg: string, tone?: 'info' | 'warning' | 'error') => void;
 }
 
-const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
+const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd, onNotice }) => {
   const ZIP_STORAGE_KEY = 'gridlead_zip';
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState(() => {
@@ -21,7 +22,6 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
   const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [minRating, setMinRating] = useState(0);
-  const [notice, setNotice] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
   const [autoLocating, setAutoLocating] = useState(false);
   const [hasAutoLocated, setHasAutoLocated] = useState(false);
@@ -30,7 +30,6 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
     if (!query) return;
     setLoading(true);
     setError(null);
-    setNotice(null);
     setNextPageToken(undefined);
 
     try {
@@ -48,7 +47,7 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
           radiusKm: relaxedRadius,
           minRating,
         });
-        setNotice('Expanded search to show more results.');
+        onNotice?.('Expanded search to show more results.', 'info');
         setResults(relaxed.results || []);
         // Pagination disabled for now (testing): keep to first page only.
         setNextPageToken(undefined);
@@ -59,7 +58,9 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
       }
     } catch (err: any) {
       console.error("Discovery failed", err);
-      setError(err?.message || 'Unable to run discovery');
+      const msg = err?.message || 'Unable to run discovery';
+      setError(msg);
+      onNotice?.(msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -201,9 +202,7 @@ const HeroDiscovery: React.FC<HeroDiscoveryProps> = ({ onLeadAdd }) => {
               <input type="range" min="0" max="5" step="0.5" value={minRating} onChange={(e) => setMinRating(parseFloat(e.target.value))} className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-slate-900 dark:accent-white" />
             </div>
           </div>
-          {error && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">{error}</p>}
-          {notice && <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">{notice}</p>}
-        </div>
+    </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pt-2">
           {loading ? (

@@ -78,6 +78,7 @@ const AppContent: React.FC = () => {
   const [archivedNotifications, setArchivedNotifications] = useState<NotificationItem[]>([]);
   const [notificationTab, setNotificationTab] = useState<'inbox' | 'archive'>('inbox');
   const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = React.useRef<number | null>(null);
   const notifChannelRef = React.useRef<RealtimeChannel | null>(null);
   const notifDefaults = {
     leads: true,
@@ -102,6 +103,14 @@ const AppContent: React.FC = () => {
     },
     [notifications]
   );
+
+  const showToast = useCallback((msg: string) => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    setToast(msg);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 4000);
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('gridlead_leads');
@@ -245,8 +254,7 @@ const AppContent: React.FC = () => {
       // better surfaced as ephemeral toasts. Show a toast and skip DB insert
       // for those types.
       if (type === 'send_failed' || type === 'gmail_disconnected') {
-        setToast(title || body || 'Notification');
-        window.setTimeout(() => setToast(null), 4000);
+        showToast(title || body || 'Notification');
         return;
       }
 
@@ -1037,7 +1045,7 @@ const AppContent: React.FC = () => {
       case AppView.DASHBOARD:
         return <Dashboard leads={leads} onNavigate={setActiveView} profile={profile} onSaveGoal={handleSaveMonthlyGoal} />;
       case AppView.DISCOVERY:
-        return <HeroDiscovery onLeadAdd={addLead} />;
+        return <HeroDiscovery onLeadAdd={addLead} onNotice={showToast} />;
       case AppView.QUEUE:
         return <ReviewQueue leads={leads} onUpdateLead={updateLead} onDeleteLead={deleteLead} />;
       case AppView.CAMPAIGNS:
@@ -1223,7 +1231,7 @@ const AppContent: React.FC = () => {
           {renderView()}
         </div>
       </main>
-      <NotificationCenter
+          <NotificationCenter
         open={notificationsOpen}
         inbox={notifications}
         archive={archivedNotifications}
@@ -1240,14 +1248,6 @@ const AppContent: React.FC = () => {
       {/* Global ephemeral toast (for send_failed, gmail_disconnected, etc.) */}
       {toast && (
         <div className="fixed top-8 right-8 z-[100] animate-in slide-in-from-right-10 duration-500">
-          <div className="bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-800 dark:border-slate-100">
-            <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center" />
-            <span className="text-xs font-bold uppercase tracking-widest">{toast}</span>
-          </div>
-        </div>
-      )}
-      {toast && (
-        <div className="fixed top-8 right-8 z-[100] pointer-events-auto">
           <div className="bg-[#0f172a] dark:bg-white text-white dark:text-slate-900 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-800 dark:border-slate-100">
             <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center" />
             <span className="text-xs font-bold uppercase tracking-widest">{toast}</span>
