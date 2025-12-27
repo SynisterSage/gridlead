@@ -164,10 +164,13 @@ const buildBrief = (lead: LeadInput, signals: BriefResult["signals"], complaints
     talkingPoints.push("Tidy the hero, add a clear CTA, and tighten load time.");
   }
 
-  const opener = `Saw ${lead.name || "your site"} — noticed ${whyNow[0].toLowerCase()} Let’s fix it with a quick, trackable win this week.`;
+  const topReason = whyNow[0] || "Quick wins available";
+  const name = lead.name || "your site";
+  const complaintLine = complaints.length ? `I also noticed a recent review mentioning "${complaints[0].slice(0, 80)}".` : "";
+  const opener = `Took a look at ${name} — ${topReason.toLowerCase()}. ${complaintLine}`.trim();
   const cta = signals.hasBooking
-    ? "Want me to audit your booking flow and share 3 fixes?"
-    : "Want a quick booking CTA + tracking live this week?";
+    ? "Want me to tune your booking flow and share 3 quick fixes?"
+    : "Want a booking CTA + tracking live this week so you see who’s ready to book?";
 
   return { whyNow, talkingPoints: talkingPoints.slice(0, 4), opener, cta, evidence: evidence.slice(0, 5), complaints: complaints.slice(0, 3), signals };
 };

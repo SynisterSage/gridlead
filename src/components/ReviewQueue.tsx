@@ -609,12 +609,18 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
               </div>
 
               {/* Send Brief full width */}
-              <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 md:p-6 bg-slate-50 dark:bg-slate-950 space-y-3 mt-6 lg:col-span-2">
+              <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 md:p-6 bg-slate-50 dark:bg-slate-950 space-y-4 mt-6 lg:col-span-2 shadow-sm dark:shadow-none">
                 <div className="flex items-center gap-2">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Send Brief</p>
+                  <div className="w-8 h-8 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center shadow">
+                    <Sparkles size={14} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Send Brief</p>
+                    <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">We’ll stash the context; Outreach can craft the opener later.</p>
+                  </div>
                 </div>
                 <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 leading-relaxed">
-                  Push talking points, evidence, complaints, and audit highlights into Intelligence. Outreach can generate the opener/CTA with that context.
+                  Push talking points, evidence, complaints, and audit highlights into Intelligence. Outreach will generate the opener/CTA using this context.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
