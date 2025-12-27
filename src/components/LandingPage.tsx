@@ -167,10 +167,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
             onClick={() => setMobileMenuOpen(false)}
           />
           <div className="fixed inset-0 top-[72px] md:hidden z-50 flex">
-            <div className="ml-auto w-full max-w-sm h-full bg-white/98 dark:bg-slate-950/98 border-l border-slate-200/60 dark:border-slate-800/70 shadow-2xl backdrop-blur-xl p-8 flex flex-col gap-6 animate-in slide-in-from-right duration-300 overflow-y-auto">
+            <div className="ml-auto w-full max-w-sm h-full bg-white dark:bg-slate-950 border-l border-slate-200/60 dark:border-slate-800/70 shadow-2xl p-8 flex flex-col gap-6 animate-in slide-in-from-right duration-300 overflow-y-auto">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Menu</span>
-                <button onClick={() => setMobileMenuOpen(false)} aria-label="Close menu" className="p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                <span className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">Menu</span>
+                <button onClick={() => setMobileMenuOpen(false)} aria-label="Close menu" className="p-2 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
                   <X size={20} />
                 </button>
               </div>
