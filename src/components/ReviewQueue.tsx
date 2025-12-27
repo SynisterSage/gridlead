@@ -48,37 +48,40 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
     }
   }, [activeLeads, selectedLead]);
 
-  useEffect(() => {
-    const currentLead = selectedLead || activeLeads[0];
-    if (!currentLead) return;
-    if (briefs[currentLead.id] || briefLoading[currentLead.id]) return;
+  const loadBrief = React.useCallback((lead?: Lead | null) => {
+    const target = lead || selectedLead || activeLeads[0];
+    if (!target) return;
+    if (briefs[target.id] || briefLoading[target.id]) return;
 
-    setBriefLoading(prev => ({ ...prev, [currentLead.id]: true }));
-    setBriefError(prev => ({ ...prev, [currentLead.id]: null }));
+    setBriefLoading(prev => ({ ...prev, [target.id]: true }));
+    setBriefError(prev => ({ ...prev, [target.id]: null }));
 
-    const website = currentLead.website && currentLead.website.toLowerCase().includes('no website')
+    const website = target.website && target.website.toLowerCase().includes('no website')
       ? null
-      : currentLead.website;
+      : target.website;
 
     fetchLeadBrief({
-      id: currentLead.id,
-      name: currentLead.name,
-      category: currentLead.category,
-      rating: currentLead.rating,
+      id: target.id,
+      name: target.name,
+      category: target.category,
+      rating: target.rating,
       website,
-      notes: currentLead.notes || '',
+      notes: target.notes || '',
     })
       .then((brief) => {
-        setBriefs(prev => ({ ...prev, [currentLead.id]: brief }));
+        setBriefs(prev => ({ ...prev, [target.id]: brief }));
       })
       .catch((err: any) => {
-        setBriefError(prev => ({ ...prev, [currentLead.id]: err?.message || 'Failed to load brief' }));
+        setBriefError(prev => ({ ...prev, [target.id]: err?.message || 'Failed to load brief' }));
       })
       .finally(() => {
-        setBriefLoading(prev => ({ ...prev, [currentLead.id]: false }));
+        setBriefLoading(prev => ({ ...prev, [target.id]: false }));
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLead?.id, selectedLead?.website, selectedLead?.rating, selectedLead?.category, activeLeads.length]);
+  }, [activeLeads, briefLoading, briefs, selectedLead]);
+
+  useEffect(() => {
+    loadBrief();
+  }, [loadBrief]);
 
   const handleApprove = () => {
     if (!selectedLead) return;
@@ -145,6 +148,8 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
       setSelectedLead(prev => prev && prev.id === selectedLead.id ? { ...prev, ...updates } as Lead : prev);
       setLastAuditAt(new Date().toLocaleString());
       setAuditStep('Done ✓');
+      // Refresh brief after audit to include new signals
+      loadBrief({ ...(selectedLead as Lead), ...updates });
     } catch (err) {
       console.error('Audit failed', err);
       setAuditStep('Audit failed');
@@ -217,6 +222,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
       draftBody: body,
       notes: nextNotes,
     });
+    setSelectedLead(prev => prev && prev.id === current.id ? { ...prev, draftSubject: subject, draftBody: body, notes: nextNotes } as Lead : prev);
   };
 
   return (
@@ -340,7 +346,7 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10">
-                {/* Audit Checklist */}
+                {/* Audit Checklist + Intelligence */}
                 <div className="space-y-6 flex flex-col h-full">
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                     <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Site Audit</h3>
@@ -497,68 +503,68 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                     )}
                   </div>
 
-                  {/* Opener + CTA + Playbooks */}
-                  <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 md:p-5 bg-slate-50 dark:bg-slate-950 space-y-3">
-                    <div className="flex items-center gap-2">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Suggested opener</p>
-                  </div>
-                    {isBriefLoading ? (
-                      <div className="space-y-2">
-                        <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
-                        <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse w-3/4" />
-                        <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse w-1/2" />
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">
-                          {currentBrief?.opener || 'Spotted quick wins—happy to share a 3-step fix this week.'}
-                        </p>
-                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">CTA</p>
-                        <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-                          {currentBrief?.cta || 'Want me to prioritize the fixes and send a quick plan?'}
-                        </p>
-                      </>
-                    )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <button
-                        onClick={() => applyPlaybook('review')}
-                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm"
-                      >
-                        <Sparkles size={14} /> Review SOS
-                      </button>
-                      <button
-                        onClick={() => applyPlaybook('booking')}
-                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
-                      >
-                        <Layout size={14} /> Booking Leak
-                      </button>
-                    </div>
-                    {currentBrief && (
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {[
-                          { label: 'SSL', ok: currentBrief.signals.hasSSL },
-                          { label: 'Booking', ok: currentBrief.signals.hasBooking },
-                          { label: 'Form', ok: currentBrief.signals.hasForm },
-                          { label: 'Pixel', ok: currentBrief.signals.hasPixel },
-                          { label: 'Schema', ok: currentBrief.signals.hasSchema },
-                          { label: 'Contact', ok: currentBrief.signals.hasContact },
-                        ].map((sig) => (
-                          <span
-                            key={sig.label}
-                            className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-                              sig.ok
-                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50'
-                                : 'bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800'
-                            }`}
-                          >
-                            {sig.label}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
                 </div>
+              </div>
+
+              {/* Opener + CTA + Playbooks full width */}
+              <div className="border border-slate-100 dark:border-slate-800 rounded-2xl p-4 md:p-5 bg-slate-50 dark:bg-slate-950 space-y-3 mt-6 lg:col-span-2">
+                <div className="flex items-center gap-2">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Suggested opener</p>
+                </div>
+                {isBriefLoading ? (
+                  <div className="space-y-2">
+                    <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                    <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse w-3/4" />
+                    <div className="h-3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse w-1/2" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 leading-relaxed">
+                      {currentBrief?.opener || 'Spotted quick wins—happy to share a 3-step fix this week.'}
+                    </p>
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">CTA</p>
+                    <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+                      {currentBrief?.cta || 'Want me to prioritize the fixes and send a quick plan?'}
+                    </p>
+                  </>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    onClick={() => applyPlaybook('review')}
+                    className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm"
+                  >
+                    <Sparkles size={14} /> Review SOS
+                  </button>
+                  <button
+                    onClick={() => applyPlaybook('booking')}
+                    className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                  >
+                    <Layout size={14} /> Booking Leak
+                  </button>
+                </div>
+                {currentBrief && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {[
+                      { label: 'SSL', ok: currentBrief.signals.hasSSL },
+                      { label: 'Booking', ok: currentBrief.signals.hasBooking },
+                      { label: 'Form', ok: currentBrief.signals.hasForm },
+                      { label: 'Pixel', ok: currentBrief.signals.hasPixel },
+                      { label: 'Schema', ok: currentBrief.signals.hasSchema },
+                      { label: 'Contact', ok: currentBrief.signals.hasContact },
+                    ].map((sig) => (
+                      <span
+                        key={sig.label}
+                        className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                          sig.ok
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50'
+                            : 'bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-100 dark:border-slate-800'
+                        }`}
+                      >
+                        {sig.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
