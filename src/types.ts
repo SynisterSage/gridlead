@@ -98,5 +98,6 @@ export interface NotificationItem {
   body: string;
   created_at: string;
   unread: boolean;
+  archived_at?: string | null;
   meta?: Record<string, any>;
 }

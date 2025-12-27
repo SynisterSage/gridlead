@@ -75,6 +75,8 @@ const AppContent: React.FC = () => {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [archivedNotifications, setArchivedNotifications] = useState<NotificationItem[]>([]);
+  const [notificationTab, setNotificationTab] = useState<'inbox' | 'archive'>('inbox');
   const [toast, setToast] = useState<string | null>(null);
   const notifChannelRef = React.useRef<RealtimeChannel | null>(null);
   const notifDefaults = {
@@ -113,29 +115,52 @@ const AppContent: React.FC = () => {
 
   const fetchNotifications = useCallback(
     async (uid: string) => {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', uid)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      console.debug('[notif] fetchNotifications', { uid, error, count: data?.length });
-      if (!error && data) {
-        console.debug('[notif] fetched ids', data.map((n: any) => n.id));
-        if (data.some((n: any) => n?.meta?.kind === 'agency_approved')) {
-          markAgencyApprovedSeen();
-        }
-        setNotifications(
-          data.map((n: any) => ({
-            id: n.id,
-            type: n.type,
-            title: n.title,
-            body: n.body,
-            created_at: n.created_at,
-            unread: !n.read_at,
-            meta: n.meta || {},
-          }))
-        );
+      const [inboxRes, archiveRes] = await Promise.all([
+        supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', uid)
+          .is('archived_at', null)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', uid)
+          .not('archived_at', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(50),
+      ]);
+      console.debug('[notif] fetchNotifications', {
+        uid,
+        inboxErr: inboxRes.error,
+        archiveErr: archiveRes.error,
+        inboxCount: inboxRes.data?.length,
+        archiveCount: archiveRes.data?.length,
+      });
+      const inboxData = inboxRes.data || [];
+      const archiveData = archiveRes.data || [];
+      if (!inboxRes.error || !archiveRes.error) {
+        const alreadySeenAgency = hasSeenAgencyApproved();
+        const containsAgency = [...inboxData, ...archiveData].some((n: any) => n?.meta?.kind === 'agency_approved');
+        if (containsAgency) markAgencyApprovedSeen();
+
+        const mapRow = (n: any): NotificationItem => ({
+          id: n.id,
+          type: n.type,
+          title: n.title,
+          body: n.body,
+          created_at: n.created_at,
+          unread: !n.read_at,
+          archived_at: n.archived_at || null,
+          meta: n.meta || {},
+        });
+
+        const filteredInbox = inboxData.filter((n: any) => !(alreadySeenAgency && n?.meta?.kind === 'agency_approved')).map(mapRow);
+        const filteredArchive = archiveData.filter((n: any) => !(alreadySeenAgency && n?.meta?.kind === 'agency_approved')).map(mapRow);
+
+        setNotifications(filteredInbox);
+        setArchivedNotifications(filteredArchive);
       }
     },
     []
@@ -145,6 +170,7 @@ const AppContent: React.FC = () => {
     const { data: sessionData } = await supabase.auth.getSession();
     const uid = sessionData.session?.user?.id;
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, unread: false } : n)));
+    setArchivedNotifications(prev => prev.map(n => (n.id === id ? { ...n, unread: false } : n)));
     if (!uid) return;
     await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id).eq('user_id', uid);
   }, []);
@@ -154,19 +180,50 @@ const AppContent: React.FC = () => {
     const uid = sessionData.session?.user?.id;
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
     if (!uid) return;
-    await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('user_id', uid);
+    await supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', uid)
+      .is('archived_at', null);
   }, []);
+
+  const archiveNotification = useCallback(async (id: string) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    const archivedAt = new Date().toISOString();
+    setNotifications(prev => {
+      const target = prev.find(n => n.id === id);
+      if (!target) return prev;
+      if (target?.meta?.kind === 'agency_approved') markAgencyApprovedSeen();
+      const updated = { ...target, archived_at: archivedAt };
+      setArchivedNotifications(prevArch => [updated, ...prevArch]);
+      return prev.filter(n => n.id !== id);
+    });
+    if (!uid) return;
+    await supabase.from('notifications').update({ archived_at: archivedAt }).eq('id', id).eq('user_id', uid);
+  }, []);
+
+  const archiveAllNotifications = useCallback(async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    const archivedAt = new Date().toISOString();
+    if (notifications.some(n => n.meta?.kind === 'agency_approved')) {
+      markAgencyApprovedSeen();
+    }
+    setArchivedNotifications(prev => [...notifications.map(n => ({ ...n, archived_at: archivedAt })), ...prev]);
+    setNotifications([]);
+    if (!uid) return;
+    await supabase
+      .from('notifications')
+      .update({ archived_at: archivedAt })
+      .eq('user_id', uid)
+      .is('archived_at', null);
+  }, [notifications]);
 
   const deleteNotification = useCallback(async (id: string) => {
     const { data: sessionData } = await supabase.auth.getSession();
     const uid = sessionData.session?.user?.id;
-    setNotifications(prev => {
-      const target = prev.find(n => n.id === id);
-      if (target?.meta?.kind === 'agency_approved') {
-        markAgencyApprovedSeen();
-      }
-      return prev.filter(n => n.id !== id);
-    });
+    setArchivedNotifications(prev => prev.filter(n => n.id !== id));
     if (!uid) return;
     await supabase.from('notifications').delete().eq('id', id).eq('user_id', uid);
   }, []);
@@ -204,6 +261,7 @@ const AppContent: React.FC = () => {
           body: created.body,
           created_at: created.created_at,
           unread: !created.read_at,
+          archived_at: created.archived_at || null,
           meta: created.meta || {},
         };
         setNotifications(prev => [item, ...prev].slice(0, 100));
@@ -227,6 +285,8 @@ const AppContent: React.FC = () => {
         setProfile(null);
         setLeads(MOCK_LEADS);
         setNotifications(SAMPLE_NOTIFICATIONS);
+        setArchivedNotifications([]);
+        setNotificationTab('inbox');
         setNotifPrefs(notifDefaults);
         goalNotifiedRef.current = false;
         return;
@@ -440,6 +500,8 @@ const AppContent: React.FC = () => {
     const setup = async () => {
       if (!session) {
         setNotifications(SAMPLE_NOTIFICATIONS);
+        setArchivedNotifications([]);
+        setNotificationTab('inbox');
         if (notifChannelRef.current) {
           notifChannelRef.current.unsubscribe();
           notifChannelRef.current = null;
@@ -463,7 +525,9 @@ const AppContent: React.FC = () => {
               const row: any = payload.new;
               if (row?.meta?.kind === 'agency_approved') {
                 markAgencyApprovedSeen();
+                if (hasSeenAgencyApproved()) return;
               }
+              if (row.archived_at) return; // new rows should default to inbox; skip if already archived
               setNotifications(prev => {
                 if (prev.some(n => n.id === row.id)) return prev;
                 const next = [
@@ -474,6 +538,7 @@ const AppContent: React.FC = () => {
                     body: row.body,
                     created_at: row.created_at,
                     unread: !row.read_at,
+                    archived_at: row.archived_at || null,
                     meta: row.meta || {},
                   },
                   ...prev,
@@ -501,7 +566,9 @@ const AppContent: React.FC = () => {
             }
             if (row?.meta?.kind === 'agency_approved') {
               markAgencyApprovedSeen();
+              if (hasSeenAgencyApproved()) return;
             }
+            if (row.archived_at) return;
             setNotifications(prev => {
               if (prev.some(n => n.id === row.id)) return prev;
               const next = [
@@ -512,6 +579,7 @@ const AppContent: React.FC = () => {
                   body: row.body,
                   created_at: row.created_at,
                   unread: !row.read_at,
+                  archived_at: row.archived_at || null,
                   meta: row.meta || {},
                 },
                 ...prev,
@@ -1149,9 +1217,14 @@ const AppContent: React.FC = () => {
       </main>
       <NotificationCenter
         open={notificationsOpen}
-        notifications={notifications}
+        inbox={notifications}
+        archive={archivedNotifications}
+        activeTab={notificationTab}
+        onTabChange={setNotificationTab}
         onClose={() => setNotificationsOpen(false)}
         onMarkAllRead={markAllNotificationsRead}
+        onArchiveAll={archiveAllNotifications}
+        onArchive={archiveNotification}
         onMarkRead={markNotificationRead}
         onDelete={deleteNotification}
       />
