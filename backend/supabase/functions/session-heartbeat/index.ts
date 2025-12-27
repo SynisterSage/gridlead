@@ -41,11 +41,12 @@ Deno.serve(async (req) => {
   const nowIso = now.toISOString();
   const expiresAt = body.expiresAt || null;
   const userAgent = body.userAgent || req.headers.get("User-Agent") || null;
+  const tokenHash = await hashToken(token);
 
   // Check existing session
   const { data: existing, error: selErr } = await supabase
     .from("user_sessions")
-    .select("id, revoked_at, expires_at, user_id")
+    .select("id, revoked_at, expires_at, user_id, token_hash")
     .eq("user_id", user.id)
     .eq("fingerprint", fingerprint)
     .maybeSingle();
@@ -57,8 +58,17 @@ Deno.serve(async (req) => {
   const isExpired = (existing?.expires_at && new Date(existing.expires_at).getTime() < now.getTime());
   const isRevoked = !!existing?.revoked_at;
 
-  if (isExpired || isRevoked) {
+  if (isExpired) {
     return json({ revoked: true });
+  }
+
+  // If previously revoked, allow only if this is a new login (different token) or we don't have a stored token hash
+  if (isRevoked) {
+    const storedHash = existing?.token_hash || null;
+    if (storedHash && storedHash === tokenHash) {
+      return json({ revoked: true });
+    }
+    // otherwise allow through to clear revoked_at
   }
 
   const { data, error } = await supabase
@@ -69,6 +79,7 @@ Deno.serve(async (req) => {
       user_agent: userAgent,
       last_seen: nowIso,
       expires_at: expiresAt,
+      token_hash: tokenHash,
       revoked_at: null,
     }, { onConflict: "user_id,fingerprint" })
     .select()
@@ -91,4 +102,11 @@ function json(data: unknown, status = 200) {
 
 function respondError(message: string, status = 400) {
   return json({ error: message }, status);
+}
+
+async function hashToken(token: string) {
+  const enc = new TextEncoder().encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", enc);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }

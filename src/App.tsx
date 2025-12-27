@@ -310,6 +310,8 @@ const AppContent: React.FC = () => {
 
   const fetchNotifications = useCallback(
     async (uid: string) => {
+      // Ensure local session notifications are hydrated before merging
+      loadLocalSessionNotifs();
       const [inboxRes, archiveRes] = await Promise.all([
         supabase
           .from('notifications')
@@ -354,7 +356,18 @@ const AppContent: React.FC = () => {
         const filteredInbox = inboxData.filter((n: any) => !(alreadySeenAgency && n?.meta?.kind === 'agency_approved')).map(mapRow);
         const filteredArchive = archiveData.filter((n: any) => !(alreadySeenAgency && n?.meta?.kind === 'agency_approved')).map(mapRow);
 
-        setNotifications(filteredInbox);
+        // Merge server inbox with any existing notifications to avoid dropping local-only items
+        setNotifications(prev => {
+          const byId = new Map<string, NotificationItem>();
+          [...filteredInbox, ...prev].forEach(n => {
+            if (!byId.has(n.id)) byId.set(n.id, n);
+          });
+          // Sort by created_at desc
+          const merged = Array.from(byId.values()).sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          return merged.slice(0, 100);
+        });
         setArchivedNotifications(filteredArchive);
       }
       // merge local session notifications not present in inbox
