@@ -81,6 +81,7 @@ const AppContent: React.FC = () => {
   const toastTimerRef = React.useRef<number | null>(null);
   const SESSION_FP_KEY = 'gl_session_fp';
   const SESSION_SEEN_KEY = 'gl_seen_session_ids';
+  const LOCAL_SESSION_NOTIFS_KEY = 'gl_local_session_notifs';
   const notifChannelRef = React.useRef<RealtimeChannel | null>(null);
   const notifDefaults = {
     leads: true,
@@ -99,6 +100,7 @@ const AppContent: React.FC = () => {
   const profileChannelRef = React.useRef<RealtimeChannel | null>(null);
   const agencyNotifSentRef = React.useRef<boolean>(false);
   const sessionSeenRef = React.useRef<Set<string>>(new Set());
+  const localSessionNotifsRef = React.useRef<NotificationItem[]>([]);
 
   const rememberSessionSeen = useCallback((key: string) => {
     const set = sessionSeenRef.current;
@@ -112,6 +114,32 @@ const AppContent: React.FC = () => {
     if (!ua) return 'New device';
     return ua.length > 64 ? `${ua.slice(0, 64)}…` : ua;
   };
+
+  const loadLocalSessionNotifs = useCallback((): NotificationItem[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(LOCAL_SESSION_NOTIFS_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as NotificationItem[];
+      localSessionNotifsRef.current = parsed || [];
+      return parsed || [];
+    } catch (_e) {
+      localSessionNotifsRef.current = [];
+      return [];
+    }
+  }, []);
+
+  const persistLocalSessionNotifs = useCallback((list: NotificationItem[]) => {
+    localSessionNotifsRef.current = list;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LOCAL_SESSION_NOTIFS_KEY, JSON.stringify(list));
+    }
+  }, []);
+
+  const removeLocalSessionNotif = useCallback((id: string) => {
+    const next = localSessionNotifsRef.current.filter(n => n.id !== id);
+    persistLocalSessionNotifs(next);
+  }, [persistLocalSessionNotifs]);
 
   const addSessionNotification = useCallback(async (fingerprint: string, ua: string | null) => {
     if (!session) return;
@@ -161,10 +189,12 @@ const AppContent: React.FC = () => {
         archived_at: null,
         meta: { fingerprint, user_agent: ua, local_only: true },
       };
+      const nextLocal = [...localSessionNotifsRef.current, item];
+      persistLocalSessionNotifs(nextLocal);
       return [item, ...prev].slice(0, 100);
     });
     rememberSessionSeen(fingerprint);
-  }, [session, rememberSessionSeen]);
+  }, [session, rememberSessionSeen, persistLocalSessionNotifs]);
 
   const hasNotification = useCallback(
     (type: NotificationItem['type'], predicate?: (n: NotificationItem) => boolean) => {
@@ -186,6 +216,11 @@ const AppContent: React.FC = () => {
     if (saved) setLeads(JSON.parse(saved));
     else setLeads(MOCK_LEADS);
   }, []);
+
+  // Restore local-only session notifications
+  useEffect(() => {
+    loadLocalSessionNotifs();
+  }, [loadLocalSessionNotifs]);
 
   // Restore seen session ids to avoid duplicate device notifications
   useEffect(() => {
@@ -322,8 +357,17 @@ const AppContent: React.FC = () => {
         setNotifications(filteredInbox);
         setArchivedNotifications(filteredArchive);
       }
+      // merge local session notifications not present in inbox
+      const locals = localSessionNotifsRef.current;
+      if (locals.length) {
+        setNotifications(prev => {
+          const ids = new Set(prev.map(p => p.id));
+          const merged = [...locals.filter(n => !ids.has(n.id)), ...prev];
+          return merged.slice(0, 100);
+        });
+      }
     },
-    []
+    [loadLocalSessionNotifs]
   );
 
   const markNotificationRead = useCallback(async (id: string) => {
@@ -331,6 +375,7 @@ const AppContent: React.FC = () => {
     const uid = sessionData.session?.user?.id;
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, unread: false } : n)));
     setArchivedNotifications(prev => prev.map(n => (n.id === id ? { ...n, unread: false } : n)));
+    removeLocalSessionNotif(id);
     if (!uid) return;
     await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id).eq('user_id', uid);
   }, []);
@@ -359,6 +404,7 @@ const AppContent: React.FC = () => {
       setArchivedNotifications(prevArch => [updated, ...prevArch]);
       return prev.filter(n => n.id !== id);
     });
+    removeLocalSessionNotif(id);
     if (!uid) return;
     await supabase.from('notifications').update({ archived_at: archivedAt }).eq('id', id).eq('user_id', uid);
   }, []);
@@ -384,6 +430,7 @@ const AppContent: React.FC = () => {
     const { data: sessionData } = await supabase.auth.getSession();
     const uid = sessionData.session?.user?.id;
     setArchivedNotifications(prev => prev.filter(n => n.id !== id));
+    removeLocalSessionNotif(id);
     if (!uid) return;
     await supabase.from('notifications').delete().eq('id', id).eq('user_id', uid);
   }, []);

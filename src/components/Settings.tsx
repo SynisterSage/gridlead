@@ -508,7 +508,8 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       const { data: sessionData } = await supabase.auth.getSession();
       const uid = sessionData.session?.user?.id;
       if (uid) {
-        await supabase.from('user_sessions').delete().eq('user_id', uid);
+        const now = new Date().toISOString();
+        await supabase.from('user_sessions').update({ revoked_at: now }).eq('user_id', uid);
         await purgeStaleSessions();
       }
       setSessions([]);
@@ -587,7 +588,7 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       const uid = sessionData.session?.user?.id;
       if (!uid) return;
       const nowIso = new Date().toISOString();
-      await supabase.from('user_sessions').delete().eq('user_id', uid).not('revoked_at', 'is', null);
+      // Only purge expired sessions; keep revoked rows so heartbeats stay blocked.
       await supabase.from('user_sessions').delete().eq('user_id', uid).lt('expires_at', nowIso);
     } catch (e) {
       console.warn('Failed to purge stale sessions', e);
@@ -605,12 +606,13 @@ const Settings: React.FC<SettingsProps> = ({ onLogout, profile, userName, userEm
       const uid = sessionData.session?.user?.id;
       const target = sessions.find(s => s.id === id);
       const fp = target?.fingerprint || id;
-      const query = supabase.from('user_sessions').delete().eq('id', id);
+      const now = new Date().toISOString();
+      const query = supabase.from('user_sessions').update({ revoked_at: now }).eq('id', id);
       if (uid) query.eq('user_id', uid);
       await query;
       // Best-effort: also clear any other rows with same fingerprint
       if (fp && uid) {
-        await supabase.from('user_sessions').delete().eq('user_id', uid).eq('fingerprint', fp);
+        await supabase.from('user_sessions').update({ revoked_at: now }).eq('user_id', uid).eq('fingerprint', fp);
       }
       await purgeStaleSessions();
       await loadSessions();
