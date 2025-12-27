@@ -150,6 +150,9 @@ const buildBrief = (lead: LeadInput, signals: BriefResult["signals"], complaints
   if (signals.auditChecklist?.conversionFlow === false) {
     evidence.push("Audit: conversion/contact flow weak");
   }
+  if (complaints.length > 0) {
+    talkingPoints.push("Address recent complaints and close the loop with affected customers.");
+  }
 
   if (whyNow.length === 0) {
     whyNow.push("Quick wins available to lift conversions and trust.");
@@ -218,6 +221,9 @@ serve(async (req) => {
             hasGoogleReviews: stored.checklist_google_reviews ?? null,
             hasRender: stored.checklist_render ?? null,
           };
+          if (signals.auditChecklist.sslCertificate === true) {
+            signals.hasSSL = true;
+          }
           // If no url passed but row has one, use it
           if (!url && stored.website) {
             const normalized = normalizeUrl(stored.website);
@@ -246,6 +252,9 @@ serve(async (req) => {
         signals.perfMs = Date.now() - started;
         signals.lastStatus = res.status;
         signals.statusCode = res.status;
+        if (res.url && res.url.startsWith("https://")) {
+          signals.hasSSL = true;
+        }
         const parsed = parseSignals(text);
         signals.hasBooking = parsed.hasBooking;
         signals.hasForm = parsed.hasForm;
@@ -277,7 +286,10 @@ serve(async (req) => {
           complaints = revs
             .filter((r: any) => typeof r?.rating === "number" && r.rating <= 3 && r?.text)
             .slice(0, 3)
-            .map((r: any) => String(r.text).slice(0, 240));
+            .map((r: any) => {
+              const text = String(r.text || "");
+              return text.length > 220 ? `${text.slice(0, 220)}…` : text;
+            });
           if (!signals.reviewsCount && typeof json?.result?.user_ratings_total === "number") {
             signals.reviewsCount = json.result.user_ratings_total;
           }

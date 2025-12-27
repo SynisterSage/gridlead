@@ -192,37 +192,39 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
   const isBriefLoading = current ? briefLoading[current.id] === true : false;
   const briefLoadError = current ? briefError[current.id] || null : null;
 
-  const applyPlaybook = (type: 'review' | 'booking') => {
+  const applyBriefToIntelligence = () => {
     if (!current) return;
-    const tag = type === 'review' ? '[Playbook: Review SOS]' : '[Playbook: Booking Leak]';
-    const alreadyTagged = (current.notes || '').includes(tag);
-
     const opener = currentBrief?.opener || `Quick wins I spotted for ${current.name}.`;
-    const cta = currentBrief?.cta || 'Want me to share a 3-step fix this week?';
-
+    const cta = currentBrief?.cta || 'Want me to prioritize the fixes and send a quick plan?';
+    const points = currentBrief?.talkingPoints || [];
     const evidence = currentBrief?.evidence || [];
-    const formattedEvidence = evidence.length
-      ? `\nEvidence:\n- ${evidence.slice(0, 4).join('\n- ')}`
-      : '';
+    const complaints = currentBrief?.complaints || [];
 
-    const subject = type === 'review'
-      ? `Lift ${current.name}'s reviews fast`
-      : `${current.name} booking quick win`;
+    const summaryLines: string[] = [];
+    if (points.length) {
+      summaryLines.push('Talking Points:');
+      points.slice(0, 4).forEach(p => summaryLines.push(`- ${p}`));
+    }
+    if (evidence.length) {
+      summaryLines.push('Evidence:');
+      evidence.slice(0, 5).forEach(e => summaryLines.push(`- ${e}`));
+    }
+    if (complaints.length) {
+      summaryLines.push('Complaints:');
+      complaints.slice(0, 3).forEach(c => summaryLines.push(`- ${c}`));
+    }
+    summaryLines.push(`Opener: ${opener}`);
+    summaryLines.push(`CTA: ${cta}`);
 
-    const body = type === 'review'
-      ? `${opener}\n\nI can summarize complaints, draft responses, and roll out a 30-day recovery checklist.${formattedEvidence}\n\n${cta}`
-      : `${opener}\n\nI can add a clear booking CTA + tracking so you see who’s converting.${formattedEvidence}\n\n${cta}`;
-
-    const nextNotes = alreadyTagged
-      ? current.notes
-      : `${tag} ${current.notes || ''}`.trim();
+    const summary = summaryLines.join('\n');
+    const tagged = `[Brief Summary]\n${summary}`;
 
     onUpdateLead(current.id, {
-      draftSubject: subject,
-      draftBody: body,
-      notes: nextNotes,
+      notes: tagged,
+      draftSubject: current.draftSubject || `Quick wins for ${current.name}`,
+      draftBody: current.draftBody || `${opener}\n\n${cta}`,
     });
-    setSelectedLead(prev => prev && prev.id === current.id ? { ...prev, draftSubject: subject, draftBody: body, notes: nextNotes } as Lead : prev);
+    setSelectedLead(prev => prev && prev.id === current.id ? { ...prev, notes: tagged, draftSubject: current.draftSubject || `Quick wins for ${current.name}`, draftBody: current.draftBody || `${opener}\n\n${cta}` } as Lead : prev);
   };
 
   return (
@@ -397,24 +399,21 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                   </div>
                   {/* Intelligence Notes under audit */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Intelligence Brief</h3>
-                        <div className="relative group cursor-help">
-                          <HelpCircle size={14} className="text-slate-300 dark:text-slate-700 hover:text-blue-500 transition-colors" />
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
-                            <div className="flex items-center gap-2 mb-2 text-emerald-400">
-                              <Sparkles size={12} fill="currentColor" />
-                              <span className="text-[9px] font-black uppercase tracking-widest">Personalization Hook</span>
-                            </div>
-                            <p className="text-[10px] font-medium leading-relaxed opacity-80">
-                              Specific weaknesses identified here result in higher conversion rates.
-                            </p>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white">Intelligence Brief</h3>
+                      <div className="relative group cursor-help">
+                        <HelpCircle size={14} className="text-slate-300 dark:text-slate-700 hover:text-blue-500 transition-colors" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-4 bg-slate-900 dark:bg-slate-800 text-white rounded-[1.25rem] shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50 ring-1 ring-white/10">
+                          <div className="flex items-center gap-2 mb-2 text-emerald-400">
+                            <Sparkles size={12} fill="currentColor" />
+                            <span className="text-[9px] font-black uppercase tracking-widest">Personalization Hook</span>
                           </div>
+                          <p className="text-[10px] font-medium leading-relaxed opacity-80">
+                            Run Review SOS / Booking Leak to auto-fill details and drafts.
+                          </p>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 w-2 h-2 bg-slate-900 dark:bg-slate-800 rotate-45" />
                         </div>
                       </div>
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Tip: run Review SOS / Booking Leak for auto-fill</span>
                     </div>
                     <textarea 
                       value={current.notes || ''}
@@ -545,16 +544,10 @@ const ReviewQueue: React.FC<ReviewQueueProps> = ({ leads, onUpdateLead, onDelete
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
-                    onClick={() => applyPlaybook('review')}
-                    className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm"
+                    onClick={applyBriefToIntelligence}
+                    className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-slate-200 transition-all shadow-sm col-span-1 sm:col-span-2"
                   >
-                    <Sparkles size={14} /> Review SOS
-                  </button>
-                  <button
-                    onClick={() => applyPlaybook('booking')}
-                    className="flex items-center justify-center gap-2 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
-                  >
-                    <Layout size={14} /> Booking Leak
+                    <Sparkles size={14} /> Send brief to Intelligence & Outreach
                   </button>
                 </div>
                 {currentBrief && (
