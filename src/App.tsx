@@ -141,10 +141,29 @@ const AppContent: React.FC = () => {
           return [item, ...prev].slice(0, 100);
         });
         rememberSessionSeen(fingerprint);
+        return;
       }
+      // If insert didn't return a row, fall through to local notification
     } catch (e) {
       console.warn('Failed to insert session notification', e);
     }
+    // Fallback: local-only notification so user sees it once
+    const localId = `session-local-${fingerprint}`;
+    setNotifications(prev => {
+      if (prev.some(n => n.id === localId)) return prev;
+      const item: NotificationItem = {
+        id: localId,
+        type: 'session',
+        title: 'New device signed in',
+        body: ua || 'New device detected',
+        created_at: new Date().toISOString(),
+        unread: true,
+        archived_at: null,
+        meta: { fingerprint, user_agent: ua, local_only: true },
+      };
+      return [item, ...prev].slice(0, 100);
+    });
+    rememberSessionSeen(fingerprint);
   }, [session, rememberSessionSeen]);
 
   const hasNotification = useCallback(
